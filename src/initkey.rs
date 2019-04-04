@@ -1,5 +1,6 @@
-use pairing::{bls12_381::*, CurveProjective, EncodedPoint, Engine};
+use pairing::{bls12_381::*, CurveProjective};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
+
 // the initial keys
 #[derive(Debug, Clone)]
 pub struct InitKey {

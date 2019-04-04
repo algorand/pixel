@@ -1,30 +1,68 @@
+#![warn(unused_extern_crates)]
 extern crate ff;
 extern crate pairing;
 extern crate rand;
+
 mod initkey;
 mod keys;
 mod param;
-use ff::{Field, PrimeField};
-use initkey::{InitKey, InitKeyAlgorithm};
-use keys::Keys;
+mod sign;
+mod verify;
+
+use ff::PrimeField;
+use initkey::InitKeyAlgorithm;
 use keys::{KeysAlgorithm, SSKAlgorithm};
-use pairing::{bls12_381::*, CurveProjective, EncodedPoint, Engine};
+use pairing::bls12_381::*;
+use param::PubParam;
+use rand::{ChaChaRng, Rand};
 
-use param::SecretKey;
-use param::SubSecretKey;
-use param::{PubParam, *};
-use rand::{ChaChaRng, Rand, Rng, SeedableRng};
-//use keys::KeysAlgorithm;
-
-//mod sig;
-//mod subkeys;
 fn main() {
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
-    //    let k: (RootSecret, PublicKey) = KeysAlgorithm::key_gen_alpha();
-    let k: Keys = KeysAlgorithm::root_key_gen(&pp);
-    let rs: InitKey = InitKeyAlgorithm::key_gen_alpha();
+    let mut rng = ChaChaRng::new_unseeded();
+    let pp: PubParam = PubParam::init_with_w_and_seed(&[43; 4]);
+
+    let k: keys::Keys = KeysAlgorithm::root_key_gen(&pp);
+    let rs: initkey::InitKey = InitKeyAlgorithm::key_gen_alpha();
     println!("{:#?}", pp);
     println!("{:#?}", k);
     println!("{:#?}", rs);
+
+    let t = k.get_sk();
+    let ssk = &t[0];
+    println!("{:#?}", ssk);
+
+    let mut x: Vec<Fr> = Vec::new();
+    for i in 1..2 {
+        let t = Fr::from_repr(FrRepr([0, 0, 0, i])).unwrap();
+        println!("t: {:?}", t);
+        x.push(t);
+    }
+
+    let ssknew = ssk.subkey_delegate(&pp, &x, &mut rng);
+    println!("{:#?}", ssknew);
+    println!("{:#?}", x);
+    let m: Fr = Fr::rand(&mut rng);
+    let t: sign::Signature = sign::Sign::sign(ssknew.clone(), &pp, &x, &m, &mut rng);
+    println!("{:#?}", t);
+    let key: G2 = k.get_pk();
+    let s: bool = verify::verification(&key, &pp, &x, &m, &t);
+    println!("{:#?}", s);
+
+    let mut xprime = x.clone();
+    xprime.push(Fr::from_repr(FrRepr([0, 0, 0, 1])).unwrap());
+    let ssknew = ssknew.subkey_delegate(&pp, &xprime, &mut rng);
+    println!("{:#?}", ssknew);
+    let m = Fr::rand(&mut rng);
+    let t: sign::Signature = sign::Sign::sign(ssknew.clone(), &pp, &xprime, &m, &mut rng);
+    println!("{:#?}", t);
+    let s = verify::verification(&k.get_pk(), &pp, &xprime, &m, &t);
+    println!("{:#?}", s);
+
+    let ssknew = ssk.subkey_delegate(&pp, &xprime, &mut rng);
+    println!("{:#?}", ssknew);
+    let m = Fr::rand(&mut rng);
+    let t: sign::Signature = sign::Sign::sign(ssknew, &pp, &xprime, &m, &mut rng);
+    println!("{:#?}", t);
+    let s = verify::verification(&k.get_pk(), &pp, &xprime, &m, &t);
+    println!("{:#?}", s);
     println!("Hello, world!");
 }

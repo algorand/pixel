@@ -1,96 +1,93 @@
-use pairing::{bls12_381::*, CurveProjective, EncodedPoint, Engine};
-
-use param::PublicKey;
-use param::RootSecret;
-use param::SecretKey;
+use ff::Field;
+use keys::SSKAlgorithm;
+use pairing::{bls12_381::*, CurveProjective};
 use param::SubSecretKey;
 use param::{PubParam, CONST_D};
-use rand::{ChaChaRng, Rand, Rng, SeedableRng};
-use subkeys::SSKAlgorithm;
+use rand::Rand;
 
-
-
-
-//pub type Signature = [G2; 2];
+#[derive(Debug, Clone)]
 pub struct Signature {
-    sigma1: G1,
-    sigma2: G2,
+    pub sigma1: G1,
+    pub sigma2: G2,
 }
 
-
-pub trait SKAlgorithm {
-    fn init() -> Self;
-
+pub trait Sign {
     fn sign<R: ::rand::Rng>(
-        &self,
+        ssk: SubSecretKey,
         pp: &PubParam,
         vec_t: &Vec<Fr>,
         msg: &Fr,
         rng: &mut R,
-    ) -> Signature;
-
-    // this function uses root secret key to sign
-//    fn sign_raw<R: ::rand::Rng>(&self, pp: &PubParam, msg: &Fr, rng: &mut R) -> Signature;
-
-    // update a list of secret keys into a new list of public Keys
-//    fn update_key<R: ::rand::Rng>(&self, pp: &PubParam, vec_t: &Vec<Fr>, rng: &mut R) -> SecretKey;
-
-    fn print(&self);
+    ) -> Self;
 }
 
-impl SKAlgorithm for SecretKey {
-    fn init() -> Self {
-        Vec::new()
-    }
-
+impl Sign for Signature {
     fn sign<R: ::rand::Rng>(
-        &self,
+        ssk: SubSecretKey,
         pp: &PubParam,
         vec_t: &Vec<Fr>,
         msg: &Fr,
         rng: &mut R,
-    ) -> Signature
-    {
-        
-    }
-
-    // fn sign_raw<R: ::rand::Rng>(&self, pp: &PubParam, msg: &Fr, rng: &mut R) -> Signature {
-    //     let s = self[0].partial_delegate(pp, &vec![*msg], rng);
-    //     s.two_elements
-    // }
-    //
-    // fn sign<R: ::rand::Rng>(
-    //     &self,
-    //     pp: &PubParam,
-    //     vec_t: &Vec<Fr>,
-    //     msg: &Fr,
-    //     rng: &mut R,
-    // ) -> Signature {
-    //     let mut tmp = vec_t.clone();
-    //     tmp.push(*msg);
-    //     let s = self[0].partial_delegate(pp, &tmp, rng);
-    //     s.two_elements
-    // }
-
-    // fn update_key<R: ::rand::Rng>(&self, pp: &PubParam, vec_t: &Vec<Fr>, rng: &mut R) -> SecretKey {
-    //     let mut newsklist: SecretKey = Vec::new();
-    //
-    //     for ssk in self {
-    //         let gamma_t = gamma_t_fr(vec_t);
-    //         for new_vec in gamma_t {
-    //             let tmp = ssk.delegate(&pp, &new_vec, rng);
-    //             newsklist.push(tmp)
-    //         }
-    //     }
-    //     newsklist
-    // }
-
-    fn print(&self) {
-        println!("==============");
-        println!("==secret key==");
-        for ssk in self {
-            ssk.print();
+    ) -> Self {
+        let mut v = vec_t.clone();
+        for _ in vec_t.len()..CONST_D - 1 {
+            v.push(Fr::zero());
         }
-        println!("==============\n");
+        v.push(*msg);
+        let ssknew = partial_subkey_delegate(&ssk, &pp, &v, rng);
+        Signature {
+            sigma1: ssknew.1,
+            sigma2: ssknew.0,
+        }
     }
+}
+
+fn partial_subkey_delegate<R: ::rand::Rng>(
+    ssk: &SubSecretKey,
+    pp: &PubParam,
+    x_prime: &Vec<Fr>,
+    rng: &mut R,
+) -> (G2, G1) {
+    // rightside = Subkey(pp, g2^0, x_prime)
+    let rightside = partial_subkey_gen(pp, x_prime, rng);
+
+    // g2^r * rightside[0]
+    let mut g2r = ssk.g2r;
+    g2r.add_assign(&rightside.0);
+
+    // g1poly * rightside[1]
+    // g1poly = K1* Prod_{i=|x|+1}^{|x'|} K_i ^ x'_i
+    let xlen = ssk.get_vec_x_len();
+    let mut g1poly = ssk.g1poly;
+    for i in xlen..x_prime.len() {
+        let mut tmp2 = ssk.d_elements[i];
+        tmp2.mul_assign(x_prime[i]);
+        g1poly.add_assign(&tmp2);
+    }
+
+    g1poly.add_assign(&rightside.1);
+
+    (g2r, g1poly)
+}
+
+fn partial_subkey_gen<R: ::rand::Rng>(pp: &PubParam, vec_x: &Vec<Fr>, rng: &mut R) -> (G2, G1) {
+    let r = Fr::rand(rng);
+    let list = pp.get_glist();
+
+    // 1. g2^r
+    let mut g2r = G2::one();
+    g2r.mul_assign(r);
+
+    // 2. g2^{\alpha + f(x)*r}
+    // 2.1 g2^f(x)
+    let mut g1fx = pp.get_g0();
+    for i in 0..vec_x.len() {
+        let mut tmp = list[i];
+        tmp.mul_assign(vec_x[i]);
+        g1fx.add_assign(&tmp);
+    }
+    // 2.2 g2^{f(x)*r}
+    g1fx.mul_assign(r);
+
+    (g2r, g1fx)
 }

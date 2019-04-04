@@ -1,41 +1,28 @@
-use keys::PublicKey;
-use keys::RootSecret;
-use pairing::{bls12_381::*, CurveProjective, EncodedPoint, Engine, Field};
+use ff::Field;
+use pairing::{bls12_381::*, CurveProjective, Engine};
 use param::{PubParam, CONST_D};
-use rand::{ChaChaRng, Rand, Rng, SeedableRng};
+use sign::Signature;
 
+#[allow(dead_code)]
+pub fn verification(pk: &G2, pp: &PubParam, time: &Vec<Fr>, msg: &Fr, sigma: &Signature) -> bool {
+    // e(sigma_1, g2)
+    let right = Bls12::pairing(sigma.sigma1, G2::one());
 
-pub trait PKAlgorithm {
-    //    fn verify(self, pp: &PubParam, vec_t: &Vec<Fr>, msg: &Fr, sigma: &Signature) -> bool;
-    fn verify_raw(self, pp: &PubParam, msg: &Fr, sigma: &Signature) -> bool;
-}
+    // e(g1, pk)
+    let mut left = Bls12::pairing(G1::one(), pk.into_affine());
 
-impl PKAlgorithm for PublicKey {
-    fn verify_raw(self, pp: &PubParam, msg: &Fr, sigma: &Signature) -> bool {
-        // g1^w[0]
-        let mut left = Bls12::pairing(sigma.sigma1, G2::one());
-
-        // g1^{w[1] * msg}
-        let mut tmp = pp.get_two_elements()[1];
-        tmp.mul_assign(*msg);
-        left.add_assign(&tmp);
-
-        let mut s = sigma[0].clone();
-        s.negate();
-        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-            [
-                (
-                    &(left.into_affine().prepare()),
-                    &(s.into_affine().prepare()),
-                ),
-                (
-                    &(G1::one().into_affine().prepare()),
-                    &(sigma[1].into_affine().prepare()),
-                ),
-            ]
-            .into_iter(),
-        ))
-        .unwrap();
-        self == pairingproduct
+    // g1^{w[1] * msg}
+    let mut g1tmp = pp.get_g0();
+    let list = pp.get_glist();
+    for i in 0..time.len() {
+        let mut tmp = list[i];
+        tmp.mul_assign(time[i]);
+        g1tmp.add_assign(&tmp);
     }
+    let mut tmp = list[CONST_D - 1];
+    tmp.mul_assign(*msg);
+    g1tmp.add_assign(&tmp);
+    let gttmp = Bls12::pairing(g1tmp, sigma.sigma2);
+    left.mul_assign(&gttmp);
+    left == right
 }

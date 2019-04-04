@@ -1,6 +1,5 @@
-use pairing::{bls12_381::*, CurveProjective, EncodedPoint, Engine};
-
 use initkey::{InitKey, InitKeyAlgorithm};
+use pairing::{bls12_381::*, CurveProjective};
 use param::SecretKey;
 use param::SubSecretKey;
 use param::{PubParam, CONST_D};

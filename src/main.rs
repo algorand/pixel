@@ -18,7 +18,7 @@ use rand::{ChaChaRng, Rand};
 
 fn main() {
     let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[43; 4]);
+    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
 
     let k: keys::Keys = KeysAlgorithm::root_key_gen(&pp);
     let rs: initkey::InitKey = InitKeyAlgorithm::key_gen_alpha();

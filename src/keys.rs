@@ -18,6 +18,7 @@ pub trait KeysAlgorithm {
     fn get_pk(&self) -> G2;
     fn root_key_gen(pp: &PubParam) -> Self;
     fn root_key_gen_with_seed(seed: &[u32; 4], pp: &PubParam) -> Self;
+    fn root_key_gen_with_rng<R: ::rand::Rng>(rng: &mut R, pp: &PubParam) -> Self;
 }
 
 pub trait SSKAlgorithm {
@@ -46,18 +47,9 @@ impl KeysAlgorithm for Keys {
             pk: G2::zero(),
         }
     }
-
-    fn root_key_gen_with_seed(seed: &[u32; 4], pp: &PubParam) -> Keys {
-        let mut rng = ChaChaRng::from_seed(seed);
-        let seed1 = [
-            rng.next_u32(),
-            rng.next_u32(),
-            rng.next_u32(),
-            rng.next_u32(),
-        ];
-
-        let initkey = InitKey::key_gen_alpha_with_seed(&seed1);
-        let r = Fr::rand(&mut rng);
+    fn root_key_gen_with_rng<R: ::rand::Rng>(rng: &mut R, pp: &PubParam) -> Self {
+        let initkey = InitKey::key_gen_alpha_with_rng(rng);
+        let r = Fr::rand(rng);
         let mut ssk: SubSecretKey = SSKAlgorithm::init();
         let glist = pp.get_glist();
 
@@ -76,6 +68,11 @@ impl KeysAlgorithm for Keys {
             sk: vec![ssk],
             pk: initkey.pk,
         }
+    }
+
+    fn root_key_gen_with_seed(seed: &[u32; 4], pp: &PubParam) -> Keys {
+        let mut rng = ChaChaRng::from_seed(seed);
+        Self::root_key_gen_with_rng(&mut rng, &pp)
     }
     fn root_key_gen(pp: &PubParam) -> Self {
         let mut rng = ChaChaRng::new_unseeded();

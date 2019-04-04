@@ -11,6 +11,7 @@ pub trait InitKeyAlgorithm {
     fn init() -> Self;
     fn key_gen_alpha() -> Self;
     fn key_gen_alpha_with_seed(seed: &[u32; 4]) -> Self;
+    fn key_gen_alpha_with_rng<R: ::rand::Rng>(rng: &mut R) -> Self;
     fn get_sk(&self) -> G1;
     fn get_pk(&self) -> G2;
 }
@@ -29,15 +30,19 @@ impl InitKeyAlgorithm for InitKey {
         }
     }
 
-    fn key_gen_alpha_with_seed(seed: &[u32; 4]) -> Self {
-        let mut rng = ChaChaRng::from_seed(seed);
-        let alpha = Fr::rand(&mut rng);
+    fn key_gen_alpha_with_rng<R: ::rand::Rng>(rng: &mut R) -> Self {
+        let alpha = Fr::rand(rng);
         let mut sk = G1::one();
         sk.mul_assign(alpha);
         let mut pk = G2::one();
         pk.mul_assign(alpha);
 
         InitKey { pk: pk, sk: sk }
+    }
+
+    fn key_gen_alpha_with_seed(seed: &[u32; 4]) -> Self {
+        let mut rng = ChaChaRng::from_seed(seed);
+        Self::key_gen_alpha_with_rng(&mut rng)
     }
 
     fn key_gen_alpha() -> Self {

@@ -1,41 +1,36 @@
 use pairing::{bls12_381::*, CurveProjective};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
 // the depth (dimention) of the time vector
-pub const CONST_D: usize = 3;
-
-// the public key is a Gt element
-pub type PublicKey = G2;
+pub const CONST_D: usize = 10;
 
 // the secret key is a list of SubSecretKeys
 // the length is arbitrary
 pub type SecretKey = Vec<SubSecretKey>;
 
-// g1^\alpha, the root secret
-pub type RootSecret = G1;
-
 #[derive(Debug, Clone)]
 pub struct SubSecretKey {
-    pub two_elements: [G1; 2],
+    pub g2r: G2,    //  g2^r
+    pub g1poly: G1, //  g1^{alpha + f(x) r}
     // the first d-1 elements are for delegations
     // the last element is for the message
-    pub d_plus_one_elements: [G1; CONST_D + 1],
+    pub d_elements: [G1; CONST_D],
 }
 
 // public parameter is a list of G1/G2 pairs
 #[derive(Debug, Clone)]
 pub struct PubParam {
-    h: G1,
-    hlist: [G1; CONST_D + 2], // h_0, ..., h_{l+1}
+    g0: G1,               //  g0
+    glist: [G1; CONST_D], // g_1, ..., g_d
 }
 
 #[allow(dead_code)]
 impl PubParam {
-    pub fn get_h(&self) -> G1 {
-        return self.h;
+    pub fn get_g0(&self) -> G1 {
+        return self.g0;
     }
 
-    pub fn get_hlist(&self) -> [G1; CONST_D + 2] {
-        return self.hlist;
+    pub fn get_glist(&self) -> [G1; CONST_D] {
+        return self.glist;
     }
 
     pub fn init() -> Self {
@@ -52,11 +47,23 @@ impl PubParam {
     pub fn init_with_seed(seed: &[u32; 4]) -> Self {
         let mut rng = ChaChaRng::from_seed(seed);
 
-        let h = G1::rand(&mut rng);
-        let mut d = [G1::zero(); CONST_D + 2];
-        for i in 0..CONST_D + 2 {
+        let g0 = G1::rand(&mut rng);
+        let mut d = [G1::zero(); CONST_D];
+        for i in 0..CONST_D {
             d[i] = G1::rand(&mut rng);
         }
-        PubParam { h: h, hlist: d }
+        PubParam { g0: g0, glist: d }
+    }
+
+    pub fn init_with_w_and_seed(seed: &[u32; 4]) -> Self {
+        let mut rng = ChaChaRng::from_seed(seed);
+
+        let mut g0 = G1::one();
+        g0.mul_assign(Fr::rand(&mut rng));
+        let mut d = [G1::one(); CONST_D];
+        for i in 0..CONST_D {
+            d[i].mul_assign(Fr::rand(&mut rng));
+        }
+        PubParam { g0: g0, glist: d }
     }
 }

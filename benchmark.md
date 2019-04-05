@@ -13,3 +13,14 @@ This is the benchmark result for consensus signature scheme with `d = 30`.
 |Delegate(pp, subkey, timevec)-> subkey| 1.523 ms | 17.3 % | 3 g1_mul + g2_mul |
 |Sign(pp, subkey, timevec, msg) -> sig| 1.538 ms | 9.0 % | 3 g1_mul + g2_mul|
 |Verify (pp, pk, timevec, msg, sig) -> bool| 3.063 ms|10.2 % | 1 g1_mul + 3 sim pairing |
+
+
+## comparison EdDSA - libsodium
+
+|Function| Timing| Main Component|
+|---|---:|---|
+|Key Gen|0.023 ms|1 mul|
+|Sign|0.023 ms|1 mul|
+|Verify|0.059 ms|~ 2.5 mul (?) |
+
+A single multiplication is ~10x faster than G1_mul with bls12-381

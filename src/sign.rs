@@ -24,7 +24,7 @@ pub trait Sign {
     fn sign_with_seed_and_time(
         ssk: &SubSecretKey,
         pp: &PubParam,
-        time: u64,
+        time: &u64,
         msg: &Fr,
         seed: &[u32; 4],
     ) -> Self;
@@ -53,12 +53,12 @@ impl Sign for Signature {
     fn sign_with_seed_and_time(
         ssk: &SubSecretKey,
         pp: &PubParam,
-        time: u64,
+        time: &u64,
         msg: &Fr,
         seed: &[u32; 4],
     ) -> Self {
         let mut rng = ChaChaRng::from_seed(seed);
-        let time_vec = time_to_fr_vec(time as u32, CONST_D as u32);
+        let time_vec = time_to_fr_vec(*time as u32, CONST_D as u32);
         Self::sign(ssk, pp, &time_vec, msg, &mut rng)
     }
 }

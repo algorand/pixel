@@ -15,6 +15,7 @@ use rand::{ChaChaRng, Rand, Rng};
 use sign::{Sign, Signature};
 #[cfg(test)]
 use verify::verification;
+use verify::verification_with_time;
 
 #[bench]
 fn bench_param(b: &mut test::test::Bencher) {
@@ -361,6 +362,101 @@ fn bench_verify_level_03(b: &mut test::test::Bencher) {
             &pklist[counter],
             &pp,
             &x,
+            &msglist[counter],
+            &siglist[counter],
+        );
+        counter = (counter + 1) % 1000;
+        assert_eq!(ver, true, "verification failed");
+        ver
+    });
+}
+
+// ============================================================================
+#[bench]
+fn bench_delegate_level_rnd(b: &mut test::test::Bencher) {
+    let mut rng = ChaChaRng::new_unseeded();
+    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let mut ssklist: Vec<SubSecretKey> = vec![];
+
+    let mut timelist: Vec<u32> = vec![];
+    for _ in 0..1000 {
+        let time = rng.next_u32() & 0x3FFFFFFF;
+        let keys: Keys = KeysAlgorithm::root_key_gen_with_rng(&mut rng, &pp);
+        let sk = keys.get_sk();
+        let ssknew = sk[0].subkey_delegate_time(&pp, &(time as u64), &mut rng);
+        timelist.push(time);
+        ssklist.push(ssknew);
+    }
+
+    let mut counter = 0;
+    b.iter(|| {
+        let ssknew =
+            ssklist[counter].subkey_delegate_time(&pp, &(timelist[counter] as u64 + 1), &mut rng);
+        counter = (counter + 1) % 1000;
+        ssknew
+    });
+}
+
+#[bench]
+fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
+    let mut rng = ChaChaRng::new_unseeded();
+    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let mut ssklist: Vec<SubSecretKey> = vec![];
+    let mut msglist: Vec<Fr> = vec![];
+    let mut timelist: Vec<u32> = vec![];
+
+    for _ in 0..1000 {
+        let m = Fr::rand(&mut rng);
+        msglist.push(m);
+        let keys: Keys = KeysAlgorithm::root_key_gen_with_rng(&mut rng, &pp);
+        let sk = keys.get_sk();
+        let time = rng.next_u32() & 0x3FFFFFFF;
+        let ssk = sk[0].subkey_delegate_time(&pp, &(time as u64), &mut rng);
+        timelist.push(time);
+        ssklist.push(ssk);
+    }
+
+    let mut counter = 0;
+    b.iter(|| {
+        let t: Signature = Sign::sign_with_seed_and_time(
+            &ssklist[counter],
+            &pp,
+            &(timelist[counter] as u64),
+            &msglist[counter],
+            &[42; 4],
+        );
+        counter = (counter + 1) % 1000;
+        t
+    });
+}
+
+#[bench]
+fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
+    let mut rng = ChaChaRng::new_unseeded();
+    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+
+    let mut msglist: Vec<Fr> = vec![];
+    let mut siglist: Vec<Signature> = vec![];
+    let mut pklist: Vec<G2> = vec![];
+    let mut timelist: Vec<u32> = vec![];
+
+    for _ in 0..1000 {
+        let m = Fr::rand(&mut rng);
+        let keys: Keys = KeysAlgorithm::root_key_gen_with_rng(&mut rng, &pp);
+        let sk = keys.get_sk();
+        let time = rng.next_u32() & 0x3FFFFFFF;
+        let t: Signature = Sign::sign_with_seed_and_time(&sk[0], &pp, &(time as u64), &m, &[42; 4]);
+        msglist.push(m);
+        siglist.push(t);
+        pklist.push(keys.get_pk());
+        timelist.push(time);
+    }
+    let mut counter = 0;
+    b.iter(|| {
+        let ver = verification_with_time(
+            &pklist[counter],
+            &pp,
+            &(timelist[counter] as u64),
             &msglist[counter],
             &siglist[counter],
         );

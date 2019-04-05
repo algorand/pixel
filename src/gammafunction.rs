@@ -69,9 +69,15 @@ pub fn time_to_vec(time: u32, d: u32) -> Vec<u32> {
         else:
            return [1] + time2vec(t-1,D-1)
     */
-    assert!(d >= 1, "invalid depth");
-    let max_t = 1 << (d - 1);
-    assert!(time <= max_t && time != 0, "invalid time");
+    assert!(d >= 1, "invalid depth {}", d);
+    let max_t = 1 << d;
+    assert!(
+        time <= max_t && time != 0,
+        "invalid time {} > {} for depth {}",
+        time,
+        max_t,
+        d
+    );
     let mut tmp = Vec::new();
     if time == 1 {
         return tmp;

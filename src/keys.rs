@@ -1,3 +1,4 @@
+use gammafunction::time_to_fr_vec;
 use initkey::{InitKey, InitKeyAlgorithm};
 use pairing::{bls12_381::*, CurveProjective};
 use param::SecretKey;
@@ -30,6 +31,8 @@ pub trait SSKAlgorithm {
         x_prime: &Vec<Fr>,
         rng: &mut R,
     ) -> Self;
+
+    fn subkey_delegate_time<R: ::rand::Rng>(&self, pp: &PubParam, time: &u64, rng: &mut R) -> Self;
     fn print(&self);
 }
 
@@ -180,6 +183,10 @@ impl SSKAlgorithm for SubSecretKey {
         tilde_sk.g1poly.add_assign(&rightside.g1poly);
 
         tilde_sk
+    }
+    fn subkey_delegate_time<R: ::rand::Rng>(&self, pp: &PubParam, time: &u64, rng: &mut R) -> Self {
+        let timevec = time_to_fr_vec(*time as u32, CONST_D as u32);
+        Self::subkey_delegate(&self, &pp, &timevec, rng)
     }
 
     fn print(&self) {

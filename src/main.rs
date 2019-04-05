@@ -53,9 +53,9 @@ fn main() {
     let ssknew = ssknew.subkey_delegate(&pp, &xprime, &mut rng);
     println!("{:#?}", ssknew);
     let m = Fr::rand(&mut rng);
-    let t: sign::Signature = sign::Sign::sign_with_seed_and_time(&ssknew, &pp, 35, &m, &[42; 4]);
+    let t: sign::Signature = sign::Sign::sign_with_seed_and_time(&ssknew, &pp, &35, &m, &[42; 4]);
     println!("signature {:#?}", t);
-    let s = verify::verification_with_time(&k.get_pk(), &pp, 35, &m, &t);
+    let s = verify::verification_with_time(&k.get_pk(), &pp, &35, &m, &t);
     println!("with time{:#?}", s);
 
     let ssknew = ssk.subkey_delegate(&pp, &xprime, &mut rng);

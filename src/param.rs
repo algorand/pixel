@@ -1,7 +1,7 @@
 use pairing::{bls12_381::*, CurveProjective};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
 // the depth (dimention) of the time vector
-pub const CONST_D: usize = 10;
+pub const CONST_D: usize = 30;
 
 // the secret key is a list of SubSecretKeys
 // the length is arbitrary

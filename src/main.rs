@@ -3,12 +3,13 @@ extern crate ff;
 extern crate pairing;
 extern crate rand;
 
+mod gammafunction;
 mod initkey;
 mod keys;
 mod param;
 mod sign;
 mod verify;
-
+use ff::Field;
 use ff::PrimeField;
 use initkey::InitKeyAlgorithm;
 use keys::{KeysAlgorithm, SSKAlgorithm};
@@ -41,7 +42,7 @@ fn main() {
     println!("{:#?}", ssknew);
     println!("{:#?}", x);
     let m: Fr = Fr::rand(&mut rng);
-    let t: sign::Signature = sign::Sign::sign(ssknew.clone(), &pp, &x, &m, &mut rng);
+    let t: sign::Signature = sign::Sign::sign(&ssknew, &pp, &x, &m, &mut rng);
     println!("{:#?}", t);
     let key: G2 = k.get_pk();
     let s: bool = verify::verification(&key, &pp, &x, &m, &t);
@@ -52,17 +53,23 @@ fn main() {
     let ssknew = ssknew.subkey_delegate(&pp, &xprime, &mut rng);
     println!("{:#?}", ssknew);
     let m = Fr::rand(&mut rng);
-    let t: sign::Signature = sign::Sign::sign(ssknew.clone(), &pp, &xprime, &m, &mut rng);
-    println!("{:#?}", t);
-    let s = verify::verification(&k.get_pk(), &pp, &xprime, &m, &t);
-    println!("{:#?}", s);
+    let t: sign::Signature = sign::Sign::sign_with_seed_and_time(&ssknew, &pp, 35, &m, &[42; 4]);
+    println!("signature {:#?}", t);
+    let s = verify::verification_with_time(&k.get_pk(), &pp, 35, &m, &t);
+    println!("with time{:#?}", s);
 
     let ssknew = ssk.subkey_delegate(&pp, &xprime, &mut rng);
     println!("{:#?}", ssknew);
     let m = Fr::rand(&mut rng);
-    let t: sign::Signature = sign::Sign::sign(ssknew, &pp, &xprime, &m, &mut rng);
+    let t: sign::Signature = sign::Sign::sign(&ssknew, &pp, &xprime, &m, &mut rng);
     println!("{:#?}", t);
     let s = verify::verification(&k.get_pk(), &pp, &xprime, &m, &t);
     println!("{:#?}", s);
+
+    let t = Fr::one();
+    println!("{:#?}", t);
+    pub const FR_ONE: [u64; 4] = [1, 0, 0, 0];
+    let t2 = Fr::from_repr(FrRepr(FR_ONE)).unwrap();
+    println!("{:#?} {}", t2, t == t2);
     println!("Hello, world!");
 }

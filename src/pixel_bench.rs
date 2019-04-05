@@ -1,4 +1,4 @@
-use ff::{Field, PrimeField};
+use ff::Field;
 #[cfg(test)]
 use initkey::{InitKey, InitKeyAlgorithm};
 #[cfg(test)]
@@ -72,13 +72,7 @@ fn bench_sign_level_00(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Sign::sign(
-            sklist[counter][0].clone(),
-            &pp,
-            &x,
-            &msglist[counter],
-            &mut rng,
-        );
+        let t: Signature = Sign::sign(&sklist[counter][0], &pp, &x, &msglist[counter], &mut rng);
         counter = (counter + 1) % 1000;
         t
     });
@@ -95,7 +89,7 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
         let m = Fr::rand(&mut rng);
         let keys: Keys = KeysAlgorithm::root_key_gen_with_rng(&mut rng, &pp);
         let sk = keys.get_sk();
-        let t: Signature = Sign::sign(sk[0].clone(), &pp, &vec![], &m, &mut rng);
+        let t: Signature = Sign::sign(&sk[0], &pp, &vec![], &m, &mut rng);
         msglist.push(m);
         siglist.push(t);
         pklist.push(keys.get_pk());
@@ -160,13 +154,7 @@ fn bench_sign_level_01(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Sign::sign(
-            sklist[counter][0].clone(),
-            &pp,
-            &x,
-            &msglist[counter],
-            &mut rng,
-        );
+        let t: Signature = Sign::sign(&sklist[counter][0], &pp, &x, &msglist[counter], &mut rng);
         counter = (counter + 1) % 1000;
         t
     });
@@ -188,7 +176,7 @@ fn bench_verify_level_01(b: &mut test::test::Bencher) {
         let m = Fr::rand(&mut rng);
         let keys: Keys = KeysAlgorithm::root_key_gen_with_rng(&mut rng, &pp);
         let sk = keys.get_sk();
-        let t: Signature = Sign::sign(sk[0].clone(), &pp, &x, &m, &mut rng);
+        let t: Signature = Sign::sign(&sk[0], &pp, &x, &m, &mut rng);
         msglist.push(m);
         siglist.push(t);
         pklist.push(keys.get_pk());
@@ -253,13 +241,7 @@ fn bench_sign_level_02(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Sign::sign(
-            sklist[counter][0].clone(),
-            &pp,
-            &x,
-            &msglist[counter],
-            &mut rng,
-        );
+        let t: Signature = Sign::sign(&sklist[counter][0], &pp, &x, &msglist[counter], &mut rng);
         counter = (counter + 1) % 1000;
         t
     });
@@ -281,7 +263,7 @@ fn bench_verify_level_02(b: &mut test::test::Bencher) {
         let m = Fr::rand(&mut rng);
         let keys: Keys = KeysAlgorithm::root_key_gen_with_rng(&mut rng, &pp);
         let sk = keys.get_sk();
-        let t: Signature = Sign::sign(sk[0].clone(), &pp, &x, &m, &mut rng);
+        let t: Signature = Sign::sign(&sk[0], &pp, &x, &m, &mut rng);
         msglist.push(m);
         siglist.push(t);
         pklist.push(keys.get_pk());
@@ -346,13 +328,7 @@ fn bench_sign_level_03(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Sign::sign(
-            sklist[counter][0].clone(),
-            &pp,
-            &x,
-            &msglist[counter],
-            &mut rng,
-        );
+        let t: Signature = Sign::sign(&sklist[counter][0], &pp, &x, &msglist[counter], &mut rng);
         counter = (counter + 1) % 1000;
         t
     });
@@ -374,7 +350,7 @@ fn bench_verify_level_03(b: &mut test::test::Bencher) {
         let m = Fr::rand(&mut rng);
         let keys: Keys = KeysAlgorithm::root_key_gen_with_rng(&mut rng, &pp);
         let sk = keys.get_sk();
-        let t: Signature = Sign::sign(sk[0].clone(), &pp, &x, &m, &mut rng);
+        let t: Signature = Sign::sign(&sk[0], &pp, &x, &m, &mut rng);
         msglist.push(m);
         siglist.push(t);
         pklist.push(keys.get_pk());

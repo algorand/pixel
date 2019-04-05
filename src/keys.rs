@@ -21,6 +21,10 @@ pub trait KeysAlgorithm {
     fn root_key_gen_with_rng<R: ::rand::Rng>(rng: &mut R, pp: &PubParam) -> Self;
 }
 
+// pub trait SKAlgorithm {
+//     fn key_delegate<R: ::rand::Rng>(&mut self, pp: &PubParam, time: &u64, rng: &mut R);
+// }
+
 pub trait SSKAlgorithm {
     fn init() -> Self;
     fn get_vec_x_len(&self) -> usize;
@@ -87,6 +91,14 @@ impl KeysAlgorithm for Keys {
         Self::root_key_gen_with_seed(&seed, pp)
     }
 }
+
+// impl SKAlgorithm for SecretKey {
+//     fn key_delegate<R: ::rand::Rng>(&mut self, pp: &PubParam, time: &u64, rng: &mut R) {
+//         let current_time = self[0]
+//
+//
+//     }
+// }
 
 impl SSKAlgorithm for SubSecretKey {
     fn init() -> Self {

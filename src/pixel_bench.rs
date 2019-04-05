@@ -18,11 +18,26 @@ use verify::verification;
 use verify::verification_with_time;
 
 #[bench]
-fn bench_param(b: &mut test::test::Bencher) {
+fn bench_param_from_fr(b: &mut test::test::Bencher) {
     let mut rng = ChaChaRng::new_unseeded();
 
     b.iter(|| {
         let pp: PubParam = PubParam::init_with_w_and_seed(&[
+            rng.next_u32(),
+            rng.next_u32(),
+            rng.next_u32(),
+            rng.next_u32(),
+        ]);
+        pp
+    });
+}
+
+#[bench]
+fn bench_param(b: &mut test::test::Bencher) {
+    let mut rng = ChaChaRng::new_unseeded();
+
+    b.iter(|| {
+        let pp: PubParam = PubParam::init_with_seed(&[
             rng.next_u32(),
             rng.next_u32(),
             rng.next_u32(),

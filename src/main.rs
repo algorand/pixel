@@ -58,7 +58,7 @@ fn main() {
     let s = verify::verification_with_time(&k.get_pk(), &pp, &35, &m, &t);
     println!("with time{:#?}", s);
 
-    let ssknew = ssk.subkey_delegate(&pp, &xprime, &mut rng);
+    let ssknew = ssk.subkey_delegate_with_reuse(&pp, &xprime, &mut rng);
     println!("{:#?}", ssknew);
     let m = Fr::rand(&mut rng);
     let t: sign::Signature = sign::Sign::sign(&ssknew, &pp, &xprime, &m, &mut rng);

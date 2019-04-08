@@ -19,6 +19,7 @@ pub struct SubSecretKey {
     // the first d-1 elements are for delegations
     // the last element is for the message
     pub d_elements: [G1; CONST_D],
+    pub time: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -46,8 +47,16 @@ pub trait SKAlgorithm {
 pub trait SSKAlgorithm {
     fn init() -> Self;
     fn get_vec_x_len(&self) -> usize;
+    fn get_time(&self) -> u64;
+    fn get_time_vec(&self) -> Vec<Fr>;
     fn subkey_gen<R: ::rand::Rng>(pp: &PubParam, g1a: G1, vec_x: &Vec<Fr>, rng: &mut R) -> Self;
     fn subkey_delegate<R: ::rand::Rng>(
+        &self,
+        pp: &PubParam,
+        x_prime: &Vec<Fr>,
+        rng: &mut R,
+    ) -> Self;
+    fn subkey_delegate_with_reuse<R: ::rand::Rng>(
         &self,
         pp: &PubParam,
         x_prime: &Vec<Fr>,
@@ -131,6 +140,7 @@ impl SSKAlgorithm for SubSecretKey {
             g2r: G2::zero(),
             g1poly: G1::zero(),
             d_elements: [G1::zero(); CONST_D],
+            time: 0,
         }
     }
 
@@ -144,6 +154,12 @@ impl SSKAlgorithm for SubSecretKey {
         counter
     }
 
+    fn get_time(&self) -> u64 {
+        self.time
+    }
+    fn get_time_vec(&self) -> Vec<Fr> {
+        time_to_fr_vec(self.time as u32, CONST_D as u32)
+    }
     fn subkey_gen<R: ::rand::Rng>(pp: &PubParam, g1a: G1, vec_x: &Vec<Fr>, rng: &mut R) -> Self {
         let mut sk_new: SubSecretKey = SubSecretKey::init();
         let r = Fr::rand(rng);
@@ -182,7 +198,53 @@ impl SSKAlgorithm for SubSecretKey {
         }
         sk_new
     }
-
+    fn subkey_delegate_with_reuse<R: ::rand::Rng>(
+        &self,
+        pp: &PubParam,
+        x_prime: &Vec<Fr>,
+        rng: &mut R,
+    ) -> Self {
+        let mut newsubkey = self.clone();
+        for i in self.get_vec_x_len()..x_prime.len() {
+            let mut tmp = newsubkey.d_elements[i];
+            tmp.mul_assign(x_prime[i]);
+            newsubkey.g1poly.add_assign(&tmp);
+            newsubkey.d_elements[i] = G1::zero();
+        }
+        newsubkey
+        //
+        // // rightside = Subkey(pp, g2^0, x_prime)
+        // let rightside = self.clone();//Self::subkey_gen(pp, G1::zero(), x_prime, rng);
+        // rightside.
+        // // leftside = (K0, ..., KD)
+        // // leftside[0] = K0
+        // let mut leftside = self.clone();
+        // let xlen = leftside.get_vec_x_len();
+        //
+        // // leftside[1] = K1* Prod_{i=|x|+1}^{|x'|} K_i ^ x'_i
+        // let mut tmp21 = leftside.g1poly;
+        // for i in xlen..x_prime.len() {
+        //     let mut tmp2 = self.d_elements[i];
+        //     tmp2.mul_assign(x_prime[i]);
+        //     tmp21.add_assign(&tmp2);
+        // }
+        // leftside.g1poly = tmp21;
+        //
+        // // leftside[2..|x'|] = 0
+        // for i in 0..x_prime.len() {
+        //     leftside.d_elements[i] = G1::zero();
+        // }
+        //
+        // // scala mutliplication
+        // let mut tilde_sk = leftside.clone();
+        // for i in 0..CONST_D {
+        //     tilde_sk.d_elements[i].add_assign(&rightside.d_elements[i]);
+        // }
+        // tilde_sk.g2r.add_assign(&rightside.g2r);
+        // tilde_sk.g1poly.add_assign(&rightside.g1poly);
+        //
+        // tilde_sk
+    }
     fn subkey_delegate<R: ::rand::Rng>(
         &self,
         pp: &PubParam,

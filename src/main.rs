@@ -2,17 +2,18 @@
 extern crate ff;
 extern crate pairing;
 extern crate rand;
-
+extern crate sha2;
 mod gammafunction;
 mod initkey;
 mod keys;
 mod param;
+mod pixel;
 mod sign;
 mod verify;
 use ff::Field;
 use ff::PrimeField;
 use initkey::InitKeyAlgorithm;
-use keys::{KeysAlgorithm, SSKAlgorithm};
+use keys::{KeysAlgorithm, SKAlgorithm, SSKAlgorithm};
 use pairing::bls12_381::*;
 use param::PubParam;
 use rand::{ChaChaRng, Rand};
@@ -27,8 +28,7 @@ fn main() {
     println!("{:#?}", k);
     println!("{:#?}", rs);
 
-    let t = k.get_sk();
-    let ssk = &t[0];
+    let ssk = k.get_sk().get_fist_ssk();
     println!("{:#?}", ssk);
 
     let mut x: Vec<Fr> = Vec::new();

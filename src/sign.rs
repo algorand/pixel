@@ -1,8 +1,8 @@
 use ff::Field;
 use gammafunction::time_to_fr_vec;
 use keys::SSKAlgorithm;
+use keys::SubSecretKey;
 use pairing::{bls12_381::*, CurveProjective};
-use param::SubSecretKey;
 use param::{PubParam, CONST_D};
 use rand::{ChaChaRng, Rand, SeedableRng};
 

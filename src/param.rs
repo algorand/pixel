@@ -3,19 +3,6 @@ use rand::{ChaChaRng, Rand, Rng, SeedableRng};
 // the depth (dimention) of the time vector
 pub const CONST_D: usize = 30;
 
-// the secret key is a list of SubSecretKeys
-// the length is arbitrary
-pub type SecretKey = Vec<SubSecretKey>;
-
-#[derive(Debug, Clone)]
-pub struct SubSecretKey {
-    pub g2r: G2,    //  g2^r
-    pub g1poly: G1, //  g1^{alpha + f(x) r}
-    // the first d-1 elements are for delegations
-    // the last element is for the message
-    pub d_elements: [G1; CONST_D],
-}
-
 // public parameter is a list of G1/G2 pairs
 #[derive(Debug, Clone)]
 pub struct PubParam {

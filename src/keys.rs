@@ -1,10 +1,25 @@
 use gammafunction::time_to_fr_vec;
 use initkey::{InitKey, InitKeyAlgorithm};
 use pairing::{bls12_381::*, CurveProjective};
-use param::SecretKey;
-use param::SubSecretKey;
 use param::{PubParam, CONST_D};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
+
+// the secret key is a list of SubSecretKeys
+// the length is arbitrary
+#[derive(Debug, Clone)]
+pub struct SecretKey {
+    ssk: Vec<SubSecretKey>,
+    time: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct SubSecretKey {
+    pub g2r: G2,    //  g2^r
+    pub g1poly: G1, //  g1^{alpha + f(x) r}
+    // the first d-1 elements are for delegations
+    // the last element is for the message
+    pub d_elements: [G1; CONST_D],
+}
 
 #[derive(Debug, Clone)]
 pub struct Keys {
@@ -21,9 +36,12 @@ pub trait KeysAlgorithm {
     fn root_key_gen_with_rng<R: ::rand::Rng>(rng: &mut R, pp: &PubParam) -> Self;
 }
 
-// pub trait SKAlgorithm {
-//     fn key_delegate<R: ::rand::Rng>(&mut self, pp: &PubParam, time: &u64, rng: &mut R);
-// }
+pub trait SKAlgorithm {
+    //     fn key_delegate<R: ::rand::Rng>(&mut self, pp: &PubParam, time: &u64, rng: &mut R);
+    fn init() -> Self;
+    fn get_fist_ssk(&self) -> SubSecretKey;
+    fn get_time(&self) -> u64;
+}
 
 pub trait SSKAlgorithm {
     fn init() -> Self;
@@ -49,7 +67,10 @@ impl KeysAlgorithm for Keys {
     }
     fn init() -> Self {
         Keys {
-            sk: Vec::new(),
+            sk: SecretKey {
+                time: 0,
+                ssk: Vec::new(),
+            },
             pk: G2::zero(),
         }
     }
@@ -71,7 +92,11 @@ impl KeysAlgorithm for Keys {
         }
 
         Self {
-            sk: vec![ssk],
+            sk: SecretKey {
+                time: 0,
+                ssk: vec![ssk],
+            },
+
             pk: initkey.pk,
         }
     }
@@ -210,5 +235,21 @@ impl SSKAlgorithm for SubSecretKey {
             println!("{}th element: \n{:?}\n", i, self.d_elements[i]);
         }
         println!("==============\n");
+    }
+}
+
+impl SKAlgorithm for SecretKey {
+    //     fn key_delegate<R: ::rand::Rng>(&mut self, pp: &PubParam, time: &u64, rng: &mut R);
+    fn init() -> Self {
+        Self {
+            time: 0,
+            ssk: Vec::new(),
+        }
+    }
+    fn get_fist_ssk(&self) -> SubSecretKey {
+        self.ssk[0].clone()
+    }
+    fn get_time(&self) -> u64 {
+        self.time
     }
 }

@@ -12,12 +12,12 @@ mod sign;
 mod verify;
 use ff::Field;
 use ff::PrimeField;
+use gammafunction::GammaList;
 use initkey::InitKeyAlgorithm;
 use keys::{KeysAlgorithm, SKAlgorithm, SSKAlgorithm};
 use pairing::bls12_381::*;
 use param::PubParam;
 use rand::{ChaChaRng, Rand};
-
 fn main() {
     let mut rng = ChaChaRng::new_unseeded();
     let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
@@ -71,5 +71,12 @@ fn main() {
     pub const FR_ONE: [u64; 4] = [1, 0, 0, 0];
     let t2 = Fr::from_repr(FrRepr(FR_ONE)).unwrap();
     println!("{:#?} {}", t2, t == t2);
+
+    let mut t = GammaList::gen_list(30);
+    println!("{:#?}", t);
+    t.update_list(31);
+    println!("{:#?}", t);
+    t.update_list(32);
+    println!("{:#?}", t);
     println!("Hello, world!");
 }

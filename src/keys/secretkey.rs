@@ -27,10 +27,10 @@ impl SecretKey {
         self.ssk = ssk;
     }
 
-    pub fn delegate(&self, pp: &PubParam, time: u64) -> Self {
+    pub fn delegate(&self, pp: &PubParam, time: u64, seed: &[u32; 4]) -> Self {
         let t = GammaList::gen_list(time);
-        let mut rng = ChaChaRng::new_unseeded();
-        println!("{:?}", t);
+        let mut rng = ChaChaRng::from_seed(seed);
+
         let mut newsk: Vec<SubSecretKey> = vec![];
         let sk0 = self.ssk[0].clone();
         for e in t.veclist {

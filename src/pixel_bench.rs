@@ -11,27 +11,30 @@ use sign::Signature;
 #[cfg(test)]
 use verify::verification;
 
-#[bench]
-fn bench_param_from_fr(b: &mut test::test::Bencher) {
-    let mut rng = ChaChaRng::new_unseeded();
+#[cfg(test)]
+use pixel;
 
-    b.iter(|| {
-        let pp: PubParam = PubParam::init_with_w_and_seed(&[
-            rng.next_u32(),
-            rng.next_u32(),
-            rng.next_u32(),
-            rng.next_u32(),
-        ]);
-        pp
-    });
-}
+// #[bench]
+// fn bench_param_from_fr(b: &mut test::test::Bencher) {
+//     let mut rng = ChaChaRng::new_unseeded();
+//
+//     b.iter(|| {
+//         let pp: PubParam = pixel::pixel_param_gen(&[
+//             rng.next_u32(),
+//             rng.next_u32(),
+//             rng.next_u32(),
+//             rng.next_u32(),
+//         ]);
+//         pp
+//     });
+// }
 
 #[bench]
 fn bench_param(b: &mut test::test::Bencher) {
     let mut rng = ChaChaRng::new_unseeded();
 
     b.iter(|| {
-        let pp: PubParam = PubParam::init_with_seed(&[
+        let pp: PubParam = pixel::pixel_param_gen(&[
             rng.next_u32(),
             rng.next_u32(),
             rng.next_u32(),
@@ -44,36 +47,67 @@ fn bench_param(b: &mut test::test::Bencher) {
 #[bench]
 fn bench_key_gen_level_00(b: &mut test::test::Bencher) {
     let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
 
     b.iter(|| {
-        let keys: KeyPair = KeyPair::root_key_gen_with_rng(&mut rng, &pp);
-        keys
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        key
     });
 }
 
 #[bench]
 fn bench_sign_level_00(b: &mut test::test::Bencher) {
     let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
     let mut sklist: Vec<SecretKey> = vec![];
     let mut msglist: Vec<Fr> = vec![];
 
     for _ in 0..1000 {
         let m = Fr::rand(&mut rng);
         msglist.push(m);
-        let keys: KeyPair = KeyPair::root_key_gen_with_rng(&mut rng, &pp);
-        sklist.push(keys.get_sk());
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        sklist.push(key.get_sk());
     }
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Signature::sign_with_seed(
-            &sklist[counter].get_sub_secretkey()[0],
-            &pp,
-            &1,
+        let t: Signature = pixel::pixel_sign(
+            &sklist[counter],
+            1,
             &msglist[counter],
-            &[42; 4],
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
         );
         counter = (counter + 1) % 1000;
         t
@@ -84,29 +118,52 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
     let time = 1;
 
     let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
     let mut pklist: Vec<G2> = vec![];
     for _ in 0..1000 {
         let m = Fr::rand(&mut rng);
-        let keys: KeyPair = KeyPair::root_key_gen_with_rng(&mut rng, &pp);
-        let sk = keys.get_sk();
-        let t: Signature =
-            Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &1, &m, &[42; 4]);
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let sk = key.get_sk();
+        let t: Signature = pixel::pixel_sign(
+            &sk,
+            1,
+            &m,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
         msglist.push(m);
         siglist.push(t);
-        pklist.push(keys.get_pk());
+        pklist.push(key.get_pk());
     }
     let mut counter = 0;
     b.iter(|| {
-        let ver = verification(
+        let ver = pixel::pixel_verify(
             &pklist[counter],
-            &pp,
-            &time,
+            1,
             &msglist[counter],
             &siglist[counter],
+            &pp,
         );
         counter = (counter + 1) % 1000;
         assert_eq!(ver, true, "verification failed");
@@ -118,22 +175,56 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
 #[bench]
 fn bench_delegate_level_rnd(b: &mut test::test::Bencher) {
     let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
-    let mut sklist: Vec<SecretKey> = vec![];
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
 
+    let mut sklist: Vec<SecretKey> = vec![];
     let mut timelist: Vec<u64> = vec![];
+
     for _ in 0..1000 {
         let time = (rng.next_u32() & 0x3FFFFFFF) as u64;
-        let keys: KeyPair = KeyPair::root_key_gen_with_rng(&mut rng, &pp);
-        let sk = keys.get_sk();
-        let sknew = sk.delegate(&pp, time);
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let sk = key.get_sk();
+        let sknew = pixel::pixel_key_update(
+            &sk,
+            time,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
         timelist.push(time);
         sklist.push(sknew);
     }
 
     let mut counter = 0;
     b.iter(|| {
-        let sknew = sklist[counter].optimized_delegate(&pp, timelist[counter] + 1, &[42; 4]);
+        let sknew = pixel::pixel_key_update(
+            &sklist[counter],
+            timelist[counter] + 1,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
         counter = (counter + 1) % 1000;
         sknew
     });
@@ -142,7 +233,13 @@ fn bench_delegate_level_rnd(b: &mut test::test::Bencher) {
 #[bench]
 fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
     let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
+
     let mut sklist: Vec<SecretKey> = vec![];
     let mut msglist: Vec<Fr> = vec![];
     let mut timelist: Vec<u64> = vec![];
@@ -150,9 +247,27 @@ fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
     for _ in 0..1000 {
         let m = Fr::rand(&mut rng);
         let time = (rng.next_u32() & 0x3FFFFFFF) as u64;
-        let keys: KeyPair = KeyPair::root_key_gen_with_rng(&mut rng, &pp);
-        let sk = keys.get_sk();
-        let sknew = sk.delegate(&pp, time);
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let sk = key.get_sk();
+        let sknew = pixel::pixel_key_update(
+            &sk,
+            time,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
         timelist.push(time);
         sklist.push(sknew);
         msglist.push(m);
@@ -160,12 +275,17 @@ fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Signature::sign_with_seed(
-            &sklist[counter].get_sub_secretkey()[0],
-            &pp,
-            &(timelist[counter] as u64),
+        let t: Signature = pixel::pixel_sign(
+            &sklist[counter],
+            timelist[counter],
             &msglist[counter],
-            &[42; 4],
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
         );
         counter = (counter + 1) % 1000;
         t
@@ -175,7 +295,12 @@ fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
 #[bench]
 fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
     let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
@@ -184,30 +309,125 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
 
     for _ in 0..1000 {
         let m = Fr::rand(&mut rng);
-        let keys: KeyPair = KeyPair::root_key_gen_with_rng(&mut rng, &pp);
-        let sk = keys.get_sk();
-        let time = (rng.next_u32() & 0x3FFFFFFF) as u64;
-        let sknew = sk.delegate(&pp, time);
-        let t: Signature = Signature::sign_with_seed(
-            &sknew.get_sub_secretkey()[0],
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
             &pp,
-            &(time as u64),
+        );
+        let sk = key.get_sk();
+        let time = (rng.next_u32() & 0x3FFFFFFF) as u64;
+        let sknew = pixel::pixel_key_update(
+            &sk,
+            time,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let t: Signature = pixel::pixel_sign(
+            &sknew,
+            time,
             &m,
-            &[42; 4],
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
         );
         msglist.push(m);
         siglist.push(t);
-        pklist.push(keys.get_pk());
+        pklist.push(key.get_pk());
         timelist.push(time);
     }
     let mut counter = 0;
     b.iter(|| {
-        let ver = verification(
+        let ver = pixel::pixel_verify(
             &pklist[counter],
-            &pp,
-            &(timelist[counter] as u64),
+            timelist[counter],
             &msglist[counter],
             &siglist[counter],
+            &pp,
+        );
+        counter = (counter + 1) % 1000;
+        assert_eq!(ver, true, "verification failed");
+        ver
+    });
+}
+
+#[bench]
+fn bench_verify_level_rnd_pp(b: &mut test::test::Bencher) {
+    let mut rng = ChaChaRng::new_unseeded();
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
+
+    let mut msglist: Vec<Fr> = vec![];
+    let mut siglist: Vec<Signature> = vec![];
+    let mut pklist: Vec<Fq12> = vec![];
+    let mut timelist: Vec<u64> = vec![];
+
+    for _ in 0..1000 {
+        let m = Fr::rand(&mut rng);
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let sk = key.get_sk();
+        let time = (rng.next_u32() & 0x3FFFFFFF) as u64;
+        let sknew = pixel::pixel_key_update(
+            &sk,
+            time,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let t: Signature = pixel::pixel_sign(
+            &sknew,
+            time,
+            &m,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let pk_processed = pixel::pixel_pre_process_pk(&key.get_pk());
+        msglist.push(m);
+        siglist.push(t);
+        pklist.push(pk_processed);
+        timelist.push(time);
+    }
+    let mut counter = 0;
+    b.iter(|| {
+        let ver = pixel::pixel_verify_pre_processed(
+            &pklist[counter],
+            timelist[counter],
+            &msglist[counter],
+            &siglist[counter],
+            &pp,
         );
         counter = (counter + 1) % 1000;
         assert_eq!(ver, true, "verification failed");

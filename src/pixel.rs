@@ -15,8 +15,9 @@ pub fn pixel_key_gen(seed: &[u32; 4], pp: &PubParam) -> KeyPair {
 }
 
 #[allow(dead_code)]
-pub fn pixel_key_update(sk: SecretKey, time: u64, seed: &[u32; 4], pp: &PubParam) -> SecretKey {
-    sk.optimized_delegate(&pp, time, seed)
+pub fn pixel_key_update(sk: &SecretKey, time: u64, seed: &[u32; 4], pp: &PubParam) -> SecretKey {
+    //    sk.optimized_delegate(&pp, time, seed)
+    sk.delegate(&pp, time, seed)
 }
 
 #[allow(dead_code)]
@@ -29,11 +30,12 @@ pub fn pixel_sign(sk: &SecretKey, time: u64, m: &Fr, seed: &[u32; 4], pp: &PubPa
         sk.get_time()
     );
 
-    Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &19, m, seed)
+    Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &time, m, seed)
 }
 
 #[allow(dead_code)]
 pub fn pixel_verify(pk: &G2, time: u64, m: &Fr, sig: &Signature, pp: &PubParam) -> bool {
+    // todo: membership test for signatures?
     verification(&pk, &pp, &time, &m, &sig)
 }
 
@@ -50,5 +52,6 @@ pub fn pixel_verify_pre_processed(
     sig: &Signature,
     pp: &PubParam,
 ) -> bool {
+    // todo: membership test for signatures?
     verification_pre_computed(pk, pp, &time, m, sig)
 }

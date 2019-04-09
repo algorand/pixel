@@ -3,11 +3,6 @@ use pairing::bls12_381::*;
 use param::CONST_D;
 use std::iter::FromIterator;
 
-// pub struct VecX {
-//     pub vec_x: Vec<u64>,
-//     pub msg: Fr,
-// }
-
 #[derive(Debug, Clone)]
 pub struct GammaList {
     pub mintime: u64,
@@ -43,25 +38,6 @@ impl GammaList {
         self.veclist = gamma_t(time_vec);
     }
 }
-
-// #[allow(dead_code)]
-// pub fn vecx_to_vec(input: VecX) -> Vec<Fr> {
-//     let mut t: Vec<Fr> = Vec::new();
-//     for i in 0..input.vec_x.len() {
-//         let tmp = Fr::from_repr(FrRepr([0, 0, 0, input.vec_x[i] as u64])).unwrap();
-//         t.push(tmp);
-//     }
-//     t.push(input.msg);
-//
-//     t
-// }
-// #[allow(dead_code)]
-// pub fn get_vec_x(time: u64, d: u64, msg: Fr) -> VecX {
-//     VecX {
-//         vec_x: time_to_vec(time, d),
-//         msg: msg,
-//     }
-// }
 
 #[allow(dead_code)]
 pub fn time_to_timevec(time: u64, d: u32) -> TimeVec {

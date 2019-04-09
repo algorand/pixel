@@ -1,6 +1,5 @@
 use ff::Field;
 use gammafunction::time_to_fr_vec;
-use keys::SecretKey;
 use keys::SubSecretKey;
 use pairing::{bls12_381::*, CurveProjective};
 use param::{PubParam, CONST_D};
@@ -32,7 +31,7 @@ impl Signature {
         }
     }
 
-    pub fn sign_with_seed_and_time(
+    pub fn sign_with_seed(
         ssk: &SubSecretKey,
         pp: &PubParam,
         time: &u64,

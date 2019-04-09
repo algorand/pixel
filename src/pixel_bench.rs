@@ -1,27 +1,15 @@
-#[feature(test)]
 #[cfg(test)]
-use ff::Field;
-
-#[cfg(test)]
-use keys::{KeyPair, SecretKey, SubSecretKey};
-
-//#[cfg(test)]
-//use keys::keypair::{root_key_gen_with_rng, *};
-
-//::root_key_gen_with_rng;
+use keys::{KeyPair, SecretKey};
 #[cfg(test)]
 use pairing::bls12_381::*;
 #[cfg(test)]
-use param::{PubParam, CONST_D};
+use param::PubParam;
 #[cfg(test)]
 use rand::{ChaChaRng, Rand, Rng};
 #[cfg(test)]
 use sign::Signature;
-// #[cfg(test)]
-// use sign::Signature::sign_with_seed_and_time;
 #[cfg(test)]
-//use verify::verification;
-use verify::verification_with_time;
+use verify::verification;
 
 #[bench]
 fn bench_param_from_fr(b: &mut test::test::Bencher) {
@@ -80,7 +68,7 @@ fn bench_sign_level_00(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Signature::sign_with_seed_and_time(
+        let t: Signature = Signature::sign_with_seed(
             &sklist[counter].get_sub_secretkey()[0],
             &pp,
             &1,
@@ -106,14 +94,14 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
         let keys: KeyPair = KeyPair::root_key_gen_with_rng(&mut rng, &pp);
         let sk = keys.get_sk();
         let t: Signature =
-            Signature::sign_with_seed_and_time(&sk.get_sub_secretkey()[0], &pp, &1, &m, &[42; 4]);
+            Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &1, &m, &[42; 4]);
         msglist.push(m);
         siglist.push(t);
         pklist.push(keys.get_pk());
     }
     let mut counter = 0;
     b.iter(|| {
-        let ver = verification_with_time(
+        let ver = verification(
             &pklist[counter],
             &pp,
             &time,
@@ -145,7 +133,7 @@ fn bench_delegate_level_rnd(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let sknew = sklist[counter].optimized_delegate(&pp, timelist[counter] + 1);
+        let sknew = sklist[counter].optimized_delegate(&pp, timelist[counter] + 1, &[42; 4]);
         counter = (counter + 1) % 1000;
         sknew
     });
@@ -172,7 +160,7 @@ fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
 
     let mut counter = 0;
     b.iter(|| {
-        let t: Signature = Signature::sign_with_seed_and_time(
+        let t: Signature = Signature::sign_with_seed(
             &sklist[counter].get_sub_secretkey()[0],
             &pp,
             &(timelist[counter] as u64),
@@ -200,7 +188,7 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
         let sk = keys.get_sk();
         let time = (rng.next_u32() & 0x3FFFFFFF) as u64;
         let sknew = sk.delegate(&pp, time);
-        let t: Signature = Signature::sign_with_seed_and_time(
+        let t: Signature = Signature::sign_with_seed(
             &sknew.get_sub_secretkey()[0],
             &pp,
             &(time as u64),
@@ -214,7 +202,7 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
     }
     let mut counter = 0;
     b.iter(|| {
-        let ver = verification_with_time(
+        let ver = verification(
             &pklist[counter],
             &pp,
             &(timelist[counter] as u64),

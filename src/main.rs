@@ -11,17 +11,16 @@ extern crate test;
 mod gammafunction;
 mod keys;
 mod param;
+mod pixel;
 mod pixel_bench;
 mod sign;
 mod verify;
 
-use ff::PrimeField;
 use keys::KeyPair;
 use pairing::bls12_381::Fr;
-use pairing::bls12_381::FrRepr;
-use param::PubParam;
 use rand::ChaChaRng;
 use rand::Rand;
+
 fn main() {
     let mut t30 = gammafunction::GammaList::gen_list(30);
     let t31 = gammafunction::GammaList::gen_list(31);
@@ -47,7 +46,7 @@ fn main() {
     }
     //let t = sk.delegate(&pp, 16);
 
-    let t = t.optimized_delegate(&pp, 9);
+    let t = t.optimized_delegate(&pp, 9, &[1; 4]);
     println!();
     println!();
     println!();
@@ -55,7 +54,7 @@ fn main() {
         println!("{} {}", e.get_time(), e.get_g1poly());
     }
 
-    let t = t.optimized_delegate(&pp, 10);
+    let t = t.optimized_delegate(&pp, 10, &[1; 4]);
     println!();
     println!();
     println!();
@@ -63,7 +62,7 @@ fn main() {
         println!("{} {}", e.get_time(), e.get_g1poly());
     }
 
-    let t = t.optimized_delegate(&pp, 11);
+    let t = t.optimized_delegate(&pp, 11, &[1; 4]);
     println!();
     println!();
     println!();
@@ -81,32 +80,22 @@ fn main() {
 
     let sk = keys.get_sk();
     let pk = keys.get_pk();
-    let k19 = sk.optimized_delegate(&pp, 19);
-    let k20 = sk.optimized_delegate(&pp, 20);
+    let k19 = sk.optimized_delegate(&pp, 19, &[1; 4]);
+    let k20 = sk.optimized_delegate(&pp, 20, &[1; 4]);
     let m = Fr::rand(&mut rng);
-    let sig: sign::Signature = sign::Signature::sign_with_seed_and_time(
-        &k19.get_sub_secretkey()[0],
-        &pp,
-        &19,
-        &m,
-        &[1; 4],
-    );
+    let sig: sign::Signature =
+        sign::Signature::sign_with_seed(&k19.get_sub_secretkey()[0], &pp, &19, &m, &[1; 4]);
     println!("{:#?}", sig);
 
-    let ver = verify::verification_with_time(&pk, &pp, &19, &m, &sig);
+    let ver = verify::verification(&pk, &pp, &19, &m, &sig);
     println!("{:#?}", ver);
 
     let m = Fr::rand(&mut rng);
-    let sig: sign::Signature = sign::Signature::sign_with_seed_and_time(
-        &k20.get_sub_secretkey()[0],
-        &pp,
-        &20,
-        &m,
-        &[1; 4],
-    );
+    let sig: sign::Signature =
+        sign::Signature::sign_with_seed(&k20.get_sub_secretkey()[0], &pp, &20, &m, &[1; 4]);
     println!("{:#?}", sig);
 
-    let ver = verify::verification_with_time(&pk, &pp, &20, &m, &sig);
+    let ver = verify::verification(&pk, &pp, &20, &m, &sig);
     println!("{:#?}", ver);
     println!("Hello, world!");
 }

@@ -5,8 +5,9 @@ use param::CONST_D;
 pub mod keypair; //  public secret key pairs
 pub mod secretkey; // secret key
 pub mod subsecretkey; //  subsecret keys
-                      // the secret key is a list of SubSecretKeys
-                      // the length is arbitrary
+
+// the secret key is a list of SubSecretKeys
+// the length is arbitrary
 #[derive(Debug, Clone)]
 pub struct SecretKey {
     time: u64, // smallest timestamp for all subkeys

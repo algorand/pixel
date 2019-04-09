@@ -1,9 +1,9 @@
 use super::SecretKey;
 use super::SubSecretKey;
 
-use gammafunction::{gamma_t, time_to_timevec, *};
-use param::{PubParam, CONST_D};
-use rand::ChaChaRng;
+use gammafunction::*;
+use param::PubParam;
+use rand::{ChaChaRng, SeedableRng};
 
 impl SecretKey {
     pub fn init() -> Self {
@@ -34,22 +34,17 @@ impl SecretKey {
         let mut newsk: Vec<SubSecretKey> = vec![];
         let sk0 = self.ssk[0].clone();
         for e in t.veclist {
-            let ssk = sk0.subkey_delegate(
-                &pp,
-                e.time as u64, //x_prime: &Vec<u32>,
-                &mut rng,
-            );
+            let ssk = sk0.subkey_delegate(&pp, e.time as u64, &mut rng);
             newsk.push(ssk);
         }
-        //self.clone()
         SecretKey {
             time: time,
             ssk: newsk,
         }
     }
-    pub fn optimized_delegate(&self, pp: &PubParam, time: u64) -> Self {
+    pub fn optimized_delegate(&self, pp: &PubParam, time: u64, seed: &[u32; 4]) -> Self {
         let newlist = GammaList::gen_list(time);
-        let mut rng = ChaChaRng::new_unseeded();
+        let mut rng = ChaChaRng::from_seed(seed);
         let mut newsk: Vec<SubSecretKey> = vec![];
         let currentsk = self.clone();
         for t in newlist.veclist {
@@ -61,16 +56,8 @@ impl SecretKey {
                 }
             }
             if flag == false {
-                // let mut void = SubSecretKey::init();
-                // void.time = t.time as u64;
-                // newsk.push(void);
                 let sk0 = get_closest_ssk(self, t.time as u64);
-                //                let sk0 = self.ssk[0].clone();
-                let ssk = sk0.subkey_delegate(
-                    &pp,
-                    t.time as u64, //x_prime: &Vec<u32>,
-                    &mut rng,
-                );
+                let ssk = sk0.subkey_delegate(&pp, t.time as u64, &mut rng);
                 newsk.push(ssk);
             }
         }
@@ -78,7 +65,6 @@ impl SecretKey {
             time: time,
             ssk: newsk,
         }
-        //    self.clone()
     }
 }
 

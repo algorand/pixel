@@ -10,7 +10,7 @@ mod sign;
 mod verify;
 
 use ff::PrimeField;
-use keys::keypair::KeyPair;
+use keys::KeyPair;
 use pairing::bls12_381::Fr;
 use pairing::bls12_381::FrRepr;
 use param::PubParam;
@@ -36,8 +36,8 @@ fn main() {
     let sk = keys.get_sk();
     let t = sk.delegate(&pp, 8);
 
-    for e in t.clone().ssk {
-        println!("{} {}", e.time, e.g1poly);
+    for e in t.get_sub_secretkey() {
+        println!("{} {}", e.get_time(), e.get_g1poly());
     }
     //let t = sk.delegate(&pp, 16);
 
@@ -45,24 +45,24 @@ fn main() {
     println!();
     println!();
     println!();
-    for e in t.clone().ssk {
-        println!("{} {}", e.time, e.g1poly);
+    for e in t.get_sub_secretkey() {
+        println!("{} {}", e.get_time(), e.get_g1poly());
     }
 
     let t = t.optimized_delegate(&pp, 10);
     println!();
     println!();
     println!();
-    for e in t.clone().ssk {
-        println!("{} {}", e.time, e.g1poly);
+    for e in t.get_sub_secretkey() {
+        println!("{} {}", e.get_time(), e.get_g1poly());
     }
 
     let t = t.optimized_delegate(&pp, 11);
     println!();
     println!();
     println!();
-    for e in t.clone().ssk {
-        println!("{} {}", e.time, e.g1poly);
+    for e in t.get_sub_secretkey() {
+        println!("{} {}", e.get_time(), e.get_g1poly());
     }
 
     let mut rng = ChaChaRng::new_unseeded();
@@ -70,7 +70,7 @@ fn main() {
     let pp = param::PubParam::init_with_seed(&[1; 4]);
     let keys = KeyPair::root_key_gen_with_seed(&[1; 4], &pp);
 
-    let ssk = keys.get_sk().ssk[0];
+    let ssk = keys.get_sk().get_sub_secretkey()[0];
     println!("{:#?}", ssk);
 
     let sk = keys.get_sk();
@@ -78,16 +78,26 @@ fn main() {
     let k19 = sk.optimized_delegate(&pp, 19);
     let k20 = sk.optimized_delegate(&pp, 20);
     let m = Fr::rand(&mut rng);
-    let sig: sign::Signature =
-        sign::Signature::sign_with_seed_and_time(&k19.ssk[0], &pp, &19, &m, &[1; 4]);
+    let sig: sign::Signature = sign::Signature::sign_with_seed_and_time(
+        &k19.get_sub_secretkey()[0],
+        &pp,
+        &19,
+        &m,
+        &[1; 4],
+    );
     println!("{:#?}", sig);
 
     let ver = verify::verification_with_time(&pk, &pp, &19, &m, &sig);
     println!("{:#?}", ver);
 
     let m = Fr::rand(&mut rng);
-    let sig: sign::Signature =
-        sign::Signature::sign_with_seed_and_time(&k20.ssk[0], &pp, &20, &m, &[1; 4]);
+    let sig: sign::Signature = sign::Signature::sign_with_seed_and_time(
+        &k20.get_sub_secretkey()[0],
+        &pp,
+        &20,
+        &m,
+        &[1; 4],
+    );
     println!("{:#?}", sig);
 
     let ver = verify::verification_with_time(&pk, &pp, &20, &m, &sig);

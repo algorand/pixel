@@ -1,16 +1,8 @@
+use super::SubSecretKey;
 use gammafunction::{time_to_fr_vec, time_to_vec};
 use pairing::{bls12_381::*, CurveProjective};
 use param::{PubParam, CONST_D};
 use rand::Rand;
-#[derive(Debug, Clone, Copy)]
-pub struct SubSecretKey {
-    pub time: u64,  //  timestamp for the current key
-    pub g2r: G2,    //  g2^r
-    pub g1poly: G1, //  g1^{alpha + f(x) r}
-    // the first d-1 elements are for delegations
-    // the last element is for the message
-    pub d_elements: [G1; CONST_D],
-}
 impl SubSecretKey {
     // initialization
     pub fn init() -> Self {
@@ -40,12 +32,36 @@ impl SubSecretKey {
         counter
     }
 
-    fn get_time(&self) -> u64 {
+    pub fn get_time(&self) -> u64 {
         self.time
     }
     fn get_time_vec(&self) -> Vec<u32> {
         time_to_vec(self.time as u32, CONST_D as u32)
     }
+
+    pub fn get_g1poly(&self) -> G1 {
+        self.g1poly.clone()
+    }
+    pub fn get_g2r(&self) -> G2 {
+        self.g2r.clone()
+    }
+    pub fn get_d_elements(&self) -> [G1; CONST_D] {
+        self.d_elements.clone()
+    }
+
+    pub fn set_g1poly(&mut self, tar: G1) {
+        self.g1poly = tar;
+    }
+    pub fn set_g2r(&mut self, tar: G2) {
+        self.g2r = tar;
+    }
+    pub fn set_d_elements(&mut self, tar: [G1; CONST_D]) {
+        self.d_elements = tar;
+    }
+    pub fn set_time(&mut self, tar: u64) {
+        self.time = tar;
+    }
+
     fn subkey_gen<R: ::rand::Rng>(pp: &PubParam, g1a: G1, vec_x: &Vec<Fr>, rng: &mut R) -> Self {
         let mut sk_new: SubSecretKey = SubSecretKey::init();
         let r = Fr::rand(rng);

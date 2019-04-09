@@ -1,14 +1,9 @@
-use super::subsecretkey::SubSecretKey;
+use super::SecretKey;
+use super::SubSecretKey;
+
 use gammafunction::{gamma_t, time_to_timevec, *};
 use param::{PubParam, CONST_D};
 use rand::ChaChaRng;
-// the secret key is a list of SubSecretKeys
-// the length is arbitrary
-#[derive(Debug, Clone)]
-pub struct SecretKey {
-    pub time: u64, // smallest timestamp for all subkeys
-    pub ssk: Vec<SubSecretKey>,
-}
 
 impl SecretKey {
     pub fn init() -> Self {
@@ -17,6 +12,21 @@ impl SecretKey {
             ssk: Vec::new(),
         }
     }
+    pub fn get_time(&self) -> u64 {
+        self.time
+    }
+    pub fn get_sub_secretkey(&self) -> Vec<SubSecretKey> {
+        self.ssk.clone()
+    }
+
+    pub fn set_time(&mut self, time: u64) {
+        self.time = time;
+    }
+
+    pub fn set_sub_secretkey(&mut self, ssk: Vec<SubSecretKey>) {
+        self.ssk = ssk;
+    }
+
     pub fn delegate(&self, pp: &PubParam, time: u64) -> Self {
         let t = GammaList::gen_list(time as u32);
         let mut rng = ChaChaRng::new_unseeded();

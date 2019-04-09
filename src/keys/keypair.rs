@@ -1,15 +1,11 @@
-use super::secretkey::SecretKey;
-use super::subsecretkey::SubSecretKey;
+use super::KeyPair;
+use super::SecretKey;
+use super::SubSecretKey;
 use gammafunction::time_to_fr_vec;
 use gammafunction::time_to_vec;
 use pairing::{bls12_381::*, CurveProjective};
 use param::{PubParam, CONST_D};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
-#[derive(Debug, Clone)]
-pub struct KeyPair {
-    sk: SecretKey,
-    pk: G2,
-}
 
 impl KeyPair {
     pub fn get_sk(&self) -> SecretKey {
@@ -35,22 +31,27 @@ impl KeyPair {
         };
         let glist = pp.get_glist();
 
-        ssk.g2r = G2::one();
-        ssk.g2r.mul_assign(r);
-        ssk.g1poly = pp.get_g0();
-        ssk.g1poly.mul_assign(r);
-        ssk.g1poly.add_assign(&initkey.1);
+        let mut tmp = G2::one();
+        tmp.mul_assign(r);
+        ssk.set_g2r(tmp);
+
+        let mut tmp = pp.get_g0();
+        tmp.mul_assign(r);
+        tmp.add_assign(&initkey.1);
+        //    ssk.g1poly = pp.get_g0();
+        //    ssk.g1poly.mul_assign(r);
+        //    ssk.g1poly.add_assign(&initkey.1);
+        ssk.set_g1poly(tmp);
 
         for i in 0..CONST_D {
             ssk.d_elements[i] = glist[i];
             ssk.d_elements[i].mul_assign(r);
         }
-
+        let mut sk = SecretKey::init();
+        sk.set_time(1);
+        sk.set_sub_secretkey(vec![ssk]);
         Self {
-            sk: SecretKey {
-                time: 1,
-                ssk: vec![ssk],
-            },
+            sk: sk,
 
             pk: initkey.0,
         }

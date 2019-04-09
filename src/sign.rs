@@ -1,7 +1,7 @@
 use ff::Field;
 use gammafunction::time_to_fr_vec;
-use keys::secretkey::SecretKey;
-use keys::subsecretkey::SubSecretKey;
+use keys::SecretKey;
+use keys::SubSecretKey;
 use pairing::{bls12_381::*, CurveProjective};
 use param::{PubParam, CONST_D};
 use rand::{ChaChaRng, Rand, SeedableRng};
@@ -55,15 +55,16 @@ fn partial_subkey_delegate<R: ::rand::Rng>(
     let rightside = partial_subkey_gen(pp, x_prime, rng);
 
     // g2^r * rightside[0]
-    let mut g2r = ssk.g2r;
+    let mut g2r = ssk.get_g2r();
     g2r.add_assign(&rightside.0);
 
     // g1poly * rightside[1]
     // g1poly = K1* Prod_{i=|x|+1}^{|x'|} K_i ^ x'_i
     let xlen = ssk.get_vec_x_len();
-    let mut g1poly = ssk.g1poly;
+    let mut g1poly = ssk.get_g1poly();
+    let d_elements = ssk.get_d_elements();
     for i in xlen..x_prime.len() {
-        let mut tmp2 = ssk.d_elements[i];
+        let mut tmp2 = d_elements[i];
         tmp2.mul_assign(x_prime[i]);
         g1poly.add_assign(&tmp2);
     }

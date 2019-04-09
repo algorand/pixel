@@ -1,5 +1,5 @@
 [package]
-name = "consensus_signature_v2"
+name = "pixel"
 
 version = "0.1.0"
 authors = [

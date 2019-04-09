@@ -1,7 +1,7 @@
 use pairing::{bls12_381::*, CurveProjective};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
 // the depth (dimention) of the time vector
-pub const CONST_D: usize = 30;
+pub const CONST_D: usize = 6;
 
 // public parameter is a list of G1/G2 pairs
 #[derive(Debug, Clone)]

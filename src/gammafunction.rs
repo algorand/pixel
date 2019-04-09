@@ -3,59 +3,71 @@ use pairing::bls12_381::*;
 use param::CONST_D;
 use std::iter::FromIterator;
 
-pub struct VecX {
-    pub vec_x: Vec<u32>,
-    pub msg: Fr,
-}
+// pub struct VecX {
+//     pub vec_x: Vec<u32>,
+//     pub msg: Fr,
+// }
 
 #[derive(Debug, Clone)]
 pub struct GammaList {
-    time: u32,
-    veclist: Vec<Vec<u32>>,
+    pub mintime: u32,
+    pub veclist: Vec<TimeVec>,
 }
+#[derive(Debug, Clone)]
+pub struct TimeVec {
+    pub time: u32,
+    vec: Vec<u32>,
+}
+
 #[allow(dead_code)]
 impl GammaList {
     pub fn gen_list(time: u32) -> Self {
-        let time_vec = time_to_vec(time, CONST_D as u32);
+        let time_vec = time_to_timevec(time, CONST_D as u32);
         let veclist = gamma_t(time_vec);
         GammaList {
-            time: time,
+            mintime: time,
             veclist: veclist,
         }
     }
 
     pub fn update_list(&mut self, newtime: u32) {
-        if self.time < newtime {
-            self.time = newtime;
-            let time_vec = time_to_vec(newtime, CONST_D as u32);
-            self.veclist = gamma_t(time_vec);
-        }
-    }
+        assert!(
+            self.mintime < newtime,
+            "invalid updating timestamps from current {} to target {}",
+            self.mintime,
+            newtime
+        );
 
-    pub fn print(&self) {
-        println!("time: {}", self.time);
-        for i in &self.veclist {
-            println!("delegates: {}", vec_to_time(i.to_vec(), CONST_D as u32));
-        }
+        self.mintime = newtime;
+        let time_vec = time_to_timevec(newtime, CONST_D as u32);
+        self.veclist = gamma_t(time_vec);
     }
 }
 
-#[allow(dead_code)]
-pub fn vecx_to_vec(input: VecX) -> Vec<Fr> {
-    let mut t: Vec<Fr> = Vec::new();
-    for i in 0..input.vec_x.len() {
-        let tmp = Fr::from_repr(FrRepr([0, 0, 0, input.vec_x[i] as u64])).unwrap();
-        t.push(tmp);
-    }
-    t.push(input.msg);
+// #[allow(dead_code)]
+// pub fn vecx_to_vec(input: VecX) -> Vec<Fr> {
+//     let mut t: Vec<Fr> = Vec::new();
+//     for i in 0..input.vec_x.len() {
+//         let tmp = Fr::from_repr(FrRepr([0, 0, 0, input.vec_x[i] as u64])).unwrap();
+//         t.push(tmp);
+//     }
+//     t.push(input.msg);
+//
+//     t
+// }
+// #[allow(dead_code)]
+// pub fn get_vec_x(time: u32, d: u32, msg: Fr) -> VecX {
+//     VecX {
+//         vec_x: time_to_vec(time, d),
+//         msg: msg,
+//     }
+// }
 
-    t
-}
 #[allow(dead_code)]
-pub fn get_vec_x(time: u32, d: u32, msg: Fr) -> VecX {
-    VecX {
-        vec_x: time_to_vec(time, d),
-        msg: msg,
+pub fn time_to_timevec(time: u32, d: u32) -> TimeVec {
+    TimeVec {
+        time: time,
+        vec: time_to_vec(time, d),
     }
 }
 #[allow(dead_code)]
@@ -117,11 +129,11 @@ pub fn vec_to_time(mut t_vec: Vec<u32>, d: u32) -> u32 {
         return 1;
     } else {
         let tmp: Vec<u32> = t_vec.drain(0..1).collect();
-        return 1 + (tmp[0] - 1) * (2u32.pow(d - 1) - 1) + vec_to_time(t_vec, d - 1);
+        return 1 + (tmp[0] - 1) * ((1u32 << (d - 1)) - 1) + vec_to_time(t_vec, d - 1);
     }
 }
 #[allow(dead_code)]
-pub fn gamma_t(t_vec: Vec<u32>) -> Vec<Vec<u32>> {
+pub fn gamma_t(t_vec: TimeVec) -> Vec<TimeVec> {
     /*
     def gammat(tvec):
        ans = [tvec]
@@ -133,15 +145,19 @@ pub fn gamma_t(t_vec: Vec<u32>) -> Vec<Vec<u32>> {
     */
     let mut res = Vec::new();
     res.push(t_vec.clone());
-    for i in 0..t_vec.len() {
-        if t_vec[i] == 1 {
-            let mut tmp = Vec::from_iter(t_vec[0..i].iter().cloned());
+    for i in 0..t_vec.vec.len() {
+        if t_vec.vec[i] == 1 {
+            let mut tmp = Vec::from_iter(t_vec.vec[0..i].iter().cloned());
             tmp.push(2);
-            if !res.contains(&tmp) {
-                res.push(tmp)
-            } else {
-                panic!("Duplicates");
-            }
+            // if !res.contains(&tmp) {
+            //     res.push(tmp)
+            // } else {
+            //     panic!("Duplicates");
+            // }
+            res.push(TimeVec {
+                time: vec_to_time(tmp.clone(), CONST_D as u32),
+                vec: tmp,
+            })
         }
     }
 

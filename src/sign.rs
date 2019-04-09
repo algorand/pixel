@@ -1,7 +1,7 @@
 use ff::Field;
 use gammafunction::time_to_fr_vec;
-use keys::SSKAlgorithm;
-use keys::SubSecretKey;
+use keys::secretkey::SecretKey;
+use keys::subsecretkey::SubSecretKey;
 use pairing::{bls12_381::*, CurveProjective};
 use param::{PubParam, CONST_D};
 use rand::{ChaChaRng, Rand, SeedableRng};
@@ -12,25 +12,7 @@ pub struct Signature {
     pub sigma2: G2,
 }
 
-pub trait Sign {
-    fn sign<R: ::rand::Rng>(
-        ssk: &SubSecretKey,
-        pp: &PubParam,
-        vec_t: &Vec<Fr>,
-        msg: &Fr,
-        rng: &mut R,
-    ) -> Self;
-
-    fn sign_with_seed_and_time(
-        ssk: &SubSecretKey,
-        pp: &PubParam,
-        time: &u64,
-        msg: &Fr,
-        seed: &[u32; 4],
-    ) -> Self;
-}
-
-impl Sign for Signature {
+impl Signature {
     fn sign<R: ::rand::Rng>(
         ssk: &SubSecretKey,
         pp: &PubParam,
@@ -50,7 +32,7 @@ impl Sign for Signature {
         }
     }
 
-    fn sign_with_seed_and_time(
+    pub fn sign_with_seed_and_time(
         ssk: &SubSecretKey,
         pp: &PubParam,
         time: &u64,

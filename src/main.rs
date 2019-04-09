@@ -1,82 +1,96 @@
-#![warn(unused_extern_crates)]
 extern crate ff;
 extern crate pairing;
 extern crate rand;
 extern crate sha2;
+
 mod gammafunction;
-mod initkey;
 mod keys;
 mod param;
-mod pixel;
 mod sign;
 mod verify;
-use ff::Field;
+
 use ff::PrimeField;
-use gammafunction::GammaList;
-use initkey::InitKeyAlgorithm;
-use keys::{KeysAlgorithm, SKAlgorithm, SSKAlgorithm};
-use pairing::bls12_381::*;
+use keys::keypair::KeyPair;
+use pairing::bls12_381::Fr;
+use pairing::bls12_381::FrRepr;
 use param::PubParam;
-use rand::{ChaChaRng, Rand};
+use rand::ChaChaRng;
+use rand::Rand;
 fn main() {
-    let mut rng = ChaChaRng::new_unseeded();
-    let pp: PubParam = PubParam::init_with_w_and_seed(&[42; 4]);
+    let mut t30 = gammafunction::GammaList::gen_list(30);
+    let t31 = gammafunction::GammaList::gen_list(31);
+    let t32 = gammafunction::GammaList::gen_list(32);
 
-    let k: keys::Keys = KeysAlgorithm::root_key_gen(&pp);
-    let rs: initkey::InitKey = InitKeyAlgorithm::key_gen_alpha();
-    println!("{:#?}", pp);
-    println!("{:#?}", k);
-    println!("{:#?}", rs);
+    println!("{:?}", t30);
+    println!("{:?}", t31);
+    println!("{:?}", t32);
+    t30.update_list(32);
+    println!("{:?}", t32);
+    // for i in 1..16 {
+    //     let t = gammafunction::GammaList::gen_list(i);
+    //     println!("{:?}", t);
+    // }
+    let pp = param::PubParam::init_with_seed(&[1; 4]);
+    let keys = KeyPair::root_key_gen_with_seed(&[1; 4], &pp);
+    println!("keys {:?}", keys);
+    let sk = keys.get_sk();
+    let t = sk.delegate(&pp, 8);
 
-    let ssk = k.get_sk().get_fist_ssk();
-    println!("{:#?}", ssk);
+    for e in t.clone().ssk {
+        println!("{} {}", e.time, e.g1poly);
+    }
+    //let t = sk.delegate(&pp, 16);
 
-    let mut x: Vec<Fr> = Vec::new();
-    for i in 1..2 {
-        let t = Fr::from_repr(FrRepr([0, 0, 0, i])).unwrap();
-        println!("t: {:?}", t);
-        x.push(t);
+    let t = t.optimized_delegate(&pp, 9);
+    println!();
+    println!();
+    println!();
+    for e in t.clone().ssk {
+        println!("{} {}", e.time, e.g1poly);
     }
 
-    let ssknew = ssk.subkey_delegate(&pp, &x, &mut rng);
-    println!("{:#?}", ssknew);
-    println!("{:#?}", x);
-    let m: Fr = Fr::rand(&mut rng);
-    let t: sign::Signature = sign::Sign::sign(&ssknew, &pp, &x, &m, &mut rng);
-    println!("{:#?}", t);
-    let key: G2 = k.get_pk();
-    let s: bool = verify::verification(&key, &pp, &x, &m, &t);
-    println!("{:#?}", s);
+    let t = t.optimized_delegate(&pp, 10);
+    println!();
+    println!();
+    println!();
+    for e in t.clone().ssk {
+        println!("{} {}", e.time, e.g1poly);
+    }
 
-    let mut xprime = x.clone();
-    xprime.push(Fr::from_repr(FrRepr([0, 0, 0, 1])).unwrap());
-    let ssknew = ssknew.subkey_delegate(&pp, &xprime, &mut rng);
-    println!("{:#?}", ssknew);
+    let t = t.optimized_delegate(&pp, 11);
+    println!();
+    println!();
+    println!();
+    for e in t.clone().ssk {
+        println!("{} {}", e.time, e.g1poly);
+    }
+
+    let mut rng = ChaChaRng::new_unseeded();
+
+    let pp = param::PubParam::init_with_seed(&[1; 4]);
+    let keys = KeyPair::root_key_gen_with_seed(&[1; 4], &pp);
+
+    let ssk = keys.get_sk().ssk[0];
+    println!("{:#?}", ssk);
+
+    let sk = keys.get_sk();
+    let pk = keys.get_pk();
+    let k19 = sk.optimized_delegate(&pp, 19);
+    let k20 = sk.optimized_delegate(&pp, 20);
     let m = Fr::rand(&mut rng);
-    let t: sign::Signature = sign::Sign::sign_with_seed_and_time(&ssknew, &pp, &35, &m, &[42; 4]);
-    println!("signature {:#?}", t);
-    let s = verify::verification_with_time(&k.get_pk(), &pp, &35, &m, &t);
-    println!("with time{:#?}", s);
+    let sig: sign::Signature =
+        sign::Signature::sign_with_seed_and_time(&k19.ssk[0], &pp, &19, &m, &[1; 4]);
+    println!("{:#?}", sig);
 
-    let ssknew = ssk.subkey_delegate_with_reuse(&pp, &xprime, &mut rng);
-    println!("{:#?}", ssknew);
+    let ver = verify::verification_with_time(&pk, &pp, &19, &m, &sig);
+    println!("{:#?}", ver);
+
     let m = Fr::rand(&mut rng);
-    let t: sign::Signature = sign::Sign::sign(&ssknew, &pp, &xprime, &m, &mut rng);
-    println!("{:#?}", t);
-    let s = verify::verification(&k.get_pk(), &pp, &xprime, &m, &t);
-    println!("{:#?}", s);
+    let sig: sign::Signature =
+        sign::Signature::sign_with_seed_and_time(&k20.ssk[0], &pp, &20, &m, &[1; 4]);
+    println!("{:#?}", sig);
 
-    let t = Fr::one();
-    println!("{:#?}", t);
-    pub const FR_ONE: [u64; 4] = [1, 0, 0, 0];
-    let t2 = Fr::from_repr(FrRepr(FR_ONE)).unwrap();
-    println!("{:#?} {}", t2, t == t2);
-
-    let mut t = GammaList::gen_list(30);
-    println!("{:#?}", t);
-    t.update_list(31);
-    println!("{:#?}", t);
-    t.update_list(32);
-    println!("{:#?}", t);
+    let ver = verify::verification_with_time(&pk, &pp, &20, &m, &sig);
+    println!("{:#?}", ver);
     println!("Hello, world!");
 }

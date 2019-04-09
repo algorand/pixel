@@ -28,7 +28,7 @@ impl SecretKey {
     }
 
     pub fn delegate(&self, pp: &PubParam, time: u64) -> Self {
-        let t = GammaList::gen_list(time as u32);
+        let t = GammaList::gen_list(time);
         let mut rng = ChaChaRng::new_unseeded();
         println!("{:?}", t);
         let mut newsk: Vec<SubSecretKey> = vec![];
@@ -48,14 +48,14 @@ impl SecretKey {
         }
     }
     pub fn optimized_delegate(&self, pp: &PubParam, time: u64) -> Self {
-        let newlist = GammaList::gen_list(time as u32);
+        let newlist = GammaList::gen_list(time);
         let mut rng = ChaChaRng::new_unseeded();
         let mut newsk: Vec<SubSecretKey> = vec![];
         let currentsk = self.clone();
         for t in newlist.veclist {
             let mut flag = false;
             for i in 0..currentsk.ssk.len() {
-                if t.time == currentsk.ssk[i].time as u32 {
+                if t.time == currentsk.ssk[i].time {
                     newsk.push(currentsk.ssk[i].clone());
                     flag = true;
                 }

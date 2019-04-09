@@ -35,8 +35,8 @@ impl SubSecretKey {
     pub fn get_time(&self) -> u64 {
         self.time
     }
-    fn get_time_vec(&self) -> Vec<u32> {
-        time_to_vec(self.time as u32, CONST_D as u32)
+    fn get_time_vec(&self) -> Vec<u64> {
+        time_to_vec(self.time, CONST_D as u32)
     }
 
     pub fn get_g1poly(&self) -> G1 {
@@ -122,7 +122,7 @@ impl SubSecretKey {
         //x_prime: &Vec<u32>,
         rng: &mut R,
     ) -> Self {
-        let x_prime = time_to_fr_vec(time as u32, CONST_D as u32);
+        let x_prime = time_to_fr_vec(time, CONST_D as u32);
         // rightside = Subkey(pp, g2^0, x_prime)
         let rightside = Self::subkey_gen(pp, G1::zero(), &x_prime, rng);
 

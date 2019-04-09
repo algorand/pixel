@@ -58,7 +58,7 @@ pub fn verification_with_time(
     // g1^{w[1] * msg}
     let mut g1fx = pp.get_g0();
     let list = pp.get_glist();
-    let timevec = time_to_fr_vec(*time as u32, CONST_D as u32);
+    let timevec = time_to_fr_vec(*time, CONST_D as u32);
     for i in 0..timevec.len() {
         let mut tmp = list[i];
         tmp.mul_assign(timevec[i]);

@@ -100,21 +100,23 @@ impl SubSecretKey {
         }
         sk_new
     }
-    // fn subkey_delegate_with_reuse<R: ::rand::Rng>(
-    //     &self,
-    //     pp: &PubParam,
-    //     x_prime: &Vec<u32>,
-    //     rng: &mut R,
-    // ) -> Self {
-    //     let mut newsubkey = self.clone();
-    //     for i in self.get_vec_x_len()..x_prime.len() {
-    //         let mut tmp = newsubkey.d_elements[i];
-    //         tmp.mul_assign(x_prime[i]);
-    //         newsubkey.g1poly.add_assign(&tmp);
-    //         newsubkey.d_elements[i] = G1::zero();
-    //     }
-    //     newsubkey
-    // }
+    pub fn subkey_delegate_with_reuse<R: ::rand::Rng>(
+        &self,
+        pp: &PubParam,
+        time: u64,
+        rng: &mut R,
+    ) -> Self {
+        let x_prime = time_to_fr_vec(time, CONST_D as u32);
+        let mut newsubkey = self.clone();
+        for i in self.get_vec_x_len()..x_prime.len() {
+            let mut tmp = newsubkey.d_elements[i];
+            tmp.mul_assign(x_prime[i]);
+            newsubkey.g1poly.add_assign(&tmp);
+            newsubkey.d_elements[i] = G1::zero();
+        }
+        newsubkey.time = time;
+        newsubkey
+    }
     pub fn subkey_delegate<R: ::rand::Rng>(
         &self,
         pp: &PubParam,

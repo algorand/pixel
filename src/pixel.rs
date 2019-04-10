@@ -17,7 +17,7 @@ pub fn pixel_key_gen(seed: &[u32; 4], pp: &PubParam) -> KeyPair {
 #[allow(dead_code)]
 pub fn pixel_key_update(sk: &SecretKey, time: u64, seed: &[u32; 4], pp: &PubParam) -> SecretKey {
     //    sk.optimized_delegate(&pp, time, seed)
-    sk.delegate(&pp, time, seed)
+    sk.optimized_delegate(&pp, time, seed)
 }
 
 #[allow(dead_code)]

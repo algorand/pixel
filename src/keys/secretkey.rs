@@ -47,6 +47,7 @@ impl SecretKey {
         let mut rng = ChaChaRng::from_seed(seed);
         let mut newsk: Vec<SubSecretKey> = vec![];
         let currentsk = self.clone();
+        let mut timeheap: Vec<u64> = vec![];
         for t in newlist.veclist {
             let mut flag = false;
             for i in 0..currentsk.ssk.len() {
@@ -56,9 +57,17 @@ impl SecretKey {
                 }
             }
             if flag == false {
-                let sk0 = get_closest_ssk(self, t.time as u64);
-                let ssk = sk0.subkey_delegate(&pp, t.time as u64, &mut rng);
-                newsk.push(ssk);
+                let sk0 = get_closest_ssk(self, t.time);
+                if timeheap.contains(&sk0.time) {
+                    // cannot reuse the randomness
+                    let ssk = sk0.subkey_delegate(&pp, t.time, &mut rng);
+                    newsk.push(ssk);
+                } else {
+                    // can reuse the randomness
+                    let ssk = sk0.subkey_delegate_with_reuse(&pp, t.time, &mut rng);
+                    newsk.push(ssk);
+                    timeheap.push(sk0.time);
+                }
             }
         }
         SecretKey {

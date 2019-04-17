@@ -6,7 +6,7 @@ use verify::{verification, verification_pre_computed};
 
 #[allow(dead_code)]
 pub fn pixel_param_gen(seed: &[u32; 4]) -> PubParam {
-    PubParam::init_with_seed(seed)
+    PubParam::init_with_w_and_seed(seed)
 }
 
 #[allow(dead_code)]

@@ -34,14 +34,14 @@ pub fn pixel_sign(sk: &SecretKey, time: u64, m: &Fr, seed: &[u32; 4], pp: &PubPa
 }
 
 #[allow(dead_code)]
-pub fn pixel_verify(pk: &G2, time: u64, m: &Fr, sig: &Signature, pp: &PubParam) -> bool {
+pub fn pixel_verify(pk: &G1, time: u64, m: &Fr, sig: &Signature, pp: &PubParam) -> bool {
     // todo: membership test for signatures?
     verification(&pk, &pp, &time, &m, &sig)
 }
 
 #[allow(dead_code)]
-pub fn pixel_pre_process_pk(pk: &G2) -> Fq12 {
-    Bls12::pairing(G1::one(), *pk)
+pub fn pixel_pre_process_pk(pk: &G1) -> Fq12 {
+    Bls12::pairing(*pk, G2::one())
 }
 
 #[allow(dead_code)]

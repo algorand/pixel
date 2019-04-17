@@ -7,9 +7,9 @@ impl SubSecretKey {
     // initialization
     pub fn init() -> Self {
         SubSecretKey {
-            g2r: G2::zero(),
-            g1poly: G1::zero(),
-            d_elements: [G1::zero(); CONST_D],
+            g2r: G1::zero(),
+            g1poly: G2::zero(),
+            d_elements: [G2::zero(); CONST_D],
             time: 1,
         }
     }
@@ -18,7 +18,7 @@ impl SubSecretKey {
     pub fn get_vec_x_len(&self) -> usize {
         let mut counter = 0;
         for i in 0..self.d_elements.len() {
-            if self.d_elements[i] == G1::zero() {
+            if self.d_elements[i] == G2::zero() {
                 counter += 1;
             }
         }
@@ -39,36 +39,36 @@ impl SubSecretKey {
         time_to_vec(self.time, CONST_D as u32)
     }
 
-    pub fn get_g1poly(&self) -> G1 {
+    pub fn get_g1poly(&self) -> G2 {
         self.g1poly.clone()
     }
-    pub fn get_g2r(&self) -> G2 {
+    pub fn get_g2r(&self) -> G1 {
         self.g2r.clone()
     }
-    pub fn get_d_elements(&self) -> [G1; CONST_D] {
+    pub fn get_d_elements(&self) -> [G2; CONST_D] {
         self.d_elements.clone()
     }
 
-    pub fn set_g1poly(&mut self, tar: G1) {
+    pub fn set_g1poly(&mut self, tar: G2) {
         self.g1poly = tar;
     }
-    pub fn set_g2r(&mut self, tar: G2) {
+    pub fn set_g2r(&mut self, tar: G1) {
         self.g2r = tar;
     }
-    pub fn set_d_elements(&mut self, tar: [G1; CONST_D]) {
+    pub fn set_d_elements(&mut self, tar: [G2; CONST_D]) {
         self.d_elements = tar;
     }
     pub fn set_time(&mut self, tar: u64) {
         self.time = tar;
     }
 
-    fn subkey_gen<R: ::rand::Rng>(pp: &PubParam, g1a: G1, vec_x: &Vec<Fr>, rng: &mut R) -> Self {
+    fn subkey_gen<R: ::rand::Rng>(pp: &PubParam, g1a: G2, vec_x: &Vec<Fr>, rng: &mut R) -> Self {
         let mut sk_new: SubSecretKey = SubSecretKey::init();
         let r = Fr::rand(rng);
         let list = pp.get_glist();
 
         // 1. g2^r
-        let mut g2r = G2::one();
+        let mut g2r = G1::one();
         g2r.mul_assign(r);
         sk_new.g2r = g2r;
 
@@ -112,7 +112,7 @@ impl SubSecretKey {
             let mut tmp = newsubkey.d_elements[i];
             tmp.mul_assign(x_prime[i]);
             newsubkey.g1poly.add_assign(&tmp);
-            newsubkey.d_elements[i] = G1::zero();
+            newsubkey.d_elements[i] = G2::zero();
         }
         newsubkey.time = time;
         newsubkey
@@ -126,7 +126,7 @@ impl SubSecretKey {
     ) -> Self {
         let x_prime = time_to_fr_vec(time, CONST_D as u32);
         // rightside = Subkey(pp, g2^0, x_prime)
-        let rightside = Self::subkey_gen(pp, G1::zero(), &x_prime, rng);
+        let rightside = Self::subkey_gen(pp, G2::zero(), &x_prime, rng);
 
         // leftside = (K0, ..., KD)
         // leftside[0] = K0
@@ -144,7 +144,7 @@ impl SubSecretKey {
 
         // leftside[2..|x'|] = 0
         for i in 0..x_prime.len() {
-            leftside.d_elements[i] = G1::zero();
+            leftside.d_elements[i] = G2::zero();
         }
 
         // scala mutliplication

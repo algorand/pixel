@@ -127,7 +127,7 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     for _ in 0..1000 {
         let m = Fr::rand(&mut rng);
         let key = pixel::pixel_key_gen(
@@ -304,7 +304,7 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
@@ -447,7 +447,7 @@ fn bench_verify_level_rnd_reuse(b: &mut test::test::Bencher) {
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
@@ -531,7 +531,7 @@ fn test_verify_level_leveled() {
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for i in 0..CONST_D {

@@ -7,12 +7,18 @@ use rand::{ChaChaRng, Rand, SeedableRng};
 
 #[derive(Debug, Clone)]
 pub struct Signature {
-    pub sigma1: G1,
-    pub sigma2: G2,
+    sigma1: G1,
+    sigma2: G2,
 }
 
 impl Signature {
-    fn sign<R: ::rand::Rng>(
+    pub fn get_sigma1(&self) -> G1 {
+        self.sigma1.clone()
+    }
+    pub fn get_sigma2(&self) -> G2 {
+        self.sigma2.clone()
+    }
+    pub fn sign<R: ::rand::Rng>(
         ssk: &SubSecretKey,
         pp: &PubParam,
         vec_t: &Vec<Fr>,

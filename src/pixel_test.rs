@@ -1,5 +1,5 @@
-#[cfg(test)]
-use keys::{KeyPair, SecretKey};
+//#[cfg(test)]
+//use keys::{KeyPair, SecretKey};
 #[cfg(test)]
 use pairing::bls12_381::*;
 #[cfg(test)]

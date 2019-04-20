@@ -1,8 +1,8 @@
 use super::KeyPair;
 use super::SecretKey;
 use super::SubSecretKey;
-use gammafunction::time_to_fr_vec;
-use gammafunction::time_to_vec;
+//use gammafunction::time_to_fr_vec;
+//use gammafunction::time_to_vec;
 use pairing::{bls12_381::*, CurveProjective};
 use param::{PubParam, CONST_D};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
@@ -82,12 +82,12 @@ fn key_gen_alpha_with_rng<R: ::rand::Rng>(rng: &mut R) -> (G2, G1) {
 
     (pk, sk)
 }
-
+#[allow(dead_code)]
 fn key_gen_alpha_with_seed(seed: &[u32; 4]) -> (G2, G1) {
     let mut rng = ChaChaRng::from_seed(seed);
     key_gen_alpha_with_rng(&mut rng)
 }
-
+#[allow(dead_code)]
 fn key_gen_alpha() -> (G2, G1) {
     let mut rng = ChaChaRng::new_unseeded();
     let seed = [

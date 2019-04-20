@@ -64,7 +64,7 @@ impl SecretKey {
                     newsk.push(ssk);
                 } else {
                     // can reuse the randomness
-                    let ssk = sk0.subkey_delegate_with_reuse(&pp, t.time, &mut rng);
+                    let ssk = sk0.subkey_delegate_with_reuse(t.time);
                     newsk.push(ssk);
                     timeheap.push(sk0.time);
                 }

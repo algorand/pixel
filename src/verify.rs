@@ -23,7 +23,7 @@ pub fn verification_with_vector(
     tmp.mul_assign(*msg);
     g1fx.add_assign(&tmp);
 
-    let mut sigma1 = sigma.sigma1;
+    let mut sigma1 = sigma.get_sigma1();
     sigma1.negate();
 
     // e(1/sigma1, g2) * e(g1^{f}, sigma2) * e(g1, pk)
@@ -35,7 +35,7 @@ pub fn verification_with_vector(
             ),
             (
                 &(g1fx.into_affine().prepare()),
-                &(sigma.sigma2.into_affine().prepare()),
+                &(sigma.get_sigma2().into_affine().prepare()),
             ),
             (
                 &G1::one().into_affine().prepare(),
@@ -68,7 +68,7 @@ pub fn verification(pk: &G2, pp: &PubParam, time: &u64, msg: &Fr, sigma: &Signat
     tmp.mul_assign(*msg);
     g1fx.add_assign(&tmp);
 
-    let mut sigma1 = sigma.sigma1;
+    let mut sigma1 = sigma.get_sigma1();
     sigma1.negate();
 
     // e(1/sigma1, g2) * e(g1^{f}, sigma2) * e(g1, pk)
@@ -80,7 +80,7 @@ pub fn verification(pk: &G2, pp: &PubParam, time: &u64, msg: &Fr, sigma: &Signat
             ),
             (
                 &(g1fx.into_affine().prepare()),
-                &(sigma.sigma2.into_affine().prepare()),
+                &(sigma.get_sigma2().into_affine().prepare()),
             ),
             (
                 &G1::one().into_affine().prepare(),
@@ -119,14 +119,14 @@ pub fn verification_pre_computed(
     tmp.mul_assign(*msg);
     g1fx.add_assign(&tmp);
 
-    let mut sigma2 = sigma.sigma2;
+    let mut sigma2 = sigma.get_sigma2();
     sigma2.negate();
 
     // e(1/sigma1, g2) * e(g1^{f}, sigma2) * e(g1, pk)
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (
-                &(sigma.sigma1.into_affine().prepare()),
+                &(sigma.get_sigma1().into_affine().prepare()),
                 &(G2::one().into_affine().prepare()),
             ),
             (

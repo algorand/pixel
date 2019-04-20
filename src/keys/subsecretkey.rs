@@ -113,13 +113,7 @@ impl SubSecretKey {
         newsubkey.time = time;
         newsubkey
     }
-    pub fn subkey_delegate<R: ::rand::Rng>(
-        &self,
-        pp: &PubParam,
-        time: u64,
-        //x_prime: &Vec<u32>,
-        rng: &mut R,
-    ) -> Self {
+    pub fn subkey_delegate<R: ::rand::Rng>(&self, pp: &PubParam, time: u64, rng: &mut R) -> Self {
         let x_prime = time_to_fr_vec(time, CONST_D as u32);
         // rightside = Subkey(pp, g2^0, x_prime)
         let rightside = Self::subkey_gen(pp, G1::zero(), &x_prime, rng);

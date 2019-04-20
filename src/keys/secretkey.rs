@@ -34,7 +34,7 @@ impl SecretKey {
         let mut newsk: Vec<SubSecretKey> = vec![];
         let sk0 = self.ssk[0].clone();
         for e in t.veclist {
-            let ssk = sk0.subkey_delegate(&pp, e.time as u64, &mut rng);
+            let ssk = sk0.subkey_delegate(&pp, e.time, &mut rng);
             newsk.push(ssk);
         }
         SecretKey {
@@ -42,12 +42,18 @@ impl SecretKey {
             ssk: newsk,
         }
     }
+
+    // this delegation reuses the randomness for one of its child node
     pub fn optimized_delegate(&self, pp: &PubParam, time: u64, seed: &[u32; 4]) -> Self {
         let newlist = GammaList::gen_list(time);
         let mut rng = ChaChaRng::from_seed(seed);
         let mut newsk: Vec<SubSecretKey> = vec![];
         let currentsk = self.clone();
+
+        // creat a heap to store sks whose randomness
+        // has been reused for its child node
         let mut timeheap: Vec<u64> = vec![];
+
         for t in newlist.veclist {
             let mut flag = false;
             for i in 0..currentsk.ssk.len() {

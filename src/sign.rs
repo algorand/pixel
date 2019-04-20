@@ -42,6 +42,24 @@ impl Signature {
         let time_vec = time_to_fr_vec(*time, CONST_D as u32);
         Self::sign(ssk, pp, &time_vec, msg, &mut rng)
     }
+
+    pub fn aggregate_assign(&mut self, siglist: &Vec<Self>) {
+        for sig in siglist {
+            self.sigma1.add_assign(&sig.sigma1);
+            self.sigma2.add_assign(&sig.sigma2);
+        }
+    }
+    pub fn aggregate(siglist: &Vec<Self>) -> Self {
+        let mut s: Signature = Signature {
+            sigma1: G1::zero(),
+            sigma2: G2::zero(),
+        };
+        for sig in siglist {
+            s.sigma1.add_assign(&sig.sigma1);
+            s.sigma2.add_assign(&sig.sigma2);
+        }
+        s
+    }
 }
 
 fn partial_subkey_delegate<R: ::rand::Rng>(

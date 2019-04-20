@@ -141,3 +141,17 @@ pub fn verification_pre_computed(
     // e(1/sigma1, g2) * e(g1^{f}, sigma2) * e(g1, pk) == 1?
     pairingproduct == *pk
 }
+
+pub fn verification_aggregated(
+    pk: &Vec<G2>,
+    pp: &PubParam,
+    time: &u64,
+    msg: &Fr,
+    sigma: &Signature,
+) -> bool {
+    let mut agg_pk = G2::zero();
+    for e in pk {
+        agg_pk.add_assign(&e);
+    }
+    verification(&agg_pk, pp, time, msg, sigma)
+}

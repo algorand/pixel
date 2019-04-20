@@ -2,8 +2,8 @@ use keys::{KeyPair, SecretKey};
 use pairing::{bls12_381::*, CurveProjective, Engine};
 use param::PubParam;
 use sign::Signature;
+use verify::verification_aggregated;
 use verify::{verification, verification_pre_computed};
-
 #[allow(dead_code)]
 pub fn pixel_param_gen(seed: &[u32; 4]) -> PubParam {
     PubParam::init_with_seed(seed)
@@ -54,4 +54,18 @@ pub fn pixel_verify_pre_processed(
 ) -> bool {
     // todo: membership test for signatures?
     verification_pre_computed(pk, pp, &time, m, sig)
+}
+
+pub fn pixel_aggregate(siglist: &Vec<Signature>) -> Signature {
+    Signature::aggregate(siglist)
+}
+
+pub fn pixel_verify_aggregated(
+    pk: &Vec<G2>,
+    time: u64,
+    m: &Fr,
+    sig: &Signature,
+    pp: &PubParam,
+) -> bool {
+    verification_aggregated(&pk, &pp, &time, &m, &sig)
 }

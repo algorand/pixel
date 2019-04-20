@@ -12,6 +12,7 @@ mod gammafunction;
 mod keys;
 mod param;
 mod pixel;
+mod pixel_test;
 mod pixel_bench;
 mod sign;
 mod verify;

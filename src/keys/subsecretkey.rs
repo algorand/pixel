@@ -16,6 +16,8 @@ impl SubSecretKey {
     }
 
     // get the length of the corresponding vector length
+    // i.e., when the vector is in the form x1,...x_t, 0, 0, ...
+    // return t
     pub fn get_vec_x_len(&self) -> usize {
         let mut counter = 0;
         for i in 0..self.d_elements.len() {
@@ -33,6 +35,7 @@ impl SubSecretKey {
         counter
     }
 
+    // access control
     pub fn get_time(&self) -> u64 {
         self.time
     }
@@ -63,6 +66,7 @@ impl SubSecretKey {
         self.time = tar;
     }
 
+    // generate subkeys
     fn subkey_gen<R: ::rand::Rng>(pp: &PubParam, g1a: G2, vec_x: &Vec<Fr>, rng: &mut R) -> Self {
         let mut sk_new: SubSecretKey = SubSecretKey::init();
         let r = Fr::rand(rng);
@@ -101,6 +105,8 @@ impl SubSecretKey {
         }
         sk_new
     }
+
+    // generate subkey while reusing the randomness
     pub fn subkey_delegate_with_reuse(&self, time: u64) -> Self {
         let x_prime = time_to_fr_vec(time, CONST_D as u32);
         let mut newsubkey = self.clone();
@@ -148,6 +154,7 @@ impl SubSecretKey {
         tilde_sk
     }
 
+    // put this into display crate
     pub fn print(&self) {
         println!("==============");
         println!("sub secret key");

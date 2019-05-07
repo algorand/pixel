@@ -17,7 +17,6 @@ pub struct PubParam {
     glist: [G2; CONST_D], // g_1, ..., g_d
 }
 
-#[allow(dead_code)]
 impl PubParam {
     // accessing private field in PubParam
     pub fn get_g0(&self) -> G2 {

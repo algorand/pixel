@@ -18,6 +18,8 @@ impl Signature {
     pub fn get_sigma2(&self) -> G1 {
         self.sigma2.clone()
     }
+
+    // sign
     pub fn sign<R: ::rand::Rng>(
         ssk: &SubSecretKey,
         pp: &PubParam,
@@ -25,18 +27,23 @@ impl Signature {
         msg: &Fr,
         rng: &mut R,
     ) -> Self {
+        // the time vector is formulated as
+        // vec_t | 0 ,....,0 | msg
         let mut v = vec_t.clone();
         for _ in vec_t.len()..CONST_D - 1 {
             v.push(Fr::zero());
         }
         v.push(*msg);
+
+        // the signing algorithm is basically a key delegation
+        // except that we only want the first two coefficients
         let ssknew = partial_subkey_delegate(&ssk, &pp, &v, rng);
         Signature {
             sigma1: ssknew.1,
             sigma2: ssknew.0,
         }
     }
-
+    // use a seed to sign
     pub fn sign_with_seed(
         ssk: &SubSecretKey,
         pp: &PubParam,
@@ -49,12 +56,15 @@ impl Signature {
         Self::sign(ssk, pp, &time_vec, msg, &mut rng)
     }
 
+    // update self with an aggregated signature
     pub fn aggregate_assign(&mut self, siglist: &Vec<Self>) {
         for sig in siglist {
             self.sigma1.add_assign(&sig.sigma1);
             self.sigma2.add_assign(&sig.sigma2);
         }
     }
+
+    // input a list of signatures, generate a new signature
     pub fn aggregate(siglist: &Vec<Self>) -> Self {
         let mut s: Signature = Signature {
             sigma1: G2::zero(),
@@ -68,6 +78,8 @@ impl Signature {
     }
 }
 
+// partial subkey delegate only generates the first G2 element, c.f. the whole d+1 G2 list
+// todo: instead of take in an RNG, take in a seed
 fn partial_subkey_delegate<R: ::rand::Rng>(
     ssk: &SubSecretKey,
     pp: &PubParam,
@@ -97,7 +109,10 @@ fn partial_subkey_delegate<R: ::rand::Rng>(
     (g2r, g1poly)
 }
 
+// this is a subroutine to partial_subkey_delegate
+// todo: instead of take in an RNG, take in a seed
 fn partial_subkey_gen<R: ::rand::Rng>(pp: &PubParam, vec_x: &Vec<Fr>, rng: &mut R) -> (G1, G2) {
+    // todo: change to hash_to_field(seed) method
     let r = Fr::rand(rng);
     let list = pp.get_glist();
 

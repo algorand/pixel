@@ -149,13 +149,13 @@ pub fn verification_pre_computed(
 }
 
 pub fn verification_aggregated(
-    pk: &Vec<G2>,
+    pk: &Vec<G1>,
     pp: &PubParam,
     time: &u64,
     msg: &Fr,
     sigma: &Signature,
 ) -> bool {
-    let mut agg_pk = G2::zero();
+    let mut agg_pk = G1::zero();
     for e in pk {
         agg_pk.add_assign(&e);
     }

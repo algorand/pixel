@@ -126,7 +126,7 @@ fn test_verify_level_rnd_aggregated() {
         rng.next_u32(),
         rng.next_u32(),
     ]);
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     let mut siglist: Vec<Signature> = vec![];
     let m = Fr::rand(&mut rng);
     let time = (rng.next_u32() & 0x3FFFFFFF) as u64;;

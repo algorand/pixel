@@ -30,10 +30,8 @@ pub fn pixel_sign(sk: &SecretKey, time: u64, m: &Fr, seed: &[u32; 4], pp: &PubPa
     Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &time, m, seed)
 }
 
-
 #[allow(dead_code)]
 pub fn pixel_verify(pk: &G1, time: u64, m: &Fr, sig: &Signature, pp: &PubParam) -> bool {
-
     // todo: membership test for signatures?
     verification(&pk, &pp, &time, &m, &sig)
 }
@@ -59,7 +57,7 @@ pub fn pixel_aggregate(siglist: &Vec<Signature>) -> Signature {
 }
 
 pub fn pixel_verify_aggregated(
-    pk: &Vec<G2>,
+    pk: &Vec<G1>,
     time: u64,
     m: &Fr,
     sig: &Signature,

@@ -14,10 +14,10 @@ pub struct Signature {
 }
 
 impl Signature {
-    pub fn get_sigma1(&self) -> G1 {
+    pub fn get_sigma1(&self) -> G2 {
         self.sigma1.clone()
     }
-    pub fn get_sigma2(&self) -> G2 {
+    pub fn get_sigma2(&self) -> G1 {
         self.sigma2.clone()
     }
     pub fn sign<R: ::rand::Rng>(
@@ -59,8 +59,8 @@ impl Signature {
     }
     pub fn aggregate(siglist: &Vec<Self>) -> Self {
         let mut s: Signature = Signature {
-            sigma1: G1::zero(),
-            sigma2: G2::zero(),
+            sigma1: G2::zero(),
+            sigma2: G1::zero(),
         };
         for sig in siglist {
             s.sigma1.add_assign(&sig.sigma1);

@@ -34,10 +34,8 @@ pub fn verification_with_vector(
                 &(sigma1.into_affine().prepare()),
             ),
             (
-
                 &(sigma.sigma2.into_affine().prepare()),
                 &(g1fx.into_affine().prepare()),
-
             ),
             (
                 &pk.into_affine().prepare(),
@@ -81,10 +79,8 @@ pub fn verification(pk: &G1, pp: &PubParam, time: &u64, msg: &Fr, sigma: &Signat
                 &(sigma1.into_affine().prepare()),
             ),
             (
-
                 &(sigma.sigma2.into_affine().prepare()),
                 &(g1fx.into_affine().prepare()),
-
             ),
             (
                 &pk.into_affine().prepare(),
@@ -130,10 +126,8 @@ pub fn verification_pre_computed(
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (
-
                 &(G1::one().into_affine().prepare()),
                 &(sigma.sigma1.into_affine().prepare()),
-
             ),
             (
                 &(sigma2.into_affine().prepare()),

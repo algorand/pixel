@@ -89,7 +89,6 @@ fn key_gen_alpha_with_seed(seed: &[u32; 4]) -> (G1, G2) {
 }
 
 fn key_gen_alpha() -> (G1, G2) {
-
     let mut rng = ChaChaRng::new_unseeded();
     let seed = [
         rng.next_u32(),

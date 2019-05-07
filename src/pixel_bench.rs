@@ -1,5 +1,5 @@
 #[cfg(test)]
-use keys:: SecretKey;
+use keys::SecretKey;
 #[cfg(test)]
 use pairing::bls12_381::*;
 #[cfg(test)]
@@ -572,4 +572,3 @@ fn test_verify_level_leveled() {
         assert_eq!(ver, true, "verification failed");
     }
 }
-

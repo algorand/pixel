@@ -2,7 +2,7 @@
 // that converts a time (as a u64 integer) into a time vector
 // that is used to identify the right node on a tree
 
-use ff::{Field, PrimeField};
+use ff::PrimeField;
 use pairing::bls12_381::*;
 use param::CONST_D;
 use std::iter::FromIterator;
@@ -26,6 +26,7 @@ pub struct TimeVec {
 
 #[allow(dead_code)]
 impl TimeVec {
+    // methods to access private fields of time vector
     pub fn get_time(&self) -> u64 {
         self.time
     }
@@ -116,6 +117,8 @@ pub fn time_to_vec(time: u64, d: u32) -> Vec<u64> {
     tmp
 }
 
+// convert a time into a vector where each coefficient is
+// a field element rather than an integer
 #[allow(dead_code)]
 pub fn time_to_fr_vec(time: u64, d: u32) -> Vec<Fr> {
     assert!(d >= 1, "time_to_fr_vec invalid depth {}", d);
@@ -135,8 +138,7 @@ pub fn time_to_fr_vec(time: u64, d: u32) -> Vec<Fr> {
     res
 }
 
-#[allow(dead_code)]
-pub fn vec_to_time(mut t_vec: Vec<u64>, d: u64) -> u64 {
+fn vec_to_time(mut t_vec: Vec<u64>, d: u64) -> u64 {
     /*
         if tvec == []:
           return 1
@@ -152,9 +154,12 @@ pub fn vec_to_time(mut t_vec: Vec<u64>, d: u64) -> u64 {
         return 1 + (tmp[0] - 1) * ((1u64 << (d - 1)) - 1) + vec_to_time(t_vec, d - 1);
     }
 }
-#[allow(dead_code)]
-pub fn gamma_t(t_vec: TimeVec) -> Vec<TimeVec> {
+
+// subrouting to build gamma list:
+// converting a time vector to a list of time vectors
+fn gamma_t(t_vec: TimeVec) -> Vec<TimeVec> {
     /*
+    pseudo code of this function in python
     def gammat(tvec):
        ans = [tvec]
        for i in range(len(tvec)):
@@ -169,11 +174,6 @@ pub fn gamma_t(t_vec: TimeVec) -> Vec<TimeVec> {
         if t_vec.vec[i] == 1 {
             let mut tmp = Vec::from_iter(t_vec.vec[0..i].iter().cloned());
             tmp.push(2);
-            // if !res.contains(&tmp) {
-            //     res.push(tmp)
-            // } else {
-            //     panic!("Duplicates");
-            // }
             res.push(TimeVec {
                 time: vec_to_time(tmp.clone(), CONST_D as u64),
                 vec: tmp,
@@ -185,7 +185,8 @@ pub fn gamma_t(t_vec: TimeVec) -> Vec<TimeVec> {
 }
 
 // #[allow(dead_code)]
-// pub fn update_gamma_t(current:Vec<Vec<u64>>,t_vec: Vec<u64>) -> Vec<Vec<u64>> {
+// fn gamma_t_fr(t_vec: &Vec<Fr>) -> Vec<Vec<Fr>> {
+//     let frtwo: Fr = Fr::from_repr(FrRepr([0, 0, 0, 2])).unwrap();
 //     /*
 //     def gammat(tvec):
 //        ans = [tvec]
@@ -195,40 +196,17 @@ pub fn gamma_t(t_vec: TimeVec) -> Vec<TimeVec> {
 //              ans.append(tvec[:i] + [2])
 //        return ans
 //     */
-//
-//
-//
 //     let mut res = Vec::new();
-// for e in current{
+//     res.push(t_vec.clone());
+//     for i in 0..t_vec.len() {
+//         if t_vec[i] == Fr::one() {
+//             let mut tmp = Vec::from_iter(t_vec[0..i].iter().cloned());
+//             tmp.push(frtwo);
+//             if !res.contains(&tmp) {
+//                 res.push(tmp)
+//             }
+//         }
+//     }
 //
-//     let t  = gamma_t(e, t_vec);
-//
-// }
 //     res
 // }
-#[allow(dead_code)]
-pub fn gamma_t_fr(t_vec: &Vec<Fr>) -> Vec<Vec<Fr>> {
-    let frtwo: Fr = Fr::from_repr(FrRepr([0, 0, 0, 2])).unwrap();
-    /*
-    def gammat(tvec):
-       ans = [tvec]
-       for i in range(len(tvec)):
-          if tvec[i] == 1:
-             print tvec[:i]
-             ans.append(tvec[:i] + [2])
-       return ans
-    */
-    let mut res = Vec::new();
-    res.push(t_vec.clone());
-    for i in 0..t_vec.len() {
-        if t_vec[i] == Fr::one() {
-            let mut tmp = Vec::from_iter(t_vec[0..i].iter().cloned());
-            tmp.push(frtwo);
-            if !res.contains(&tmp) {
-                res.push(tmp)
-            }
-        }
-    }
-
-    res
-}

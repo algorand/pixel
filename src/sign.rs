@@ -7,10 +7,8 @@ use rand::{ChaChaRng, Rand, SeedableRng};
 
 #[derive(Debug, Clone)]
 pub struct Signature {
-
     pub sigma1: G2,
     pub sigma2: G1,
-
 }
 
 impl Signature {

@@ -3,6 +3,7 @@ use gammafunction::{time_to_fr_vec, time_to_vec};
 use pairing::{bls12_381::*, CurveProjective};
 use param::{PubParam, CONST_D};
 use rand::Rand;
+
 impl SubSecretKey {
     // initialization
     pub fn init() -> Self {
@@ -100,12 +101,7 @@ impl SubSecretKey {
         }
         sk_new
     }
-    pub fn subkey_delegate_with_reuse<R: ::rand::Rng>(
-        &self,
-        pp: &PubParam,
-        time: u64,
-        rng: &mut R,
-    ) -> Self {
+    pub fn subkey_delegate_with_reuse(&self, time: u64) -> Self {
         let x_prime = time_to_fr_vec(time, CONST_D as u32);
         let mut newsubkey = self.clone();
         for i in self.get_vec_x_len()..x_prime.len() {
@@ -117,13 +113,7 @@ impl SubSecretKey {
         newsubkey.time = time;
         newsubkey
     }
-    pub fn subkey_delegate<R: ::rand::Rng>(
-        &self,
-        pp: &PubParam,
-        time: u64,
-        //x_prime: &Vec<u32>,
-        rng: &mut R,
-    ) -> Self {
+    pub fn subkey_delegate<R: ::rand::Rng>(&self, pp: &PubParam, time: u64, rng: &mut R) -> Self {
         let x_prime = time_to_fr_vec(time, CONST_D as u32);
         // rightside = Subkey(pp, g2^0, x_prime)
         let rightside = Self::subkey_gen(pp, G2::zero(), &x_prime, rng);
@@ -158,7 +148,7 @@ impl SubSecretKey {
         tilde_sk
     }
 
-    fn print(&self) {
+    pub fn print(&self) {
         println!("==============");
         println!("sub secret key");
         println!("first element: \n{:?}\n", self.g2r);

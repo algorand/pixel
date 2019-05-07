@@ -7,12 +7,20 @@ use rand::{ChaChaRng, Rand, SeedableRng};
 
 #[derive(Debug, Clone)]
 pub struct Signature {
+
     pub sigma1: G2,
     pub sigma2: G1,
+
 }
 
 impl Signature {
-    fn sign<R: ::rand::Rng>(
+    pub fn get_sigma1(&self) -> G1 {
+        self.sigma1.clone()
+    }
+    pub fn get_sigma2(&self) -> G2 {
+        self.sigma2.clone()
+    }
+    pub fn sign<R: ::rand::Rng>(
         ssk: &SubSecretKey,
         pp: &PubParam,
         vec_t: &Vec<Fr>,
@@ -41,6 +49,24 @@ impl Signature {
         let mut rng = ChaChaRng::from_seed(seed);
         let time_vec = time_to_fr_vec(*time, CONST_D as u32);
         Self::sign(ssk, pp, &time_vec, msg, &mut rng)
+    }
+
+    pub fn aggregate_assign(&mut self, siglist: &Vec<Self>) {
+        for sig in siglist {
+            self.sigma1.add_assign(&sig.sigma1);
+            self.sigma2.add_assign(&sig.sigma2);
+        }
+    }
+    pub fn aggregate(siglist: &Vec<Self>) -> Self {
+        let mut s: Signature = Signature {
+            sigma1: G1::zero(),
+            sigma2: G2::zero(),
+        };
+        for sig in siglist {
+            s.sigma1.add_assign(&sig.sigma1);
+            s.sigma2.add_assign(&sig.sigma2);
+        }
+        s
     }
 }
 

@@ -1,18 +1,15 @@
 #[cfg(test)]
-use keys::{KeyPair, SecretKey};
+use keys:: SecretKey;
 #[cfg(test)]
 use pairing::bls12_381::*;
 #[cfg(test)]
 use param::PubParam;
 #[cfg(test)]
+use pixel;
+#[cfg(test)]
 use rand::{ChaChaRng, Rand, Rng};
 #[cfg(test)]
 use sign::Signature;
-#[cfg(test)]
-use verify::verification;
-
-#[cfg(test)]
-use pixel;
 
 // #[bench]
 // fn bench_param_from_fr(b: &mut test::test::Bencher) {
@@ -115,8 +112,6 @@ fn bench_sign_level_00(b: &mut test::test::Bencher) {
 }
 #[bench]
 fn bench_verify_level_00(b: &mut test::test::Bencher) {
-    let time = 1;
-
     let mut rng = ChaChaRng::new_unseeded();
     let pp: PubParam = pixel::pixel_param_gen(&[
         rng.next_u32(),
@@ -577,3 +572,4 @@ fn test_verify_level_leveled() {
         assert_eq!(ver, true, "verification failed");
     }
 }
+

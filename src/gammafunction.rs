@@ -171,7 +171,7 @@ pub fn gamma_t(t_vec: TimeVec) -> Vec<TimeVec> {
 // }
 //     res
 // }
-
+#[allow(dead_code)]
 pub fn gamma_t_fr(t_vec: &Vec<Fr>) -> Vec<Vec<Fr>> {
     let frtwo: Fr = Fr::from_repr(FrRepr([0, 0, 0, 2])).unwrap();
     /*

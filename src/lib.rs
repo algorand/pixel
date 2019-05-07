@@ -9,9 +9,10 @@ extern crate sha2;
 extern crate test;
 
 mod gammafunction;
-mod keys;
-mod param;
-mod pixel;
+pub mod keys;
+pub mod param;
+pub mod pixel;
 mod pixel_bench;
+mod pixel_test;
 mod sign;
 mod verify;

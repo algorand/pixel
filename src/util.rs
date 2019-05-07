@@ -3,7 +3,6 @@ use ff::{Field, PrimeField, PrimeFieldDecodingError, PrimeFieldRepr};
 use pairing::bls12_381::Fr;
 use pairing::bls12_381::FrRepr;
 use sha2::Digest;
-use std::ops::Rem;
 
 // function is defined in
 // https://github.com/pairingwg/bls_standard/blob/master/minutes/spec-v1.md
@@ -27,7 +26,7 @@ use std::ops::Rem;
 //     return (e_1, ..., e_m)
 
 #[allow(dead_code)]
-pub fn hash_to_fr(
+pub fn hash_to_field(
     input: &[u8],
     ctr: u8,
     // the modulus is implicitly defined as the group order r
@@ -111,4 +110,31 @@ fn i2osp(int: u8, len: usize) -> Vec<u8> {
     let mut tmp = vec![0u8; len - 1];
     tmp.push(int);
     tmp
+}
+
+#[allow(dead_code)]
+fn hp(msg: &[u8], ctr: u8) -> Vec<Fr> {
+    hash_to_field(msg, ctr, 1, 2)
+}
+
+#[allow(dead_code)]
+fn hp2(msg: &[u8], ctr: u8) -> Vec<Fr> {
+    hash_to_field(msg, ctr, 2, 2)
+}
+
+#[test]
+fn test_hash_to_field() {
+    let t = hash_to_field(b"11223344556677889900112233445566", 0, 1, 2);
+
+    assert_eq!(
+        t,
+        vec![Fr::from_repr(FrRepr([
+            0xb7e588b4fe9899e4,
+            0x80fe5eb14ff08fe5,
+            0xdb70e1c88efa851e,
+            0x414e2c2a330cf94e,
+        ]))
+        .unwrap()],
+        "error hash to field"
+    );
 }

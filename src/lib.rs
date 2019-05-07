@@ -19,7 +19,6 @@ mod pixel_test;
 mod sign;
 mod verify;
 
-
 // required for hash_to_field
 extern crate bigint;
-mod hash_to_field;
+mod util;

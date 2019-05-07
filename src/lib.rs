@@ -1,3 +1,5 @@
+// this is Algorand's implementation of Pixel signature scheme
+
 #![feature(test)]
 
 extern crate ff;

@@ -1,21 +1,52 @@
+// gammafunction module implements the `gamma` function
+// that converts a time (as a u64 integer) into a time vector
+// that is used to identify the right node on a tree
+
 use ff::{Field, PrimeField};
 use pairing::bls12_381::*;
 use param::CONST_D;
 use std::iter::FromIterator;
 
+// a gamma list constains a list of time vectors,
+// as well as a unique time stamp which is the minimum
+// time stamp amoung all its members
 #[derive(Debug, Clone)]
 pub struct GammaList {
-    pub mintime: u64,
-    pub veclist: Vec<TimeVec>,
+    mintime: u64,
+    veclist: Vec<TimeVec>,
 }
+
+// the struct for time vector also include the
+// actual time for simplicity
 #[derive(Debug, Clone)]
 pub struct TimeVec {
-    pub time: u64,
+    time: u64,
     vec: Vec<u64>,
 }
 
 #[allow(dead_code)]
+impl TimeVec {
+    pub fn get_time(&self) -> u64 {
+        self.time
+    }
+    pub fn get_time_vec(&self) -> Vec<u64> {
+        self.vec.clone()
+    }
+}
+
+#[allow(dead_code)]
 impl GammaList {
+    // return the minimum time stamp amount all members
+    pub fn get_mintime(&self) -> u64 {
+        self.mintime
+    }
+
+    // return the list of time vectors
+    pub fn get_list(&self) -> Vec<TimeVec> {
+        self.veclist.clone()
+    }
+
+    // input a time stamp, generate the complete list
     pub fn gen_list(time: u64) -> Self {
         let time_vec = time_to_timevec(time, CONST_D as u32);
         let veclist = gamma_t(time_vec);
@@ -25,6 +56,7 @@ impl GammaList {
         }
     }
 
+    // update the gamma list w.r.t. a new time
     pub fn update_list(&mut self, newtime: u64) {
         assert!(
             self.mintime < newtime,
@@ -39,13 +71,16 @@ impl GammaList {
     }
 }
 
+// converting time into a time vector object
 #[allow(dead_code)]
-pub fn time_to_timevec(time: u64, d: u32) -> TimeVec {
+fn time_to_timevec(time: u64, d: u32) -> TimeVec {
     TimeVec {
         time: time,
         vec: time_to_vec(time, d),
     }
 }
+
+// convert time into a vector
 #[allow(dead_code)]
 pub fn time_to_vec(time: u64, d: u32) -> Vec<u64> {
     /*

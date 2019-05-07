@@ -33,8 +33,8 @@ impl SecretKey {
 
         let mut newsk: Vec<SubSecretKey> = vec![];
         let sk0 = self.ssk[0].clone();
-        for e in t.veclist {
-            let ssk = sk0.subkey_delegate(&pp, e.time, &mut rng);
+        for e in t.get_list() {
+            let ssk = sk0.subkey_delegate(&pp, e.get_time(), &mut rng);
             newsk.push(ssk);
         }
         SecretKey {
@@ -54,23 +54,23 @@ impl SecretKey {
         // has been reused for its child node
         let mut timeheap: Vec<u64> = vec![];
 
-        for t in newlist.veclist {
+        for t in newlist.get_list() {
             let mut flag = false;
             for i in 0..currentsk.ssk.len() {
-                if t.time == currentsk.ssk[i].time {
+                if t.get_time() == currentsk.ssk[i].time {
                     newsk.push(currentsk.ssk[i].clone());
                     flag = true;
                 }
             }
             if flag == false {
-                let sk0 = get_closest_ssk(self, t.time);
+                let sk0 = get_closest_ssk(self, t.get_time());
                 if timeheap.contains(&sk0.time) {
                     // cannot reuse the randomness
-                    let ssk = sk0.subkey_delegate(&pp, t.time, &mut rng);
+                    let ssk = sk0.subkey_delegate(&pp, t.get_time(), &mut rng);
                     newsk.push(ssk);
                 } else {
                     // can reuse the randomness
-                    let ssk = sk0.subkey_delegate_with_reuse(t.time);
+                    let ssk = sk0.subkey_delegate_with_reuse(t.get_time());
                     newsk.push(ssk);
                     timeheap.push(sk0.time);
                 }

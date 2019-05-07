@@ -5,7 +5,7 @@ use param::{PubParam, CONST_D};
 use sign::Signature;
 #[allow(dead_code)]
 pub fn verification_with_vector(
-    pk: &G2,
+    pk: &G1,
     pp: &PubParam,
     time: &Vec<Fr>,
     msg: &Fr,
@@ -30,16 +30,18 @@ pub fn verification_with_vector(
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (
+                &(G1::one().into_affine().prepare()),
                 &(sigma1.into_affine().prepare()),
-                &(G2::one().into_affine().prepare()),
             ),
             (
+
+                &(sigma.sigma2.into_affine().prepare()),
                 &(g1fx.into_affine().prepare()),
-                &(sigma.get_sigma2().into_affine().prepare()),
+
             ),
             (
-                &G1::one().into_affine().prepare(),
                 &pk.into_affine().prepare(),
+                &G2::one().into_affine().prepare(),
             ),
         ]
         .into_iter(),
@@ -54,7 +56,7 @@ pub fn verification_with_vector(
         }
 }
 
-pub fn verification(pk: &G2, pp: &PubParam, time: &u64, msg: &Fr, sigma: &Signature) -> bool {
+pub fn verification(pk: &G1, pp: &PubParam, time: &u64, msg: &Fr, sigma: &Signature) -> bool {
     // g1^{w[1] * msg}
     let mut g1fx = pp.get_g0();
     let list = pp.get_glist();
@@ -75,16 +77,18 @@ pub fn verification(pk: &G2, pp: &PubParam, time: &u64, msg: &Fr, sigma: &Signat
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (
+                &(G1::one().into_affine().prepare()),
                 &(sigma1.into_affine().prepare()),
-                &(G2::one().into_affine().prepare()),
             ),
             (
+
+                &(sigma.sigma2.into_affine().prepare()),
                 &(g1fx.into_affine().prepare()),
-                &(sigma.get_sigma2().into_affine().prepare()),
+
             ),
             (
-                &G1::one().into_affine().prepare(),
                 &pk.into_affine().prepare(),
+                &G2::one().into_affine().prepare(),
             ),
         ]
         .into_iter(),
@@ -126,12 +130,14 @@ pub fn verification_pre_computed(
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (
-                &(sigma.get_sigma1().into_affine().prepare()),
-                &(G2::one().into_affine().prepare()),
+
+                &(G1::one().into_affine().prepare()),
+                &(sigma.sigma1.into_affine().prepare()),
+
             ),
             (
-                &(g1fx.into_affine().prepare()),
                 &(sigma2.into_affine().prepare()),
+                &(g1fx.into_affine().prepare()),
             ),
         ]
         .into_iter(),

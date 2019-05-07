@@ -17,15 +17,15 @@ pub struct SecretKey {
 #[derive(Debug, Clone, Copy)]
 pub struct SubSecretKey {
     time: u64,  //  timestamp for the current key
-    g2r: G2,    //  g2^r
-    g1poly: G1, //  g1^{alpha + f(x) r}
+    g2r: G1,    //  g2^r
+    g1poly: G2, //  g1^{alpha + f(x) r}
     // the first d-1 elements are for delegations
     // the last element is for the message
-    d_elements: [G1; CONST_D],
+    d_elements: [G2; CONST_D],
 }
 
 #[derive(Debug, Clone)]
 pub struct KeyPair {
     sk: SecretKey,
-    pk: G2,
+    pk: G1,
 }

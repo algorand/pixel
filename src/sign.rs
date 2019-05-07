@@ -7,8 +7,10 @@ use rand::{ChaChaRng, Rand, SeedableRng};
 
 #[derive(Debug, Clone)]
 pub struct Signature {
-    sigma1: G1,
-    sigma2: G2,
+
+    pub sigma1: G2,
+    pub sigma2: G1,
+
 }
 
 impl Signature {
@@ -73,7 +75,7 @@ fn partial_subkey_delegate<R: ::rand::Rng>(
     pp: &PubParam,
     x_prime: &Vec<Fr>,
     rng: &mut R,
-) -> (G2, G1) {
+) -> (G1, G2) {
     // rightside = Subkey(pp, g2^0, x_prime)
     let rightside = partial_subkey_gen(pp, x_prime, rng);
 
@@ -97,12 +99,12 @@ fn partial_subkey_delegate<R: ::rand::Rng>(
     (g2r, g1poly)
 }
 
-fn partial_subkey_gen<R: ::rand::Rng>(pp: &PubParam, vec_x: &Vec<Fr>, rng: &mut R) -> (G2, G1) {
+fn partial_subkey_gen<R: ::rand::Rng>(pp: &PubParam, vec_x: &Vec<Fr>, rng: &mut R) -> (G1, G2) {
     let r = Fr::rand(rng);
     let list = pp.get_glist();
 
     // 1. g2^r
-    let mut g2r = G2::one();
+    let mut g2r = G1::one();
     g2r.mul_assign(r);
 
     // 2. g2^{\alpha + f(x)*r}

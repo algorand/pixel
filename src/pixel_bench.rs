@@ -122,7 +122,7 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     for _ in 0..1000 {
         let m = Fr::rand(&mut rng);
         let key = pixel::pixel_key_gen(
@@ -299,7 +299,7 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
@@ -442,7 +442,7 @@ fn bench_verify_level_rnd_reuse(b: &mut test::test::Bencher) {
 
     let mut msglist: Vec<Fr> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut pklist: Vec<G2> = vec![];
+    let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
@@ -512,3 +512,64 @@ fn bench_verify_level_rnd_reuse(b: &mut test::test::Bencher) {
         ver
     });
 }
+
+#[test]
+fn test_verify_level_leveled() {
+    use param::CONST_D;
+    let mut rng = ChaChaRng::new_unseeded();
+    let pp: PubParam = pixel::pixel_param_gen(&[
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+        rng.next_u32(),
+    ]);
+
+    let mut msglist: Vec<Fr> = vec![];
+    let mut siglist: Vec<Signature> = vec![];
+    let mut pklist: Vec<G1> = vec![];
+    let mut timelist: Vec<u64> = vec![];
+
+    for i in 0..CONST_D {
+        let time = 1 << i;
+        let m = Fr::rand(&mut rng);
+        let key = pixel::pixel_key_gen(
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let sk = key.get_sk();
+        let pk = key.get_pk();
+        let sknew = pixel::pixel_key_update(
+            &sk,
+            time,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+        let sig: Signature = pixel::pixel_sign(
+            &sknew,
+            time,
+            &m,
+            &[
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+                rng.next_u32(),
+            ],
+            &pp,
+        );
+
+        let ver = pixel::pixel_verify(&pk, time, &m, &sig, &pp);
+
+        assert_eq!(ver, true, "verification failed");
+    }
+}
+

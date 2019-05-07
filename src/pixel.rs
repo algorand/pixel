@@ -6,7 +6,7 @@ use verify::verification_aggregated;
 use verify::{verification, verification_pre_computed};
 
 pub fn pixel_param_gen(seed: &[u32; 4]) -> PubParam {
-    PubParam::init_with_seed(seed)
+    PubParam::init_with_w_and_seed(seed)
 }
 
 pub fn pixel_key_gen(seed: &[u32; 4], pp: &PubParam) -> KeyPair {
@@ -30,14 +30,17 @@ pub fn pixel_sign(sk: &SecretKey, time: u64, m: &Fr, seed: &[u32; 4], pp: &PubPa
     Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &time, m, seed)
 }
 
-pub fn pixel_verify(pk: &G2, time: u64, m: &Fr, sig: &Signature, pp: &PubParam) -> bool {
+
+#[allow(dead_code)]
+pub fn pixel_verify(pk: &G1, time: u64, m: &Fr, sig: &Signature, pp: &PubParam) -> bool {
+
     // todo: membership test for signatures?
     verification(&pk, &pp, &time, &m, &sig)
 }
 
 #[allow(dead_code)]
-pub fn pixel_pre_process_pk(pk: &G2) -> Fq12 {
-    Bls12::pairing(G1::one(), *pk)
+pub fn pixel_pre_process_pk(pk: &G1) -> Fq12 {
+    Bls12::pairing(*pk, G2::one())
 }
 
 pub fn pixel_verify_pre_processed(

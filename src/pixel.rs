@@ -7,6 +7,9 @@ use sign::Signature;
 use verify::verification_aggregated;
 use verify::{verification, verification_pre_computed};
 
+// Hoeteck: do public keys live in G1 or in G2? can we document that in a comment? How do we switch between the two?
+// Also, add an overview of the different data/object types if possible.
+
 // input a seed generate public parameters
 pub fn pixel_param_gen(seed: &[u32; 4]) -> PubParam {
     PubParam::init_with_w_and_seed(seed)

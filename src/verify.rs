@@ -28,16 +28,19 @@ pub fn verification_with_vector(
 
     // Hoeteck: code should be consistent: either
     //   sigma.getsigma1(), sigma.getsigma2() or sigma.sigma1, sigma.sigma2 -- don't mix the two.
-    // Q: why do you negate sigma1?
     // TODO: subgroup membership checks for both sigma1 and sigma2.
 
+    // Q: why do you negate sigma1?
 
     // e(1/sigma1, g2) * e(g1^{f}, sigma2) * e(g1, pk)
+    // Hoeteck: update the equation in the preceding comment to switch G1 and G2?
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (
                 &(G1::one().into_affine().prepare()),
                 &(sigma1.into_affine().prepare()),
+		// Hoeteck: I think this is easier to read as sigma1 -> sigma.sigma1.negate()
+		// this matches 1/sigma1?
             ),
             (
                 &(sigma.sigma2.into_affine().prepare()),

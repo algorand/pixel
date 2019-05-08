@@ -6,6 +6,8 @@ use param::PubParam;
 use rand::{ChaChaRng, SeedableRng};
 
 impl SecretKey {
+     // Hoeteck: would be good to add some explanation of what the fields are...
+     // A SecretKey contains a vector of SubSecretKey's?
     pub fn init() -> Self {
         SecretKey {
             time: 1,
@@ -28,6 +30,7 @@ impl SecretKey {
     }
 
     pub fn delegate(&self, pp: &PubParam, time: u64, seed: &[u32; 4]) -> Self {
+        // Hoeteck: does delegate mutate the current key, or return a new key? Please add a comment explaining.
         let t = GammaList::gen_list(time);
         let mut rng = ChaChaRng::from_seed(seed);
 
@@ -44,6 +47,7 @@ impl SecretKey {
     }
 
     // this delegation reuses the randomness for one of its child node
+    // Hoeteck: how do you decide which child node to reuse randomness for? maybe add an explanation and an example?
     pub fn optimized_delegate(&self, pp: &PubParam, time: u64, seed: &[u32; 4]) -> Self {
         let newlist = GammaList::gen_list(time);
         let mut rng = ChaChaRng::from_seed(seed);
@@ -84,6 +88,10 @@ impl SecretKey {
 }
 
 // returning the closest ssk so that the delegation cost is minimum
+
+// Hoeteck: TODO, add a comment explaining the definition of "closest"? in length as a vector?
+// it'd be good to add an example in the code.
+
 fn get_closest_ssk(sk: &SecretKey, tar_time: u64) -> SubSecretKey {
     assert!(
         sk.time < tar_time,

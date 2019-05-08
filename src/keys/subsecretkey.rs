@@ -119,6 +119,9 @@ impl SubSecretKey {
         newsubkey.time = time;
         newsubkey
     }
+
+    // Hoeteck: probably cleaner to implement this as first running delegate_with_reuse,
+    // and then randomizing the keys.
     pub fn subkey_delegate<R: ::rand::Rng>(&self, pp: &PubParam, time: u64, rng: &mut R) -> Self {
         let x_prime = time_to_fr_vec(time, CONST_D as u32);
         // rightside = Subkey(pp, g2^0, x_prime)

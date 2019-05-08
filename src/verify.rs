@@ -26,6 +26,12 @@ pub fn verification_with_vector(
     let mut sigma1 = sigma.get_sigma1();
     sigma1.negate();
 
+    // Hoeteck: code should be consistent: either
+    //   sigma.getsigma1(), sigma.getsigma2() or sigma.sigma1, sigma.sigma2 -- don't mix the two.
+    // Q: why do you negate sigma1?
+    // TODO: subgroup membership checks for both sigma1 and sigma2.
+
+
     // e(1/sigma1, g2) * e(g1^{f}, sigma2) * e(g1, pk)
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [

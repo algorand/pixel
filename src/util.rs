@@ -30,6 +30,7 @@ pub fn hash_to_field(
     input: &[u8],
     ctr: u8,
     // the modulus is implicitly defined as the group order r
+    // todo: pass the modulus as a U512 object
     m: u8,
     // the hash_fn is implicitly defined as sha256
     hash_reps: u8,

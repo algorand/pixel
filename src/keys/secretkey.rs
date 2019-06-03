@@ -6,8 +6,8 @@ use param::PubParam;
 use rand::{ChaChaRng, SeedableRng};
 
 impl SecretKey {
-     // Hoeteck: would be good to add some explanation of what the fields are...
-     // A SecretKey contains a vector of SubSecretKey's?
+    // Hoeteck: would be good to add some explanation of what the fields are...
+    // A SecretKey contains a vector of SubSecretKey's?
     pub fn init() -> Self {
         SecretKey {
             time: 1,

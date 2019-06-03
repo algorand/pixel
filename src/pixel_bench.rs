@@ -75,11 +75,9 @@ fn bench_sign_level_00(b: &mut test::test::Bencher) {
         rng.next_u32(),
     ]);
     let mut sklist: Vec<SecretKey> = vec![];
-    let mut msglist: Vec<Fr> = vec![];
-
+    let m = "random message";
     for _ in 0..1000 {
-        let m = Fr::rand(&mut rng);
-        msglist.push(m);
+
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -97,7 +95,7 @@ fn bench_sign_level_00(b: &mut test::test::Bencher) {
         let t: Signature = pixel::pixel_sign(
             &sklist[counter],
             1,
-            &msglist[counter],
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -120,11 +118,10 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
         rng.next_u32(),
     ]);
 
-    let mut msglist: Vec<Fr> = vec![];
+    let m = "random message";
     let mut siglist: Vec<Signature> = vec![];
     let mut pklist: Vec<G1> = vec![];
     for _ in 0..1000 {
-        let m = Fr::rand(&mut rng);
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -138,7 +135,7 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
         let t: Signature = pixel::pixel_sign(
             &sk,
             1,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -147,19 +144,12 @@ fn bench_verify_level_00(b: &mut test::test::Bencher) {
             ],
             &pp,
         );
-        msglist.push(m);
         siglist.push(t);
         pklist.push(key.get_pk());
     }
     let mut counter = 0;
     b.iter(|| {
-        let ver = pixel::pixel_verify(
-            &pklist[counter],
-            1,
-            &msglist[counter],
-            &siglist[counter],
-            &pp,
-        );
+        let ver = pixel::pixel_verify(&pklist[counter], 1, m.as_bytes(), &siglist[counter], &pp);
         counter = (counter + 1) % 1000;
         assert_eq!(ver, true, "verification failed");
         ver
@@ -236,11 +226,10 @@ fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
     ]);
 
     let mut sklist: Vec<SecretKey> = vec![];
-    let mut msglist: Vec<Fr> = vec![];
+    let m = "random message";
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
-        let m = Fr::rand(&mut rng);
         let time = (rng.next_u32() & 0x3FFFFFFF) as u64;
         let key = pixel::pixel_key_gen(
             &[
@@ -265,7 +254,6 @@ fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
         );
         timelist.push(time);
         sklist.push(sknew);
-        msglist.push(m);
     }
 
     let mut counter = 0;
@@ -273,7 +261,7 @@ fn bench_sign_level_rnd(b: &mut test::test::Bencher) {
         let t: Signature = pixel::pixel_sign(
             &sklist[counter],
             timelist[counter],
-            &msglist[counter],
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -297,13 +285,12 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
         rng.next_u32(),
     ]);
 
-    let mut msglist: Vec<Fr> = vec![];
+    let m = "random message";
     let mut siglist: Vec<Signature> = vec![];
     let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
-        let m = Fr::rand(&mut rng);
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -329,7 +316,7 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
         let t: Signature = pixel::pixel_sign(
             &sknew,
             time,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -338,7 +325,6 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
             ],
             &pp,
         );
-        msglist.push(m);
         siglist.push(t);
         pklist.push(key.get_pk());
         timelist.push(time);
@@ -348,7 +334,7 @@ fn bench_verify_level_rnd(b: &mut test::test::Bencher) {
         let ver = pixel::pixel_verify(
             &pklist[counter],
             timelist[counter],
-            &msglist[counter],
+            m.as_bytes(),
             &siglist[counter],
             &pp,
         );
@@ -368,13 +354,12 @@ fn bench_verify_level_rnd_pp(b: &mut test::test::Bencher) {
         rng.next_u32(),
     ]);
 
-    let mut msglist: Vec<Fr> = vec![];
+    let m = "random message";
     let mut siglist: Vec<Signature> = vec![];
     let mut pklist: Vec<Fq12> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
-        let m = Fr::rand(&mut rng);
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -400,7 +385,7 @@ fn bench_verify_level_rnd_pp(b: &mut test::test::Bencher) {
         let t: Signature = pixel::pixel_sign(
             &sknew,
             time,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -410,7 +395,6 @@ fn bench_verify_level_rnd_pp(b: &mut test::test::Bencher) {
             &pp,
         );
         let pk_processed = pixel::pixel_pre_process_pk(&key.get_pk());
-        msglist.push(m);
         siglist.push(t);
         pklist.push(pk_processed);
         timelist.push(time);
@@ -420,7 +404,7 @@ fn bench_verify_level_rnd_pp(b: &mut test::test::Bencher) {
         let ver = pixel::pixel_verify_pre_processed(
             &pklist[counter],
             timelist[counter],
-            &msglist[counter],
+            m.as_bytes(),
             &siglist[counter],
             &pp,
         );
@@ -440,13 +424,13 @@ fn bench_verify_level_rnd_reuse(b: &mut test::test::Bencher) {
         rng.next_u32(),
     ]);
 
-    let mut msglist: Vec<Fr> = vec![];
+    let m = "random message";
     let mut siglist: Vec<Signature> = vec![];
     let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for _ in 0..1000 {
-        let m = Fr::rand(&mut rng);
+
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -484,7 +468,7 @@ fn bench_verify_level_rnd_reuse(b: &mut test::test::Bencher) {
         let t: Signature = pixel::pixel_sign(
             &sknewnew,
             time + 1,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -493,7 +477,7 @@ fn bench_verify_level_rnd_reuse(b: &mut test::test::Bencher) {
             ],
             &pp,
         );
-        msglist.push(m);
+
         siglist.push(t);
         pklist.push(key.get_pk());
         timelist.push(time);
@@ -503,7 +487,7 @@ fn bench_verify_level_rnd_reuse(b: &mut test::test::Bencher) {
         let ver = pixel::pixel_verify(
             &pklist[counter],
             timelist[counter] + 1,
-            &msglist[counter],
+            m.as_bytes(),
             &siglist[counter],
             &pp,
         );
@@ -524,14 +508,13 @@ fn test_verify_level_leveled() {
         rng.next_u32(),
     ]);
 
-    let mut msglist: Vec<Fr> = vec![];
+    let m = "random message";
     let mut siglist: Vec<Signature> = vec![];
     let mut pklist: Vec<G1> = vec![];
     let mut timelist: Vec<u64> = vec![];
 
     for i in 0..CONST_D {
         let time = 1 << i;
-        let m = Fr::rand(&mut rng);
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -557,7 +540,7 @@ fn test_verify_level_leveled() {
         let sig: Signature = pixel::pixel_sign(
             &sknew,
             time,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -567,7 +550,7 @@ fn test_verify_level_leveled() {
             &pp,
         );
 
-        let ver = pixel::pixel_verify(&pk, time, &m, &sig, &pp);
+        let ver = pixel::pixel_verify(&pk, time, m.as_bytes(), &sig, &pp);
 
         assert_eq!(ver, true, "verification failed");
     }

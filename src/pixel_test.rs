@@ -24,7 +24,7 @@ fn test_verify_level_leveled() {
 
     for i in 0..CONST_D {
         let time = 1 << i;
-        let m = Fr::rand(&mut rng);
+        let m = "random message";
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -50,7 +50,7 @@ fn test_verify_level_leveled() {
         let sig: Signature = pixel::pixel_sign(
             &sknew,
             time,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -59,7 +59,7 @@ fn test_verify_level_leveled() {
             ],
             &pp,
         );
-        let ver = pixel::pixel_verify(&pk, time, &m, &sig, &pp);
+        let ver = pixel::pixel_verify(&pk, time, m.as_bytes(), &sig, &pp);
         assert_eq!(ver, true, "verification failed");
     }
 }
@@ -75,7 +75,7 @@ fn test_verify_level_rnd() {
     ]);
 
     for _ in 0..1000 {
-        let m = Fr::rand(&mut rng);
+        let m = "random message";
         let key = pixel::pixel_key_gen(
             &[
                 rng.next_u32(),
@@ -102,7 +102,7 @@ fn test_verify_level_rnd() {
         let t: Signature = pixel::pixel_sign(
             &sknew,
             time,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -112,7 +112,7 @@ fn test_verify_level_rnd() {
             &pp,
         );
 
-        let ver = pixel::pixel_verify(&pk, time, &m, &t, &pp);
+        let ver = pixel::pixel_verify(&pk, time, m.as_bytes(), &t, &pp);
         assert_eq!(ver, true, "verification failed");
     }
 }
@@ -128,7 +128,7 @@ fn test_verify_level_rnd_aggregated() {
     ]);
     let mut pklist: Vec<G1> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let m = Fr::rand(&mut rng);
+    let m = "random message";
     let time = (rng.next_u32() & 0x3FFFFFFF) as u64;;
     for _ in 0..20 {
         let key = pixel::pixel_key_gen(
@@ -156,7 +156,7 @@ fn test_verify_level_rnd_aggregated() {
         let sig: Signature = pixel::pixel_sign(
             &sknew,
             time,
-            &m,
+            m.as_bytes(),
             &[
                 rng.next_u32(),
                 rng.next_u32(),
@@ -165,12 +165,12 @@ fn test_verify_level_rnd_aggregated() {
             ],
             &pp,
         );
-        let ver = pixel::pixel_verify(&pk, time, &m, &sig, &pp);
+        let ver = pixel::pixel_verify(&pk, time, m.as_bytes(), &sig, &pp);
         assert_eq!(ver, true, "verification failed");
         pklist.push(pk);
         siglist.push(sig);
     }
     let agg_sig = Signature::aggregate(&siglist);
-    let ver = pixel::pixel_verify_aggregated(&pklist, time, &m, &agg_sig, &pp);
+    let ver = pixel::pixel_verify_aggregated(&pklist, time, m.as_bytes(), &agg_sig, &pp);
     assert_eq!(ver, true, "aggregated verification failed");
 }

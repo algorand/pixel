@@ -4,8 +4,11 @@ use keys::{KeyPair, SecretKey};
 use pairing::{bls12_381::*, CurveProjective, Engine};
 use param::PubParam;
 use sign::Signature;
+use util::hash_to_field_fr;
+use verify::verification;
 use verify::verification_aggregated;
-use verify::{verification, verification_pre_computed};
+use verify::verification_pre_computed;
+
 
 // Hoeteck: do public keys live in G1 or in G2? can we document that in a comment? How do we switch between the two?
 // Also, add an overview of the different data/object types if possible.
@@ -35,8 +38,14 @@ pub fn pixel_key_update(sk: &SecretKey, time: u64, seed: &[u32; 4], pp: &PubPara
 //  pp: public parameters
 // output:
 //  a signature
-pub fn pixel_sign(sk: &SecretKey, time: u64, m: &Fr, seed: &[u32; 4], pp: &PubParam) -> Signature {
-    // in pricipal we do not allow for signing for the future
+pub fn pixel_sign(
+    sk: &SecretKey,
+    time: u64,
+    m: &[u8],
+    seed: &[u32; 4],
+    pp: &PubParam,
+) -> Signature {
+    // in principal we do not allow for signing for the future
     // if one were to sign for the future, one needs to update its secret key to the future time stamp
     // and then "sign for present"
     assert_eq!(
@@ -46,8 +55,8 @@ pub fn pixel_sign(sk: &SecretKey, time: u64, m: &Fr, seed: &[u32; 4], pp: &PubPa
         time,
         sk.get_time()
     );
-
-    Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &time, m, seed)
+    let msg = hash_to_field_fr(m, 0, 1, 2);
+    Signature::sign_with_seed(&sk.get_sub_secretkey()[0], &pp, &time, &msg[0], seed)
 }
 
 // inputs:
@@ -58,9 +67,10 @@ pub fn pixel_sign(sk: &SecretKey, time: u64, m: &Fr, seed: &[u32; 4], pp: &PubPa
 //  pp: Public Param
 // outputs:
 //  signature is correct or not
-pub fn pixel_verify(pk: &G1, time: u64, m: &Fr, sig: &Signature, pp: &PubParam) -> bool {
+pub fn pixel_verify(pk: &G1, time: u64, m: &[u8], sig: &Signature, pp: &PubParam) -> bool {
+    let msg = hash_to_field_fr(m, 0, 1, 2);
     // todo: membership test for signatures -- confirmed, and will be added
-    verification(&pk, &pp, &time, &m, &sig)
+    verification(&pk, &pp, &time, &msg[0], &sig)
 }
 
 // pre-processing a public key; in most cases we will not perform preprocessing
@@ -72,12 +82,13 @@ pub fn pixel_pre_process_pk(pk: &G1) -> Fq12 {
 pub fn pixel_verify_pre_processed(
     pk: &Fq12,
     time: u64,
-    m: &Fr,
+    m: &[u8],
     sig: &Signature,
     pp: &PubParam,
 ) -> bool {
     // todo: membership test for signatures?
-    verification_pre_computed(pk, pp, &time, m, sig)
+    let msg = hash_to_field_fr(m, 0, 1, 2);
+    verification_pre_computed(pk, pp, &time, &msg[0], sig)
 }
 
 // Aggregating a list of signatures into a single one
@@ -97,9 +108,10 @@ pub fn pixel_aggregate(siglist: &Vec<Signature>) -> Signature {
 pub fn pixel_verify_aggregated(
     pk: &Vec<G1>,
     time: u64,
-    m: &Fr,
+    m: &[u8],
     sig: &Signature,
     pp: &PubParam,
 ) -> bool {
-    verification_aggregated(&pk, &pp, &time, &m, &sig)
+    let msg = hash_to_field_fr(m, 0, 1, 2);
+    verification_aggregated(&pk, &pp, &time, &msg[0], &sig)
 }

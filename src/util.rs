@@ -1,5 +1,7 @@
 use bigint::U512;
 use ff::{Field, PrimeField, PrimeFieldDecodingError, PrimeFieldRepr};
+use pairing::bls12_381::Fq;
+use pairing::bls12_381::FqRepr;
 use pairing::bls12_381::Fr;
 use pairing::bls12_381::FrRepr;
 use sha2::Digest;
@@ -26,11 +28,9 @@ use sha2::Digest;
 //     return (e_1, ..., e_m)
 
 #[allow(dead_code)]
-pub fn hash_to_field(
+pub fn hash_to_field_fr(
     input: &[u8],
     ctr: u8,
-    // the modulus is implicitly defined as the group order r
-    // todo: pass the modulus as a U512 object
     m: u8,
     // the hash_fn is implicitly defined as sha256
     hash_reps: u8,
@@ -105,6 +105,92 @@ pub fn hash_to_field(
     out
 }
 
+#[allow(dead_code)]
+pub fn hash_to_field_fq(
+    input: &[u8],
+    ctr: u8,
+    m: u8,
+    // the hash_fn is implicitly defined as sha256
+    hash_reps: u8,
+) -> Vec<Fq> {
+    // hard coded modulus q
+    // decimal: 250150597201354212088611864108494009784805176246187992833253633507751978155677366527667976820563479002368392034986
+    // hex: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+    let q = U512::from([
+        0, 0, 0, 00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a, 0x01, 0x11, 0xea, 0x39, 0x7f, 0xe6,
+        0x9a, 0x4b, 0x1b, 0xa7, 0xb6, 0x43, 0x4b, 0xac, 0xd7, 0x64, 0x77, 0x4b, 0x84, 0xf3, 0x85,
+        0x12, 0xbf, 0x67, 0x30, 0xd2, 0xa0, 0xf6, 0xb0, 0xf6, 0x24, 0x1e, 0xab, 0xff, 0xfe, 0xb1,
+        0x53, 0xff, 0xff, 0xb9, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xaa, 0xab,
+    ]);
+
+    //  tmp = hash_fn(msg)
+    let mut hasher = sha2::Sha256::new();
+    hasher.input(input);
+    let tmp = hasher.result();
+    let mut m_prime = tmp.as_ref().to_vec();
+
+    // m_prime = hash(msg) || i2osp(ctr,1)
+    m_prime.append(&mut i2osp(ctr, 1));
+    let mut out: Vec<Fq> = vec![];
+    for i in 1..=m {
+        let mut t: Vec<u8> = vec![];
+        for j in 1..=hash_reps {
+            // hash_fn( msg' || I2OSP(i, 1) || I2OSP(j, 1) )
+            let mut tmp = m_prime.clone();
+            tmp.append(&mut i2osp(i, 1));
+            tmp.append(&mut i2osp(j, 1));
+
+            let mut hasher = sha2::Sha256::new();
+            let hashinput = &tmp[..];
+            hasher.input(hashinput);
+            let tmp = hasher.result();
+
+            // append the hash output to t
+            t.append(&mut tmp.as_ref().to_vec());
+        }
+
+        // compute e % r
+        let mut e = U512::from(&t[..]);
+        e = e % q;
+
+        // convert the output into a Fr element
+        let mut tslide: [u8; 64] = [0; 64];
+        let bytes: &mut [u8] = tslide.as_mut();
+        e.to_big_endian(bytes);
+        out.push(
+            Fq::from_repr(FqRepr([
+                u64::from_be_bytes([
+                    bytes[56], bytes[57], bytes[58], bytes[59], bytes[60], bytes[61], bytes[62],
+                    bytes[63],
+                ]),
+                u64::from_be_bytes([
+                    bytes[48], bytes[49], bytes[50], bytes[51], bytes[52], bytes[53], bytes[54],
+                    bytes[55],
+                ]),
+                u64::from_be_bytes([
+                    bytes[40], bytes[41], bytes[42], bytes[43], bytes[44], bytes[45], bytes[46],
+                    bytes[47],
+                ]),
+                u64::from_be_bytes([
+                    bytes[32], bytes[33], bytes[34], bytes[35], bytes[36], bytes[37], bytes[38],
+                    bytes[39],
+                ]),
+                u64::from_be_bytes([
+                    bytes[31], bytes[30], bytes[29], bytes[28], bytes[27], bytes[26], bytes[25],
+                    bytes[24],
+                ]),
+                u64::from_be_bytes([
+                    bytes[23], bytes[22], bytes[21], bytes[20], bytes[19], bytes[18], bytes[17],
+                    bytes[16],
+                ]),
+            ]))
+            .unwrap(),
+        );
+    }
+
+    out
+}
+
 // converting an u8 integer into i2osp form
 #[allow(dead_code)]
 fn i2osp(int: u8, len: usize) -> Vec<u8> {
@@ -114,18 +200,18 @@ fn i2osp(int: u8, len: usize) -> Vec<u8> {
 }
 
 #[allow(dead_code)]
-fn hp(msg: &[u8], ctr: u8) -> Vec<Fr> {
-    hash_to_field(msg, ctr, 1, 2)
+pub fn hp(msg: &[u8], ctr: u8) -> Vec<Fq> {
+    hash_to_field_fq(msg, ctr, 1, 2)
 }
 
 #[allow(dead_code)]
-fn hp2(msg: &[u8], ctr: u8) -> Vec<Fr> {
-    hash_to_field(msg, ctr, 2, 2)
+pub fn hp2(msg: &[u8], ctr: u8) -> Vec<Fq> {
+    hash_to_field_fq(msg, ctr, 2, 2)
 }
 
 #[test]
-fn test_hash_to_field() {
-    let t = hash_to_field(b"11223344556677889900112233445566", 0, 1, 2);
+fn test_hash_to_field_fr() {
+    let t = hash_to_field_fr(b"11223344556677889900112233445566", 0, 1, 2);
 
     assert_eq!(
         t,

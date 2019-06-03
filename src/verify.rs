@@ -39,11 +39,11 @@ pub fn verification_with_vector(
             (
                 &(G1::one().into_affine().prepare()),
                 &(sigma1.into_affine().prepare()),
-		// Hoeteck: I think this is easier to read as sigma1 -> sigma.sigma1.negate()
-		// this matches 1/sigma1?
+                // Hoeteck: I think this is easier to read as sigma1 -> sigma.sigma1.negate()
+                // this matches 1/sigma1?
             ),
             (
-                &(sigma.sigma2.into_affine().prepare()),
+                &(sigma.get_sigma2().into_affine().prepare()),
                 &(g1fx.into_affine().prepare()),
             ),
             (
@@ -88,7 +88,7 @@ pub fn verification(pk: &G1, pp: &PubParam, time: &u64, msg: &Fr, sigma: &Signat
                 &(sigma1.into_affine().prepare()),
             ),
             (
-                &(sigma.sigma2.into_affine().prepare()),
+                &(sigma.get_sigma2().into_affine().prepare()),
                 &(g1fx.into_affine().prepare()),
             ),
             (
@@ -136,7 +136,7 @@ pub fn verification_pre_computed(
         [
             (
                 &(G1::one().into_affine().prepare()),
-                &(sigma.sigma1.into_affine().prepare()),
+                &(sigma.get_sigma1().into_affine().prepare()),
             ),
             (
                 &(sigma2.into_affine().prepare()),

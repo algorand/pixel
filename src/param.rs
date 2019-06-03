@@ -1,9 +1,9 @@
 // param module implements the parameters that are used
 // in pixel signature
 
-use pairing::{bls12_381::*, CurveProjective};
+use pairing::{bls12_381::G2, CurveProjective};
 use rand::{ChaChaRng, Rand, Rng, SeedableRng};
-// the depth (dimention) of the time vector
+use util::hash_to_field_fr;
 pub const CONST_D: usize = 30;
 
 // public parameter is a G2 element, followed
@@ -59,18 +59,42 @@ impl PubParam {
     }
 
     // initialize the parameter with a seed
-    // use seed to instantiate a chacha random number generator
-    // use hash_to_field to generate field elements w0, ... wd
+    // use hash_to_field (seed, ctr, 1, 2) to generate field elements w0, ... wd
     // generate parameters as g^{w_i}
     pub fn init_with_w_and_seed(seed: &[u32; 4]) -> Self {
-        let mut rng = ChaChaRng::from_seed(seed);
+        // expand the input into a byte string
+        // TODO: decide if we want to use
+        //    1. seed, or
+        //    2. hash(seed)
+        let mut input: Vec<u8> = vec![];
+        for i in 0..4 {
+            let mut tmp = seed[i];
+            for _ in 0..4 {
+                let t = (tmp & 0xff) as u8;
+                input.push(t);
+                tmp >>= 8;
+            }
+        }
 
+        // the counter for hash to field
+        let mut ctr = 0;
+
+        // generate a random Fr element from hash_to_field
+        let r = hash_to_field_fr(input.as_ref(), ctr, 1, 2);
+        // update the counter
+        ctr += 1;
+        // compute g^r
         let mut g0 = G2::one();
-        // todo: change Fr::rand() to hash_to_field function
-        g0.mul_assign(Fr::rand(&mut rng));
+        g0.mul_assign(r[0]);
+
         let mut d = [G2::one(); CONST_D];
         for i in 0..CONST_D {
-            d[i].mul_assign(Fr::rand(&mut rng));
+            // generate a random Fr element from hash_to_field
+            let r = hash_to_field_fr(input.as_ref(), ctr, 1, 2);
+            // update the counter
+            ctr += 1;
+            // compute g^r
+            d[i].mul_assign(r[0]);
         }
         PubParam { g0: g0, glist: d }
     }

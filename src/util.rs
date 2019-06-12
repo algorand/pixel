@@ -114,7 +114,7 @@ pub fn hash_to_field_fq(
     hash_reps: u8,
 ) -> Vec<Fq> {
     // hard coded modulus q
-    // decimal: 250150597201354212088611864108494009784805176246187992833253633507751978155677366527667976820563479002368392034986
+    // decimal: 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
     // hex: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
     let q = U512::from([
         0, 0, 0, 00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a, 0x01, 0x11, 0xea, 0x39, 0x7f, 0xe6,
@@ -122,6 +122,8 @@ pub fn hash_to_field_fq(
         0x12, 0xbf, 0x67, 0x30, 0xd2, 0xa0, 0xf6, 0xb0, 0xf6, 0x24, 0x1e, 0xab, 0xff, 0xfe, 0xb1,
         0x53, 0xff, 0xff, 0xb9, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xaa, 0xab,
     ]);
+
+    println!("q: {:?}", q);
 
     //  tmp = hash_fn(msg)
     let mut hasher = sha2::Sha256::new();
@@ -149,14 +151,17 @@ pub fn hash_to_field_fq(
             t.append(&mut tmp.as_ref().to_vec());
         }
 
-        // compute e % r
+        // compute e % q
         let mut e = U512::from(&t[..]);
         e = e % q;
+
+        println!("e: {:?}", e);
 
         // convert the output into a Fr element
         let mut tslide: [u8; 64] = [0; 64];
         let bytes: &mut [u8] = tslide.as_mut();
         e.to_big_endian(bytes);
+        println!("{:?}", bytes);
         out.push(
             Fq::from_repr(FqRepr([
                 u64::from_be_bytes([
@@ -176,12 +181,12 @@ pub fn hash_to_field_fq(
                     bytes[39],
                 ]),
                 u64::from_be_bytes([
-                    bytes[31], bytes[30], bytes[29], bytes[28], bytes[27], bytes[26], bytes[25],
-                    bytes[24],
+                    bytes[24], bytes[25], bytes[26], bytes[27], bytes[28], bytes[29], bytes[30],
+                    bytes[31],
                 ]),
                 u64::from_be_bytes([
-                    bytes[23], bytes[22], bytes[21], bytes[20], bytes[19], bytes[18], bytes[17],
-                    bytes[16],
+                    bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22],
+                    bytes[23],
                 ]),
             ]))
             .unwrap(),
@@ -216,6 +221,42 @@ fn test_hash_to_field_fr() {
     assert_eq!(
         t,
         vec![Fr::from_repr(FrRepr([
+            0xb7e588b4fe9899e4,
+            0x80fe5eb14ff08fe5,
+            0xdb70e1c88efa851e,
+            0x414e2c2a330cf94e,
+        ]))
+        .unwrap()],
+        "error hash to field"
+    );
+
+    // // test vectors from the draft
+    // // t1 = ""
+    // let t1 = hash_to_field_fr(b"", 0, 1, 2);
+    //
+    // assert_eq!(
+    //     t1,
+    //     vec![Fr::from_repr(FrRepr([
+    //         0xb7e588b4fe9899e4,
+    //         0x80fe5eb14ff08fe5,
+    //         0xdb70e1c88efa851e,
+    //         0x414e2c2a330cf94e,
+    //     ]))
+    //     .unwrap()],
+    //     "error hash to field"
+    // );
+
+}
+
+#[test]
+fn test_hash_to_field_fp() {
+    let t = hash_to_field_fq(b"11223344556677889900112233445566", 0, 1, 2);
+
+    assert_eq!(
+        t,
+        vec![Fq::from_repr(FqRepr([
+            0,
+            0,
             0xb7e588b4fe9899e4,
             0x80fe5eb14ff08fe5,
             0xdb70e1c88efa851e,

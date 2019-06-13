@@ -20,6 +20,7 @@ group_order = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
 
 # param_gen returns a list of random g2 elements are the public parameter
 def param_gen(d):
+    pp = []
     for i in range(d+1):
         field_element = ZZ.random_element(0, group_order)
         group_element = field_element * g2gen

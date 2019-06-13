@@ -7,7 +7,6 @@ try:
     from __sage__g2_common import print_g2_hex
     from __sage__opt_sswu_g1 import map2curve_osswu
     from __sage__param import param_gen, const_d, group_order
-
 except ImportError:
     sys.exit("Error loading preprocessed sage files. Try running `make clean pyfiles`")
 
@@ -89,15 +88,50 @@ def subkey_gen(pp, g2a, time_vec):
 
 
 def subkey_delegate(subkey, pp, time_stamp):
-    time_vec = time2vec(time_stamp, const_d)
+    print "============================"
+    print "begin subkey delegation"
 
+    time_vec = time2vec(time_stamp, const_d)
+    print "subkey", subkey
+
+    # right side
     rightside = subkey_gen(pp, 0, time_vec)
 
     print time_vec
 
+    print "right side"
     for i in range (len(rightside)):
         print rightside[i]
 
+    # left side
+    leftside = copy(subkey[0])
+    xlen = gen_vec_x_len(leftside)
+
+    for i in range(xlen, len(time_vec)):
+        tmp= time_vec[i]* pp[i+1]
+        leftside[1] = leftside[1] + tmp
+
+    for i in range(len(time_vec)):
+        leftside[i+2] = 0*g2gen
+
+    print "left side"
+    for i in range (len(leftside)):
+        print leftside[i]
+
+    for i in range (len(leftside)):
+        if (leftside[i]!= None ) and (rightside[i] != None) :
+            leftside[i] = leftside[i] + rightside[i]
+    print "final"
+    for i in range (len(leftside)):
+        print leftside[i]
+
+    print "end subkey delegation"
+    print "============================"
+
+    return (leftside, time_stamp)
+
+def sk_delegate(sk, pp, time_stamp):
+    print "todo"
 
 if __name__ == "__main__":
     def main():
@@ -105,9 +139,9 @@ if __name__ == "__main__":
         pp = param_gen(const_d)
         # get the alpha keys
         keypair = key_gen_root(pp)
-        print "pp:", pp
+        print "pp:", len(pp), pp
         print "pk:", keypair[0]
         print "sk:", keypair[1]
-        subkey_delegate(keypair[1], pp,4)
-
+        newsubkey  = subkey_delegate(keypair[1][0], pp,4)
+        print "new subkey:", newsubkey
     main()

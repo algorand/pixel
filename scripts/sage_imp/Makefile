@@ -24,5 +24,9 @@ sig_%: bls_sig_%.sage pyfiles
 hash_%: opt_sswu_%.sage pyfiles
 	sage $< -T ../test-vectors/$(TEST_INPUTS) $(DFLAG) | tee $<_$(TEST_INPUTS)_$(DEBUG).log
 
+pixel: param.sage keygen.sage pyfiles
+	sage param.sage
+	sage keygen.sage
+
 clean:
-	rm -f __sage__*.py *.pyc *.sage.py *.log
+	rm -f __sage__*.py *.pyc *.sage.py *.log *.sobj

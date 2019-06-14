@@ -1,6 +1,7 @@
 from hash_to_field import hash_to_field
 from util import print_iv, get_cmdline_options
 from tree_time import *
+from pairing import *
 try:
     from __sage__bls_sig_common import g1suite, g1gen, g2gen, print_test_vector, prepare_msg
     from __sage__g1_common import q, print_g1_hex, print_iv_g1

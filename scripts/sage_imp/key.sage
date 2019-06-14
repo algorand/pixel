@@ -6,9 +6,15 @@ try:
     from __sage__g1_common import q, print_g1_hex, print_iv_g1
     from __sage__g2_common import print_g2_hex
     from __sage__opt_sswu_g1 import map2curve_osswu
-    from __sage__param import param_gen, const_d, group_order
+    from __sage__param import param_gen, const_d, group_order, PubParam, g2zero
 except ImportError:
     sys.exit("Error loading preprocessed sage files. Try running `make clean pyfiles`")
+
+
+class SubSecretKeys():
+    def __init__(self):
+        self.g2r = g2zero
+
 
 
 # key_gen_alpha takes an input public parameter pp

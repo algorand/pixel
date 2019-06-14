@@ -17,6 +17,16 @@ const_d = 3
 # group order r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
 # or decimal 52435875175126190479447740508185965837690552500527637822603658699938581184513
 group_order = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+# decimal: 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
+# hex: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+modulus = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+
+cofactor = 0x396C8C005555E1568C00AAAB0000AAAB
+
+trace =  modulus-group_order*cofactor+1
+
+
+g2zero = 0*g2gen
 
 # param_gen returns a list of random g2 elements are the public parameter
 def param_gen(d):
@@ -28,6 +38,23 @@ def param_gen(d):
     return pp
 
 
+class PubParam:
+    def __init__(self):
+        self.h = g2zero
+        self.hlist = [g2zero for _ in range (const_d)]
+
+    def gen(self):
+        self.h = ZZ.random_element(0, group_order) * g2gen
+        self.hlist = [ZZ.random_element(0, group_order) * g2gen for _ in range (const_d)]
+
+    def dump(self):
+        print ""
+        print "=============================="
+        print "printing public param"
+        print "h ", self.h
+        for i in range (const_d):
+            print "h", i, self.hlist[i]
+        print "=============================="
 
 if __name__ == "__main__":
     def main():
@@ -37,4 +64,8 @@ if __name__ == "__main__":
         print "param:"
         for i in range(const_d+1):
             print i, pp[i]
+        pp = PubParam()
+        print "pubparam", pp.dump()
+        pp.gen()
+        print "pubparam", pp.dump()
     main()

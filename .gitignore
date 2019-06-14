@@ -3,3 +3,4 @@ target/
 Cargo.lock
 src/keys2.rs
 *.txt
+__pycache__

@@ -11,7 +11,7 @@ except ImportError:
 
 
 # depth of the tree
-const_d = 3
+const_d = 4
 
 
 # group order r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001

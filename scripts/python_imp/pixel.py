@@ -62,7 +62,7 @@ from random import randint
 if (curve == 1):
   # requires Python 3 for the underlying BLS12-381 arithmetic
   from consts import g1suite, q
-  from curve_ops import g1gen, g2gen, point_mul, point_neg, point_add, point_eq
+  from curve_ops import g1gen, g2gen, point_mul, point_neg, point_add, point_eq, from_jacobian, point_eq_coz
   from pairing import multi_pairing
   from util import get_cmdline_options, prepare_msg, print_g1_hex, print_g2_hex, print_tv_sig
 
@@ -256,12 +256,14 @@ def keygen(x=None):
     x = randint(1, q-1)
     file.write(str(x))
     file.write("\n")
-  # print "x ",x
+  print ("x ",x)
   pk = G2mul(g2,x)   ## g2^x over G2
+  print ("pk", from_jacobian(pk))
+
   ## tsk_empty = randomize(1, h^x, 1, ..., 1)
   # print "hx ", h, x, h*x
   #tsk0 = [0] + [h * x] + D*[0]
-  tsk0 =  tkey_rand([G1mul(h,0)] + [G1mul(h,x)] + D*[G1mul(h,0)], []) ## G2 x G1^{D+1}
+  tsk0 =  tkey_rand([G2mul(h,0)] + [G1mul(h,x)] + D*[G1mul(h,0)], []) ## G2 x G1^{D+1}
   sk = ([], [tsk0])
   return (pk, sk)
 
@@ -319,6 +321,11 @@ def verify(pk, tv, M, sig):
                    [G2neg(g2), pk, sig[0] ] )
 
 def test():
+      g2gen2 = G2mul(g2gen,2)
+      print ("g2gen", g2gen)
+      print ("g2gen*2", g2gen2)
+      print ("g2gen2 jacob", from_jacobian(g2gen2))
+
       x = randint(1, q-1)
       file.write(str(x))
       file.write("\n")
@@ -327,7 +334,13 @@ def test():
       (pk, sk1) = keygen(x)
 
       print("q", q, "depth", D, "msk", x)
-      print("g2, h, h1,...,hD, ", g2, h, hv)
+      print("g2,", from_jacobian(g2))
+      print("h", from_jacobian(h))
+      for e in hv:
+          print ("hv", from_jacobian(e))
+      print ("pk", from_jacobian(pk))
+      print ("sk1", sk1)
+
       print("pk,sk1", pk, sk1)
       (vt, tskv) = sk1
       tsk0 = tskv[0]

@@ -17,7 +17,9 @@ D = 4   # depth
 def print_sk(sk):
     print "==========================="
     print "secret key"
-    print "time:", vec2time(sk[0], D), ",   time vector", sk[0]
+    t_vec = copy(sk[0])
+    time = vec2time(t_vec, D)
+    print "time:", time, ",   time vector", sk[0]
     for i in range(len(sk[1])):
         print "%d-th sub secret key" % i
         print_ssk(sk[1][i])

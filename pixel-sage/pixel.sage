@@ -101,7 +101,7 @@ def keygen(pp):
     msk = Zrrand()
     pk  = msk * g2
     r   = Zrrand()
-
+    print "randomness in key gen:", hex(r)
     time    = 1
     time_vec= time2vec(time, D)
     ssk0    = [0*g2, msk*h] + [0*g1 for _ in range (D)]
@@ -117,6 +117,9 @@ def keygen(pp):
 ## this function will (re-)randomize a sub secret key
 def randomization(sub_secret_key, pp, time_vec, randomness=None):
 
+    print "time vector within randomization", time_vec
+    print "randomness", hex(randomness)
+
     # extract public parameters
     g1, g2, h, hv = pp
     # generate new randomness
@@ -126,7 +129,7 @@ def randomization(sub_secret_key, pp, time_vec, randomness=None):
     # tmp = hv[0] * prod_i h[i]^time_vec[i]
     tmp = hv[0]
     for i in range(len(time_vec)):
-        tmp += hv[i] * time_vec[i]
+        tmp += hv[i+1] * time_vec[i]
 
     # ssk[0] += r * g2
     sub_secret_key[0] += randomness*g2
@@ -136,44 +139,44 @@ def randomization(sub_secret_key, pp, time_vec, randomness=None):
     # ssk[2... len(time_vec)] unchanged
 
     # ssk[len(time_vec)+2, D+2] += r * h[i]
-    for i in range(len(time_vec), D):
-        sub_secret_key[i+2] += randomness*hv[i+1]
+    for i in range(0, len(sub_secret_key)-2):
+        sub_secret_key[i+2] += randomness*hv[len(time_vec)+i+1]
 
     return sub_secret_key
 
 ## this function will delegate the sub secret key into the next time slot
 def delegate(sub_secret_key, pp, time_vec, new_time_slot):
 
-    # extract public parameters
-    g1, g2, h, hv = pp
-
-    new_time_vec = time_vec + [new_time_slot]
-
-    # tmp = hv[0] * prod_i h[i]^time_vec[i]
-    tmp = sub_secret_key[1]
+    tmp = sub_secret_key[2]*new_time_slot[0]
+    sub_secret_key[1] += tmp
+    del sub_secret_key[2]
 
     return sub_secret_key
 
+
+## this function updates the secret key at time t to time t+1
 def key_update(sk, pp):
-    time_vec = sk[0]
-    ssk_vec = sk[1]
-    time = vec2time(time_vec, D)
-    print time, "time vec", time_vec
-#    print sk
+    time_vec = copy(sk[0])
+    ssk_vec = copy(sk[1])
+    new_t = vec2time(time_vec, D) + 1
+
     if (len(time_vec)<D-1):
         ## not a leaf node
         ## so we delegate into two leaf nodes
 
         ## for the left leaf node we will re-use the randomness
-        ssk_left = delegate(ssk_vec[0], pp, time_vec, [1])
+        ssk_left = delegate(copy(ssk_vec[0]), pp, copy(time_vec), [1])
         print "ssk left"
         print_ssk(ssk_left)
         ## for the right lead node we will need new randomness
         r = Zrrand()
-        ssk_right = delegate(ssk_vec[0], pp, time_vec, [2])
-        ssk_right = randomization(ssk_right, pp, time_vec + [2], r)
-        print "ssk right"
-        print_ssk(ssk_right)
+        print "randomness in key update:", hex(r)
+        tmp = delegate(copy(ssk_vec[0]), pp, copy(time_vec), [2])
+        print "delegate"
+        print_ssk(tmp)
+        ssk_right = randomization(tmp, pp, copy(time_vec) + [2], r)
+#        print "ssk right"
+#        print_ssk(ssk_right)
         ## form the new secret key
         ssk_vec[0] = ssk_left
         ssk_vec.append(ssk_right)
@@ -191,17 +194,27 @@ def key_update(sk, pp):
             del ssk_vec[0]
 
     ## advance the time to the next slot
-    time_vec = time2vec(time+1, D)
-    print "time vec", time_vec, time+1
-    return (time_vec, ssk_vec)
+    new_t_vec = time2vec(new_t, D)
+
+    return (new_t_vec, ssk_vec)
 
 pp = param_gen()
 print_param(pp)
 pk, sk = keygen(pp)
 print_sk(sk)
-sk2 = key_update(sk,pp)
-print_sk(sk2)
-sk3 = key_update(sk,pp)
-print_sk(sk3)
+
+print ""
+print ""
+sk = key_update(sk,pp)
+
+print_sk(sk)
+print ""
+print ""
+
+sk = key_update(sk,pp)
+#print_sk(sk)
+
+for i in range(1,2^D-2):
+    print i, time2vec(i, D)
 
 print "finished"

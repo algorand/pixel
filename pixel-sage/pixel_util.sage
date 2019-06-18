@@ -10,6 +10,10 @@ from hashlib import sha256
 from __sage__g1_common import print_g1_hex, q
 from __sage__g2_common import print_g2_hex
 
+
+### public constants
+D = 4   # depth
+
 def print_sk(sk):
     print "==========================="
     print "secret key"

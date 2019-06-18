@@ -1,4 +1,5 @@
-from __sage__pixel_util import bls_curve_path, time2vec, vec2time
+from __sage__pixel_util import  bls_curve_path, time2vec, vec2time,\
+                                print_ssk, print_sk, D
 
 import sys
 sys.path.insert(0, bls_curve_path)
@@ -30,10 +31,6 @@ if (testvec == 2):
     param_rand = 1000
     # keygen/keyupdate/signature randomness increment from 0
     rand = 2
-
-
-### public constants
-D = 4   # depth
 
 
 # testvec = 0: random r
@@ -146,12 +143,65 @@ def randomization(sub_secret_key, pp, time_vec, randomness=None):
 
 ## this function will delegate the sub secret key into the next time slot
 def delegate(sub_secret_key, pp, time_vec, new_time_slot):
+
+    # extract public parameters
+    g1, g2, h, hv = pp
+
     new_time_vec = time_vec + [new_time_slot]
 
+    # tmp = hv[0] * prod_i h[i]^time_vec[i]
+    tmp = sub_secret_key[1]
 
+    return sub_secret_key
+
+def key_update(sk, pp):
+    time_vec = sk[0]
+    ssk_vec = sk[1]
+    time = vec2time(time_vec, D)
+    print time, "time vec", time_vec
+#    print sk
+    if (len(time_vec)<D-1):
+        ## not a leaf node
+        ## so we delegate into two leaf nodes
+
+        ## for the left leaf node we will re-use the randomness
+        ssk_left = delegate(ssk_vec[0], pp, time_vec, [1])
+        print "ssk left"
+        print_ssk(ssk_left)
+        ## for the right lead node we will need new randomness
+        r = Zrrand()
+        ssk_right = delegate(ssk_vec[0], pp, time_vec, [2])
+        ssk_right = randomization(ssk_right, pp, time_vec + [2], r)
+        print "ssk right"
+        print_ssk(ssk_right)
+        ## form the new secret key
+        ssk_vec[0] = ssk_left
+        ssk_vec.append(ssk_right)
+    else:
+        ## a leaf node
+        if time_vec[len(time_vec)-1] == 1:
+            ## this is a left leaf node
+            ## replace the first ssk (left leaf) with the last ssk (right leaf)
+            ## and remove the last ssk
+            ssk_vec[0] = ssk_vec[len(ssk_vec)-1]
+            del ssk_vec[len(ssk_vec)-1]
+        else:
+            ## this is a right leaf node
+            ## remove the first ssk (right leaf)
+            del ssk_vec[0]
+
+    ## advance the time to the next slot
+    time_vec = time2vec(time+1, D)
+    print "time vec", time_vec, time+1
+    return (time_vec, ssk_vec)
 
 pp = param_gen()
 print_param(pp)
 pk, sk = keygen(pp)
 print_sk(sk)
+sk2 = key_update(sk,pp)
+print_sk(sk2)
+sk3 = key_update(sk,pp)
+print_sk(sk3)
+
 print "finished"

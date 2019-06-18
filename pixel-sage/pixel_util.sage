@@ -32,7 +32,19 @@ def print_ssk(ssk):
         print "g1 elements"
         print_g1_hex(ssk[i])
 
-
+def print_param(pp):
+    print "==========================="
+    print "parameters"
+    print "g1"
+    print_g1_hex(pp[0])
+    print "g2"
+    print_g2_hex(pp[1])
+    print "h"
+    print_g1_hex(pp[2])
+    for i in range(len(pp[3])):
+        print "h%d"%i
+        print_g1_hex(pp[3][i])
+    print "==========================="
 
 ## an instantiation of the G_0 function
 ## output = hash_to_field("G0_hash"| input, 0, q, Sha256, 1)

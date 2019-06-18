@@ -1,10 +1,12 @@
 from __sage__pixel_util import  bls_curve_path, time2vec, vec2time,\
-                                print_ssk, print_sk, D
+                                print_ssk, print_sk, print_param, D
 
+
+## change bls_curve_path to point to your bls_sig_ref's sage code
 import sys
 sys.path.insert(0, bls_curve_path)
 
-from __sage__g1_common import print_g1_hex
+from __sage__g1_common import print_g1_hex, q
 from __sage__g2_common import print_g2_hex
 from __sage__bls_sig_common import g1gen, g2gen
 
@@ -17,27 +19,27 @@ testvec = 1
 #     from __sage__bls_sig_common import g1gen, g2gen
 
 
-if (testvec == 1):
+if testvec == 1:
     from __sage__pixel_util import hash_1, hash_2
-    # the seed to instantiate G_0 and G_1 for parameters
-    param_seed = bytes("this is the seed for parameters"    )
-    # the seed to instantiate G_0 and G_1 for randomness
-    seed = bytes("this is the seed for randomness")
-    # output to the file
-    file = open("test_vector1.txt", "w")
-if (testvec == 2):
-    file = open("test_vector2.txt", "w")
-    # parameter randomness increment from 1000
-    param_rand = 1000
-    # keygen/keyupdate/signature randomness increment from 0
-    rand = 2
 
+
+
+# the seed to instantiate G_0 and G_1 for parameters
+param_seed = bytes("this is the seed for parameters"    )
+# the seed to instantiate G_0 and G_1 for randomness
+seed = bytes("this is the seed for randomness")
+# parameter randomness increment from 1000
+param_rand = 1000
+# keygen/keyupdate/signature randomness increment from 0
+rand = 2
+# output to the file
+file = open("test_vector1.txt", "w")
 
 # testvec = 0: random r
 # testvec = 1: r from hash function
 # testvec = 2: r increases from a fixed value
 def Zrrand():
-    if testvec ==1:
+    if testvec == 1:
         global seed
         r = hash_1(seed)
         seed = hash_2(seed)
@@ -50,8 +52,9 @@ def Zrrand():
             r = ZZ.random_element(1,q-1)
     return r
 
+# output a *random* G1 element
 def G1rand():
-    if testvec ==1:
+    if testvec == 1:
         global param_seed
         r = hash_1(param_seed)
         param_seed = hash_2(param_seed)
@@ -64,8 +67,9 @@ def G1rand():
             r = ZZ.random_element(1,q-1)
     return r*g1gen
 
+# output a *random* G2 element
 def G2rand():
-    if testvec ==1:
+    if testvec == 1:
         global param_seed
         r = hash_1(param_seed)
         param_seed = hash_2(param_seed)
@@ -78,6 +82,9 @@ def G2rand():
             r = ZZ.random_element(1,q-1)
     return r*g2gen
 
+
+## parameter generation functions
+## to decide: if we want to use constant group generators
 def param_gen():
     g1 = G1rand()
     g2 = G2rand()
@@ -85,17 +92,10 @@ def param_gen():
     hv = [G1rand() for _ in range(D+1)]
     return (g1, g2, h, hv)
 
-def print_param(pp):
-    print "g1"
-    print_g1_hex(pp[0])
-    print "g2"
-    print_g2_hex(pp[1])
-    print "h"
-    print_g1_hex(pp[2])
-    for i in range(len(pp[3])):
-        print "h%d"%i
-        print_g1_hex(pp[3][i])
 
+## key generation function
+## input public parameter pp
+## output key pair (pk, sk)
 def keygen(pp):
     g1, g2, h, hv = pp
     msk = Zrrand()
@@ -114,11 +114,8 @@ def keygen(pp):
     return (pk, sk)
 
 
-## this function will (re-)randomize a sub secret key
+## this function will (re-)randomize a sub secret key using a random field element
 def randomization(sub_secret_key, pp, time_vec, randomness=None):
-
-    print "time vector within randomization", time_vec
-    print "randomness", hex(randomness)
 
     # extract public parameters
     g1, g2, h, hv = pp
@@ -154,67 +151,65 @@ def delegate(sub_secret_key, pp, time_vec, new_time_slot):
     return sub_secret_key
 
 
-## this function updates the secret key at time t to time t+1
+## this function updates the *secret key at time t* to time t+1
 def key_update(sk, pp):
     time_vec = copy(sk[0])
     ssk_vec = copy(sk[1])
-    new_t = vec2time(time_vec, D) + 1
+    new_t = vec2time(copy(time_vec), D) + 1
 
+    ## we can determine if a node is a leaf node or not by
+    ## checking the time vector
     if (len(time_vec)<D-1):
         ## not a leaf node
         ## so we delegate into two leaf nodes
 
-        ## for the left leaf node we will re-use the randomness
+        ## for the left leaf node we will always re-use the randomness
         ssk_left = delegate(copy(ssk_vec[0]), pp, copy(time_vec), [1])
-        print "ssk left"
-        print_ssk(ssk_left)
+
         ## for the right lead node we will need new randomness
         r = Zrrand()
-        print "randomness in key update:", hex(r)
         tmp = delegate(copy(ssk_vec[0]), pp, copy(time_vec), [2])
-        print "delegate"
-        print_ssk(tmp)
         ssk_right = randomization(tmp, pp, copy(time_vec) + [2], r)
-#        print "ssk right"
-#        print_ssk(ssk_right)
+
         ## form the new secret key
+        ## the sub_secret_keys are ALWAYS sorted in chronological order
+        ## and there is NO empty sub_secret_keys
+        ## this is different from pixel-python
+        ## note that this does not change the actual secret key
         ssk_vec[0] = ssk_left
-        ssk_vec.append(ssk_right)
+        ssk_vec.insert(1,ssk_right)
     else:
         ## a leaf node
-        if time_vec[len(time_vec)-1] == 1:
-            ## this is a left leaf node
-            ## replace the first ssk (left leaf) with the last ssk (right leaf)
-            ## and remove the last ssk
-            ssk_vec[0] = ssk_vec[len(ssk_vec)-1]
-            del ssk_vec[len(ssk_vec)-1]
-        else:
-            ## this is a right leaf node
-            ## remove the first ssk (right leaf)
-            del ssk_vec[0]
+        ## delegation is simply removing this sub secret key
+        del ssk_vec[0]
 
     ## advance the time to the next slot
     new_t_vec = time2vec(new_t, D)
 
     return (new_t_vec, ssk_vec)
 
-pp = param_gen()
-print_param(pp)
-pk, sk = keygen(pp)
-print_sk(sk)
+## running test with testvec = flag
+def test(flag):
+    global testvec
+    testvec = flag
+    pp = param_gen()
+    print_param(pp)
+    pk, sk = keygen(pp)
+    for i in range(2^D-2):
+        print ""
+        print ""
+        print "the %d-th update"%(i+1)
+        sk = key_update(sk, pp)
+        print_sk(sk)
+    print "finished"
 
-print ""
-print ""
-sk = key_update(sk,pp)
+if __name__ == "__main__":
+    def main():
+        test(0)
+        orig_stdout = sys.stdout
+        sys.stdout = file
+        test(1)
+        sys.stdout = orig_stdout
+        test(2)
 
-print_sk(sk)
-print ""
-print ""
-
-sk = key_update(sk,pp)
-#print_sk(sk)
-
-for i in range(1,2^D-2):
-    print i, time2vec(i, D)
-
-print "finished"
+    main()

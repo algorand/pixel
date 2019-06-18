@@ -46,6 +46,15 @@ def print_param(pp):
         print_g1_hex(pp[3][i])
     print "==========================="
 
+def print_sig(sig):
+    print "==========================="
+    print "signature"
+    print "sigma1"
+    print_g2_hex(sig[0])
+    print "sigma2"
+    print_g1_hex(sig[1])
+    print "==========================="
+
 ## an instantiation of the G_0 function
 ## output = hash_to_field("G0_hash"| input, 0, q, Sha256, 1)
 def hash_1(seed):

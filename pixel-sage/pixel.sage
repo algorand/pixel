@@ -1,5 +1,6 @@
 from __sage__pixel_util import  bls_curve_path, time2vec, vec2time,\
-                                print_ssk, print_sk, print_param, D
+                                print_ssk, print_sk, print_param, D,\
+                                print_sig
 
 
 ## change bls_curve_path to point to your bls_sig_ref's sage code
@@ -101,16 +102,21 @@ def keygen(pp):
     msk = Zrrand()
     pk  = msk * g2
     r   = Zrrand()
-    print "randomness in key gen:", hex(r)
+
     time    = 1
     time_vec= time2vec(time, D)
     ssk0    = [0*g2, msk*h] + [0*g1 for _ in range (D)]
-
-    print time_vec
-    print hex(r)
-    print hex(msk)
     ssk0    = randomization(ssk0, pp, time_vec, r)
     sk      = (time_vec, [ssk0])
+
+    print "randomness in key gen:", hex(r)
+    print time_vec
+    print "master secret key", hex(msk)
+    print "public key"
+    print_g2_hex(pk)
+    print "secret key"
+    print_sk(sk)
+
     return (pk, sk)
 
 
@@ -168,6 +174,8 @@ def key_update(sk, pp):
 
         ## for the right lead node we will need new randomness
         r = Zrrand()
+        print "randomness in update", hex(r)
+
         tmp = delegate(copy(ssk_vec[0]), pp, copy(time_vec), [2])
         ssk_right = randomization(tmp, pp, copy(time_vec) + [2], r)
 
@@ -188,6 +196,31 @@ def key_update(sk, pp):
 
     return (new_t_vec, ssk_vec)
 
+def sign(sk, pp, M):
+    g2 = pp[1]
+    hlist = pp[3]
+    r = Zrrand()
+    print "randomness in signing", hex(r)
+
+    (time_vec, ssk_vec) = sk
+    ssk = ssk_vec[0]
+
+    # sig1 = ssk[0] * g2^r
+    sigma1 = ssk[0] + g2*r
+
+    # sig2 = ssk[0] + ssk[l]^M + tmp
+    sigma2 = ssk[1] + ssk[len(ssk)-1]*M
+
+    # tmp = (h0 * \sum h_i^t_i)^r
+    tmp = hlist[0]
+    for i in range(len(time_vec)):
+        print i, time_vec[i]
+        tmp += time_vec[i]*hlist[i+1]
+    tmp += hlist[D]*M
+    tmp *= r
+    sigma2 += tmp
+    return (sigma1, sigma2)
+
 ## running test with testvec = flag
 def test(flag):
     global testvec
@@ -195,12 +228,17 @@ def test(flag):
     pp = param_gen()
     print_param(pp)
     pk, sk = keygen(pp)
+    sig = sign(sk, pp, 3)
+    print_sig(sig)
     for i in range(2^D-2):
         print ""
         print ""
         print "the %d-th update"%(i+1)
         sk = key_update(sk, pp)
         print_sk(sk)
+        sig = sign(sk, pp, 3)
+        print_sig(sig)
+
     print "finished"
 
 if __name__ == "__main__":

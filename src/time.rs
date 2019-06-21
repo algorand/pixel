@@ -59,10 +59,18 @@ impl TimeVec {
         for e in self.get_time_vec() {
             vec.push(Fr::from_repr(FrRepr([e as u64, 0, 0, 0])).unwrap());
         }
-
         vec
     }
+
     /// checks if self is a prefix of the other time vector
+    /// exmample
+    /// ```
+    /// use pixel::time::TimeVec;
+    /// let t1 = TimeVec::init(1,3);
+    /// let t2 = TimeVec::init(2,3);
+    /// assert_eq!(t1.is_prefix(&t2), true);
+    /// ```
+
     pub fn is_prefix(&self, other: &Self) -> bool {
         if self.time >= other.time {
             return false;

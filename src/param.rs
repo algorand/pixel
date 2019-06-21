@@ -1,33 +1,46 @@
 use pairing::bls12_381::Fr;
-use pairing::{CurveAffine, CurveProjective};
+use pairing::CurveProjective;
 use std::fmt;
 use util;
 use PixelG1;
 use PixelG2;
 
-pub const CONST_D: usize = 4;
+/// This is a global constant which determines the maximum time
+/// stamp, i.e. `max_time_stamp = 2^D-1`.
+/// For testing we use a small depth d = 5.
+#[cfg(debug_assertions)]
+pub const CONST_D: usize = 5;
 
-/// a list of d+1 G2 elements
+/// This is a global constant which determines the maximum time
+/// stamp, i.e. `max_time_stamp = 2^D-1`.
+/// For deployment we use a depth = 32 which should be more than
+/// enough in practise.
+#[cfg(not(debug_assertions))]
+pub const CONST_D: usize = 32;
+
+/// This is a list of PixelG1 elements with arbitrary length,
+/// a wrapper of `Vec<PixelG1>`.
 pub type Hlist = Vec<PixelG1>;
 
-pub trait HlistFn
-where
-    Self: std::marker::Sized,
-{
-    /// generate a list of zero G2 elements
-    fn zero() -> Self;
-
-    /// generate a list of one G2 elements
-    fn one() -> Self;
-}
-impl HlistFn for Hlist {
-    fn zero() -> Self {
-        [PixelG1::zero(); CONST_D + 1].to_vec()
-    }
-    fn one() -> Self {
-        [PixelG1::one(); CONST_D + 1].to_vec()
-    }
-}
+// /// convenient functions for Hlist.
+// pub trait HlistFn
+// where
+//     Self: std::marker::Sized,
+// {
+//     /// This fucntion generates a list of d+1 zero elements in PixelG2.
+//     fn zero() -> Self;
+//
+//     /// This fucntion generates a list of d+1 one elements in PixelG2.
+//     fn one() -> Self;
+// }
+// impl HlistFn for Hlist {
+//     fn zero() -> Self {
+//         [PixelG1::zero(); CONST_D + 1].to_vec()
+//     }
+//     fn one() -> Self {
+//         [PixelG1::one(); CONST_D + 1].to_vec()
+//     }
+// }
 
 /// public parameter consists of the following:
 /// g1, g2: group generators (may be randomized)
@@ -42,22 +55,22 @@ pub struct PubParam {
 }
 
 impl PubParam {
-    /// return the PixelG1 generator
+    /// Returns the PixelG1 generator
     pub fn get_g1(&self) -> PixelG1 {
         return self.g1;
     }
 
-    /// return the PixelG2 generator
+    /// Returns the PixelG2 generator
     pub fn get_g2(&self) -> PixelG2 {
         return self.g2;
     }
 
-    /// return the first PixelG2 element of the public param
+    /// Returns the h parmeter, i.e., the first PixelG2 element of the public param
     pub fn get_h(&self) -> PixelG1 {
         return self.h;
     }
 
-    /// return the list of PixelG2 elements of the public param
+    /// Returns the list of PixelG2 elements of the public param
     pub fn get_hlist(&self) -> Hlist {
         return self.hlist.clone();
     }
@@ -83,6 +96,7 @@ impl PubParam {
             "the seed length {} is not long enough (required as least 32 bytes)",
             seed.len()
         );
+
         let mut ctr = 0;
 
         // if feature = use_rand_generators then we use randomized generators
@@ -104,6 +118,8 @@ impl PubParam {
             g2.mul_assign(r);
             g2
         };
+
+        // else we set the generators to the default ones from bls12-381 curve
         #[cfg(not(feature = "use_rand_generators"))]
         let g1 = PixelG1::one();
         #[cfg(not(feature = "use_rand_generators"))]
@@ -120,7 +136,7 @@ impl PubParam {
         ctr += 1;
         let mut h = PixelG1::one();
         h.mul_assign(r[0]);
-        let mut hlist: Hlist = HlistFn::one();
+        let mut hlist: Hlist = [PixelG1::one(); CONST_D + 1].to_vec();
         for i in 0..CONST_D + 1 {
             let r: Vec<Fr> =
                 util::HashToField::hash_to_field(seed, ctr, 1, util::HashIDs::Sha256, 2);
@@ -156,11 +172,4 @@ impl fmt::Debug for PubParam {
         }
         write!(f, "================================\n")
     }
-}
-
-#[test]
-fn test_param_gen() {
-    let pp = PubParam::init(b"this is a long and determinstic seed");
-    println!("{:?}", pp);
-    //    assert_eq!(1, 2);
 }

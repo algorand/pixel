@@ -31,7 +31,3 @@ pk_in_g2 = []
 # as opposite to default group generators
 # to enable, use `cargo build --features = use_rand_generators`
 use_rand_generators = []
-
-
-# this flag enables some long tests and benchmarks
-long_tests = []

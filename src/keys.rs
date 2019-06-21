@@ -1,9 +1,7 @@
-
 use ff::PrimeField;
 use pairing::{bls12_381::Fr, CurveProjective};
 use param::PubParam;
 use param::CONST_D;
-use std::fmt::Error;
 use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
 
@@ -13,28 +11,22 @@ use PixelG2;
 use std::fmt;
 use util;
 
-#[cfg(test)]
-use pairing::CurveAffine;
+pub type PublicKey = PixelG2;
 
-#[cfg(test)]
-use ff::Field;
-#[cfg(test)]
-use pairing::{bls12_381::*, Engine};
-
-/// the keypair is a pair of public and secret keys
+/// The keypair is a pair of public and secret keys
 #[derive(Debug, Clone)]
 pub struct KeyPair {
     sk: SecretKey,
-    pk: PixelG2,
+    pk: PublicKey,
 }
 
-/// the secret key is a list of SubSecretKeys
-/// the length is arbitrary
+/// The secret key is a list of SubSecretKeys;
+/// the length of the list can be arbitrary;
+/// they are arranged in a chronological order.
 #[derive(Clone)]
 pub struct SecretKey {
     /// smallest timestamp for all subkeys
     time: TimeStamp,
-
     /// the list of the subkeys
     ssk: Vec<SubSecretKey>,
 }
@@ -48,11 +40,21 @@ impl KeyPair {
         let sk = SecretKey::init(&pp, msk);
         Self { sk: sk, pk: pk }
     }
+
+    /// Returns the public key in a `KeyPair`
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk.clone()
+    }
+
+    /// Returns the secret key in a `KeyPair`
+    pub fn get_sk(&self) -> SecretKey {
+        self.sk.clone()
+    }
 }
 
 impl SecretKey {
-    /// initialize the secret key at time stamp = 1
-    /// take the root secret alpha as the input
+    /// This function initializes the secret key at time stamp = 1.
+    /// It takes the root secret `alpha` as the input.
     pub fn init(pp: &PubParam, alpha: PixelG1) -> Self {
         // todo: replace 2 with a (deterministic) random r
         let r = Fr::from_str("2").unwrap();
@@ -62,19 +64,33 @@ impl SecretKey {
             ssk: vec![ssk],
         }
     }
-    /// return the current time stamp for the key
+
+    /// Returns the current time stamp for the key.
     pub fn get_time(&self) -> TimeStamp {
         self.time
     }
 
-    /// return the number of sub_secret_keys
+    /// Returns the number of sub_secret_keys.
     pub fn get_ssk_number(&self) -> usize {
         self.ssk.len()
     }
 
-    /// update the secret key
-    /// this function mutate the existing secret keys to the time stamp
-    /// it panics if the new time stamp is invalid
+    /// Returns the first sub secret key on the list.
+    /// Panics if the list is empty.
+    pub fn get_first_ssk(&self) -> SubSecretKey {
+        assert!(self.ssk.len() > 0, "sub secret key list is empty!");
+        self.ssk[0].clone()
+    }
+
+    /// Returns the whole list of the sub secret keys.
+    pub fn get_ssk_vec(&self) -> Vec<SubSecretKey> {
+        self.ssk.clone()
+    }
+
+    /// Updates the secret key into the corresponding time stamp.
+    /// This function mutate the existing secret keys to the time stamp.
+    /// It panics if the new time stamp is invalid (either smaller than
+    /// current time or larger than maximum time stamp).
     pub fn update(&mut self, pp: &PubParam, tar_time: TimeStamp) {
         // max time = 2^d - 1
         let max_time = (1u64 << CONST_D) - 1;
@@ -95,10 +111,10 @@ impl SecretKey {
         // step 1. find the right ssk from ssk_vec to delegate from
         // (e.g., find ssk_for_t_9)
         // and update self to that TimeStamp
-        let delegator_time = self.get_close_ssk(tar_time);
+        let delegator_time = self.get_closest_ssk(tar_time);
         self.time = delegator_time;
 
-        // automatically turned off with `build --release`
+        // debug info automatically turned off with `build --release`
         #[cfg(debug_assertions)]
         println!(
             "delegating from {} to {} using delegator time {}",
@@ -107,9 +123,13 @@ impl SecretKey {
             delegator_time
         );
 
+        // udpate self to that TimeStamp by removing all ssk-s
+        // whose time stamp is less than delegator's time
         while self.ssk[0].get_time() != delegator_time {
             self.ssk.remove(0);
         }
+
+        // there should always be at least one key left
         assert!(self.ssk.len() > 0, "something is wrong: no ssk left");
 
         // step 2. if delegator_time == tar_time then we are done
@@ -159,17 +179,17 @@ impl SecretKey {
 
         // step 5. remove the first ssk <- this was the ssk for delegator time
         self.ssk.remove(0);
-
+        self.time = self.ssk[0].get_time();
     }
 
-    /// iterate through the existing sub secret keys, find the one for which
+    /// This function iterates through the existing sub secret keys, find the one for which
     /// 1. the time stamp is the greatest within existing sub_secret_keys
     /// 2. the time stamp is no greater than tar_time
+    /// It returns this subsecretkey's time stamp
     /// e.g.:
     ///     sk {time: 2, ssks: {omited}}
     ///     sk.get_close_ssk(2, 12) = 9
-    /// returns a pointer to this subsecretkey
-    fn get_close_ssk(&self, tar_time: TimeStamp) -> TimeStamp {
+    fn get_closest_ssk(&self, tar_time: TimeStamp) -> TimeStamp {
         let mut res = &self.ssk[0];
         if res.get_time() >= tar_time {
             panic!("the input time {} is invalid", tar_time);
@@ -188,7 +208,7 @@ impl SecretKey {
 /// this function is private -- it should be used only as a subroutine to key gen function
 //  todo: decide the right way to hash the seed into master secret
 //        perhaps hash_to_field function?
-fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PixelG2, PixelG1) {
+fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PublicKey, PixelG1) {
     // make sure we have enough entropy
     assert!(
         seed.len() > 31,
@@ -216,7 +236,10 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PixelG2, PixelG1) {
 
 /// this function tests if a public key and a master secret key has a same exponent
 #[cfg(test)]
-fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
+fn validate_master_key(pk: &PublicKey, sk: &PixelG1, pp: &PubParam) -> bool {
+    use ff::Field;
+    use pairing::{bls12_381::*, CurveAffine, Engine};
+
     let mut g2 = pp.get_g2();
     g2.negate();
     let h = pp.get_h();
@@ -251,49 +274,6 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
         }
 }
 
-#[test]
-fn test_master_key() {
-    let pp = PubParam::init_without_seed();
-    let (pk, sk) = master_key_gen(b"this is a very very long seed for testing", &pp);
-    assert!(validate_master_key(&pk, &sk, &pp), "master key is invalid")
-}
-
-#[test]
-fn test_keypair() {
-    let pp = PubParam::init_without_seed();
-    let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
-    println!("{:?}", keypair);
-}
-
-#[test]
-fn test_key_update() {
-    let pp = PubParam::init_without_seed();
-    let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
-    let sk = keypair.sk;
-
-    // this double loop
-    // 1. performs key updates with all possible `start_time` and `finish_time`
-    // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
-    for j in 2..16 {
-        let mut sk2 = sk.clone();
-        sk2.update(&pp, j);
-        for i in j + 1..16 {
-            let mut sk3 = sk2.clone();
-            sk3.update(&pp, i);
-
-            #[cfg(long_tests)]
-            for ssk in sk3.ssk {
-                assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
-            }
-        }
-
-        #[cfg(long_tests)]
-        for ssk in sk2.ssk {
-            assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
-        }
-    }
-}
-
 /// convenient function to output a subsecretkey object
 impl fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -307,4 +287,76 @@ impl fmt::Debug for SecretKey {
         }
         write!(f, "================================\n")
     }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_master_key() {
+        let pp = PubParam::init_without_seed();
+        let (pk, sk) = master_key_gen(b"this is a very very long seed for testing", &pp);
+        assert!(
+            super::validate_master_key(&pk, &sk, &pp),
+            "master key is invalid"
+        )
+    }
+
+    #[test]
+    fn test_keypair() {
+        let pp = PubParam::init_without_seed();
+        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        println!("{:?}", keypair);
+    }
+
+    #[test]
+    fn test_quick_key_update() {
+        let pp = PubParam::init_without_seed();
+        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        let sk = keypair.sk;
+
+        // this double loop
+        // 1. performs key updates with all possible `start_time` and `finish_time`
+        // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
+        for j in 2..16 {
+            let mut sk2 = sk.clone();
+            sk2.update(&pp, j);
+            for ssk in sk2.ssk {
+                assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
+            }
+        }
+    }
+
+    #[ignore]
+    #[test]
+    fn test_long_key_update() {
+        let pp = PubParam::init_without_seed();
+        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        let sk = keypair.sk;
+
+        // this double loop
+        // 1. performs key updates with all possible `start_time` and `finish_time`
+        // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
+        for j in 2..16 {
+            let mut sk2 = sk.clone();
+            sk2.update(&pp, j);
+            for i in j + 1..16 {
+                let mut sk3 = sk2.clone();
+                sk3.update(&pp, i);
+
+                #[cfg(long_tests)]
+                for ssk in sk3.ssk {
+                    assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
+                }
+            }
+
+            #[cfg(long_tests)]
+            for ssk in sk2.ssk {
+                assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
+            }
+        }
+    }
+
 }

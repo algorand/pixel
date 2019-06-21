@@ -9,15 +9,6 @@ use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
 
-#[cfg(test)]
-use pairing::CurveAffine;
-
-#[cfg(test)]
-use pairing::{bls12_381::*, Engine};
-
-#[cfg(test)]
-use ff::Field;
-
 /// each SubSecretKey consists of
 /// * time: the time stamp for the current key
 /// * g1r: the randomization on G1
@@ -38,12 +29,42 @@ pub struct SubSecretKey {
 }
 
 impl SubSecretKey {
-    /// function initialize the root secret key at time stamp = 1
-    /// with input public parameters, the state of randomness, and a master secret alpha
+    /// Returns the time stamp of the sub secret key.
+    pub fn get_time(&self) -> TimeStamp {
+        self.time
+    }
+
+    /// Returns the time vector associated with the time stamp.
+    /// for the current sub secret key.
+    pub fn get_time_vec(&self) -> TimeVec {
+        TimeVec::init(self.time, CONST_D as u32)
+    }
+
+    /// Returns the first element `g^r` in a sub secret key.
+    pub fn get_g2r(&self) -> PixelG2 {
+        self.g2r.clone()
+    }
+
+    /// Returns the second element `(h0 \prod h_i^t_i )^r`
+    /// in a sub secret key.
+    pub fn get_hpoly(&self) -> PixelG1 {
+        self.hpoly.clone()
+    }
+
+    /// Returns the last coefficient of the h_vector;
+    /// a short cut used by signing algorithm.
+    /// note that by default the rest of the elements in
+    /// h_vector are private.
+    pub fn get_last_hvector_coeff(&self) -> PixelG1 {
+        self.hvector[self.hvector.len() - 1].clone()
+    }
+
+    /// This function initializes the root secret key at time stamp = 1,
+    /// with input public parameters and a master secret `alpha`.
     pub fn init(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
         let mut hlist = pp.get_hlist().clone();
 
-        // g1^r
+        // g2^r
         let mut g2r = pp.get_g2();
         g2r.mul_assign(r);
 
@@ -68,11 +89,11 @@ impl SubSecretKey {
         }
     }
 
-    /// this initialization function uses randomization
+    /// This initialization function uses (re-)randomization
     /// as a subroutine;
     /// it should generate a same subsecret key as Self::init()
     /// as long as the randomness stays the same
-    /// see test_init()
+    /// see `test_key_gen()`.
     pub fn init_from_randomization(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
         let mut s = SubSecretKey {
             // time stamp is 1 since this is the root key
@@ -85,11 +106,11 @@ impl SubSecretKey {
         s
     }
 
-    /// given a subsecrerkey,
-    /// re-randomize it with r
-    /// g2^r, (h_0 prod hj^wj)^r, h_{|w|+1}^r, ..., h_D^r
+    /// Given a subsecrerkey `sk = [g^r, (h_0 prod hj^tj)^r, h_{|t|+1}^r, ..., h_D^r]`,
+    /// re-randomize it with `r`, and outputs
+    /// `g^r, (h_0 prod hj^tj)^r, h_{|t|+1}^r, ..., h_D^r`.
     pub fn randomization(&mut self, pp: &PubParam, r: Fr) {
-        // randomize g1r
+        // randomize g2r
         let mut tmp = pp.get_g2();
         tmp.mul_assign(r);
         self.g2r.add_assign(&tmp);
@@ -111,28 +132,18 @@ impl SubSecretKey {
         self.hpoly.add_assign(&tmp);
 
         // randmoize hlist
-        //        let mut hvector: Vec<PixelG2> = vec![];
         for i in 0..self.hvector.len() {
-            // randomnize the non-zero elements
-            //        if self.hlist[i] != G2::zero() {
             let mut tmp = hlist[tlen + i + 1];
             tmp.mul_assign(r);
             self.hvector[i].add_assign(&tmp);
-            //            hlist[i].mul_assign(r);
-            //            self.hvector[i].add_assign(&hlist[i]);
-            //        }
         }
     }
 
-    pub fn get_time(&self) -> TimeStamp {
-        self.time
-    }
-
-    pub fn get_time_vec(&self) -> TimeVec {
-        TimeVec::init(self.time, CONST_D as u32)
-    }
-
-    /// delegate the key into TimeStamp time,
+    /// Delegate the key into TimeStamp time.
+    /// This function does NOT handle re-randomizations.
+    /// Input `sk = [g, hpoly, h_{|t|+1}, ..., h_D]`,
+    /// and a new time `tn`,
+    /// output `sk = [g, hpoly*\prod_{i=|t|}^|tn| hi^tn[i], h_{|tn|+1}, ..., h_D]`.
     pub fn delegate(&mut self, time: TimeStamp) {
         let cur_time_vec = TimeVec::init(self.time, CONST_D as u32);
         let tar_time_vec = TimeVec::init(time, CONST_D as u32);
@@ -144,107 +155,35 @@ impl SubSecretKey {
             cur_time_vec,
             tar_time_vec,
         );
-        let tar_time_vec_fr = tar_time_vec.into_fr();
+        let tv = tar_time_vec.get_time_vec();
         let cur_vec_length = cur_time_vec.get_time_vec_len();
         let tar_vec_length = tar_time_vec.get_time_vec_len();
-//        println!("time: in tests  {:?} {:?}", cur_vec_length, tar_time_vec_fr);
 
         // hpoly += h_i ^ t_i
         for i in 0..tar_vec_length - cur_vec_length {
-    //        println!("{:?}", i);
+            // if tv[i] == 1
+            //  hpoly += tmp
+            // if tv[2] == 2
+            //  hpoly += tmp^2
             let mut tmp = self.hvector[i];
-            tmp.mul_assign(tar_time_vec_fr[i + cur_vec_length]);
+            if tv[i + cur_vec_length] == 2 {
+                tmp.double();
+            }
             self.hpoly.add_assign(&tmp);
         }
 
-        // remove the first tar_vec_length - cur_vec_length elements in h-vector
+        // remove the first `tar_vec_length - cur_vec_length` elements in h-vector
         for _ in 0..tar_vec_length - cur_vec_length {
             // h_i = 0
             self.hvector.remove(0);
         }
+        // update the time to the new time stamp
         self.time = time;
-    }
-
-    /// this function is used to verify if a subsecretkey is valid
-    /// for some public key
-    /// it is used for test only
-    #[cfg(test)]
-    pub fn validate(&self, pk: &PixelG2, pp: &PubParam) -> bool {
-        let list = pp.get_hlist();
-        let t = TimeVec::init(self.time, CONST_D as u32);
-
-        let timevec = t.get_time_vec();
-
-        // h2fx = h0 * \prod hi^ti
-        let mut h2fx = list[0];
-        for i in 0..t.get_time_vec_len() {
-            let mut tmp = list[i + 1];
-            tmp.mul_assign(timevec[i]);
-            h2fx.add_assign(&tmp);
-        }
-
-        // we want to check if
-        //   e(hpoly, g2) == e(h, pk) * e(h0*hi^ti, g2r)
-        // we first negate g2
-        let mut g2 = pp.get_g2();
-        g2.negate();
-
-        // and then use sim-pairing for faster computation
-
-        // due to the api changes in asymmetric pairing,
-        // we need two pieces of codes, depending on which group PK is in
-        #[cfg(feature = "pk_in_g2")]
-        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-            [
-                (
-                    &(self.hpoly.into_affine().prepare()),
-                    &(g2.into_affine().prepare()),
-                ),
-                (
-                    &(h2fx.into_affine().prepare()),
-                    &(self.g2r.into_affine().prepare()),
-                ),
-                (
-                    &(pp.get_h().into_affine().prepare()),
-                    &(pk.into_affine().prepare()),
-                ),
-            ]
-            .into_iter(),
-        ))
-        .unwrap();
-
-        #[cfg(not(feature = "pk_in_g2"))]
-        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-            [
-                (
-                    &(g2.into_affine().prepare()),
-                    &(self.hpoly.into_affine().prepare()),
-                ),
-                (
-                    &(self.g2r.into_affine().prepare()),
-                    &(h2fx.into_affine().prepare()),
-                ),
-                (
-                    &(pk.into_affine().prepare()),
-                    &(pp.get_h().into_affine().prepare()),
-                ),
-            ]
-            .into_iter(),
-        ))
-        .unwrap();
-
-        // verification is successful if
-        //   e(hpoly, -g2) * e(h, pk) * e(h0*hi^ti, g2r) == 1
-        pairingproduct
-            == Fq12 {
-                c0: Fq6::one(),
-                c1: Fq6::zero(),
-            }
     }
 }
 
-/// convenient function to output a subsecretkey object
 impl fmt::Debug for SubSecretKey {
+    /// Convenient function to output a `SubSecretKey` object.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -266,162 +205,248 @@ impl fmt::Debug for SubSecretKey {
     }
 }
 
-#[test]
-fn test_init() {
-    use ff::PrimeField;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ff::Field;
+    use keys::PublicKey;
+    use pairing::{bls12_381::*, CurveAffine, Engine};
 
-    // a random field element
-    let r = Fr::from_str(
-        "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-    )
-    .unwrap();
-    let pp = PubParam::init_without_seed();
-    // a random master secret key
-    let mut alpha = pp.get_g1();
-    let msk = Fr::from_str(
-        "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-    )
-    .unwrap();
-    alpha.mul_assign(msk);
+    impl SubSecretKey {
+        /// this function is used to verify if a subsecretkey is valid
+        /// for some public key
+        /// it is used for test only
+        pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
+            let list = pp.get_hlist();
+            let t = TimeVec::init(self.time, CONST_D as u32);
 
-    let t = SubSecretKey::init(&pp, alpha, r);
-    let t1 = SubSecretKey::init_from_randomization(&pp, alpha, r);
+            let timevec = t.get_time_vec();
 
-    // make sure the sub secret keys are the same
-    assert_eq!(t.g2r, t1.g2r, "g1r incorrect");
-    assert_eq!(
-        t.hpoly.into_affine(),
-        t1.hpoly.into_affine(),
-        "hpoly incorrect"
-    );
-    for i in 0..CONST_D {
-        assert_eq!(
-            t.hvector[i], t1.hvector[i],
-            "error on {}th element in hlist",
-            i
+            // h2fx = h0 * \prod hi^ti
+            let mut h2fx = list[0];
+            for i in 0..t.get_time_vec_len() {
+                let mut tmp = list[i + 1];
+                tmp.mul_assign(timevec[i]);
+                h2fx.add_assign(&tmp);
+            }
+
+            // we want to check if
+            //   e(hpoly, g2) == e(h, pk) * e(h0*hi^ti, g2r)
+            // we first negate g2
+            let mut g2 = pp.get_g2();
+            g2.negate();
+
+            // and then use sim-pairing for faster computation
+
+            // due to the api changes in asymmetric pairing,
+            // we need two pieces of codes, depending on which group PK is in
+            #[cfg(feature = "pk_in_g2")]
+            let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+                [
+                    (
+                        &(self.hpoly.into_affine().prepare()),
+                        &(g2.into_affine().prepare()),
+                    ),
+                    (
+                        &(h2fx.into_affine().prepare()),
+                        &(self.g2r.into_affine().prepare()),
+                    ),
+                    (
+                        &(pp.get_h().into_affine().prepare()),
+                        &(pk.into_affine().prepare()),
+                    ),
+                ]
+                .into_iter(),
+            ))
+            .unwrap();
+
+            #[cfg(not(feature = "pk_in_g2"))]
+            let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+                [
+                    (
+                        &(g2.into_affine().prepare()),
+                        &(self.hpoly.into_affine().prepare()),
+                    ),
+                    (
+                        &(self.g2r.into_affine().prepare()),
+                        &(h2fx.into_affine().prepare()),
+                    ),
+                    (
+                        &(pk.into_affine().prepare()),
+                        &(pp.get_h().into_affine().prepare()),
+                    ),
+                ]
+                .into_iter(),
+            ))
+            .unwrap();
+
+            // verification is successful if
+            //   e(hpoly, -g2) * e(h, pk) * e(h0*hi^ti, g2r) == 1
+            pairingproduct
+                == Fq12 {
+                    c0: Fq6::one(),
+                    c1: Fq6::zero(),
+                }
+        }
+    }
+
+    #[test]
+    fn test_key_gen() {
+        use ff::PrimeField;
+
+        // a random field element
+        let r = Fr::from_str(
+            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
         )
-    }
-}
+        .unwrap();
+        let pp = PubParam::init_without_seed();
+        // a random master secret key
+        let mut alpha = pp.get_g1();
+        let msk = Fr::from_str(
+            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
+        )
+        .unwrap();
+        alpha.mul_assign(msk);
 
-#[test]
-fn test_randomization() {
-    use ff::PrimeField;
-    let pp = PubParam::init_without_seed();
-    // a random field element
-    let r = Fr::from_str(
-        "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-    )
-    .unwrap();
+        let t = SubSecretKey::init(&pp, alpha, r);
+        let t1 = SubSecretKey::init_from_randomization(&pp, alpha, r);
 
-    // a random master secret key
-    let mut alpha = pp.get_h();
-    let msk = Fr::from_str(
-        "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-    )
-    .unwrap();
-    alpha.mul_assign(msk);
-
-    // a random public key
-    let mut pk = pp.get_g2();
-    pk.mul_assign(msk);
-
-    // initialize a random secret key
-    let mut t = SubSecretKey::init(&pp, alpha, r);
-    // check if the key is valid or not
-    assert!(t.validate(&pk, &pp), "initial key failure for validation");
-
-    // randomize the key
-    let r = Fr::from_str("12345").unwrap();
-    t.randomization(&pp, r);
-
-    // check if the key remains valid or not
-    assert!(
-        t.validate(&pk, &pp),
-        "randomized key failure for validation"
-    );
-}
-
-#[test]
-fn test_delegate() {
-    use ff::PrimeField;
-    let pp = PubParam::init_without_seed();
-    // a random field element
-    let r = Fr::from_str(
-        "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-    )
-    .unwrap();
-
-    // a random master secret key
-    let mut alpha = pp.get_h();
-    let msk = Fr::from_str(
-        "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-    )
-    .unwrap();
-    alpha.mul_assign(msk);
-
-    // a random public key
-    let mut pk = pp.get_g2();
-    pk.mul_assign(msk);
-
-    // initialize a random secret key
-    let mut t = SubSecretKey::init(&pp, alpha, r);
-    let t1 = t.clone();
-
-    // check if the key is valid or not
-    assert!(t.validate(&pk, &pp), "fail init");
-
-    // randomize the key
-    let r = Fr::from_str("12345").unwrap();
-    t.randomization(&pp, r);
-
-    // check if the key remains valid or not
-    assert!(
-        t.validate(&pk, &pp),
-        "randomized key failure for validation"
-    );
-
-    // delegate gradually, 1 -> 2 -> 3 -> 4
-    for i in 2..5 {
-        // delegate the key to the time
-        t.delegate(i);
-        // check if the key remains valid or not
-        assert!(
-            t.validate(&pk, &pp),
-            "failure: {}-th key after delation, \n{:?}",
-            i,
-            t
+        // make sure the sub secret keys are the same
+        assert_eq!(t.g2r, t1.g2r, "g1r incorrect");
+        assert_eq!(
+            t.hpoly.into_affine(),
+            t1.hpoly.into_affine(),
+            "hpoly incorrect"
         );
+        for i in 0..CONST_D {
+            assert_eq!(
+                t.hvector[i], t1.hvector[i],
+                "error on {}th element in hlist",
+                i
+            )
+        }
+    }
+
+    #[test]
+    fn test_randomization() {
+        use ff::PrimeField;
+        let pp = PubParam::init_without_seed();
+        // a random field element
+        let r = Fr::from_str(
+            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
+        )
+        .unwrap();
+
+        // a random master secret key
+        let mut alpha = pp.get_h();
+        let msk = Fr::from_str(
+            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
+        )
+        .unwrap();
+        alpha.mul_assign(msk);
+
+        // a random public key
+        let mut pk = pp.get_g2();
+        pk.mul_assign(msk);
+
+        // initialize a random secret key
+        let mut t = SubSecretKey::init(&pp, alpha, r);
+        // check if the key is valid or not
+        assert!(t.validate(&pk, &pp), "initial key failure for validation");
+
         // randomize the key
+        let r = Fr::from_str("12345").unwrap();
         t.randomization(&pp, r);
+
         // check if the key remains valid or not
         assert!(
             t.validate(&pk, &pp),
-            "failure: {}-th key after randomizeation, \n{:?}",
-            i,
-            t
+            "randomized key failure for validation"
         );
     }
 
-    // fast delegation, always starts from t = 1
-    // 1 -> 2, 1 -> 3, 1 -> 4
-    for i in 2..5 {
-        let mut t = t1.clone();
-        t.delegate(i);
-        // check if the key remains valid or not
-        assert!(
-            t.validate(&pk, &pp),
-            "failure: {}-th key after delation, \n{:?}",
-            i,
-            t
-        );
+    #[test]
+    fn test_delegate() {
+        use ff::PrimeField;
+        let pp = PubParam::init_without_seed();
+        // a random field element
+        let r = Fr::from_str(
+            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
+        )
+        .unwrap();
+
+        // a random master secret key
+        let mut alpha = pp.get_h();
+        let msk = Fr::from_str(
+            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
+        )
+        .unwrap();
+        alpha.mul_assign(msk);
+
+        // a random public key
+        let mut pk = pp.get_g2();
+        pk.mul_assign(msk);
+
+        // initialize a random secret key
+        let mut t = SubSecretKey::init(&pp, alpha, r);
+        let t1 = t.clone();
+
+        // check if the key is valid or not
+        assert!(t.validate(&pk, &pp), "fail init");
+
         // randomize the key
+        let r = Fr::from_str("12345").unwrap();
         t.randomization(&pp, r);
+
         // check if the key remains valid or not
         assert!(
             t.validate(&pk, &pp),
-            "failure: {}-th key after randomizeation, \n{:?}",
-            i,
-            t
+            "randomized key failure for validation"
         );
+
+        // delegate gradually, 1 -> 2 -> 3 -> 4
+        for i in 2..5 {
+            // delegate the key to the time
+            t.delegate(i);
+            // check if the key remains valid or not
+            assert!(
+                t.validate(&pk, &pp),
+                "failure: {}-th key after delation, \n{:?}",
+                i,
+                t
+            );
+            // randomize the key
+            t.randomization(&pp, r);
+            // check if the key remains valid or not
+            assert!(
+                t.validate(&pk, &pp),
+                "failure: {}-th key after randomizeation, \n{:?}",
+                i,
+                t
+            );
+        }
+
+        // fast delegation, always starts from t = 1
+        // 1 -> 2, 1 -> 3, 1 -> 4
+        for i in 2..5 {
+            let mut t = t1.clone();
+            t.delegate(i);
+            // check if the key remains valid or not
+            assert!(
+                t.validate(&pk, &pp),
+                "failure: {}-th key after delation, \n{:?}",
+                i,
+                t
+            );
+            // randomize the key
+            t.randomization(&pp, r);
+            // check if the key remains valid or not
+            assert!(
+                t.validate(&pk, &pp),
+                "failure: {}-th key after randomizeation, \n{:?}",
+                i,
+                t
+            );
+        }
     }
 }

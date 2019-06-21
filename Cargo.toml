@@ -7,7 +7,7 @@ authors = [
 ]
 license = "MIT/Apache-2.0"
 
-description = "Algorand's consensus signature over curve BLS12-381"
+description = "Pixel: Algorand's consensus signature over curve BLS12-381"
 
 #[lib]
 #crate-type = ["staticlib"]
@@ -22,6 +22,16 @@ ff = { version = "0.4", features = ["derive"] }
 bigint = { version = "4", default-features = false }
 
 [features]
-unstable-features = ["expose-arith"]
-expose-arith = []
-default = []
+# this flag indicates that the public key lies in group G1 by default
+# if we choose to set public key in G1 (a.k.a, switch the groups)
+# use `cargo build --features = pk_in_g2`
+pk_in_g2 = []
+
+# this flag indicates that we want to use randomized group generators
+# as opposite to default group generators
+# to enable, use `cargo build --features = use_rand_generators`
+use_rand_generators = []
+
+
+# this flag enables some long tests and benchmarks
+long_tests = []

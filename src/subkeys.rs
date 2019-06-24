@@ -217,7 +217,6 @@ mod test {
         /// for some public key
         /// it is used for testing only
         pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
-
             let pke = pk.get_pk();
 
             let list = pp.get_hlist();
@@ -304,7 +303,7 @@ mod test {
         .unwrap();
         let pp = PubParam::init_without_seed();
         // a random master secret key
-        let mut alpha = pp.get_g1();
+        let mut alpha = pp.get_h();
         let msk = Fr::from_str(
             "8010751325124863419913799848205334820481433752958938231164954555440305541353",
         )

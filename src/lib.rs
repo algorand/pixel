@@ -14,6 +14,11 @@ pub mod subkeys;
 pub mod time;
 pub mod util;
 
+// This file contains deterministic tests, with pre-fixed parameters,
+// and with determinstic, small random numbers, e.g., 1, 2, 3, 4...
+#[cfg(test)]
+mod det_test;
+
 // by default the groups are switched so that
 // the public key lies in G2
 // this yields smaller public keys

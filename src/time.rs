@@ -159,6 +159,7 @@ fn time_to_vec(time: u64, d: u32) -> Vec<u64> {
     tmp
 }
 
+// convert a vector back to time
 fn vec_to_time(mut t_vec: Vec<u64>, d: u64) -> u64 {
     /*
         if tvec == []:

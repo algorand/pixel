@@ -19,8 +19,7 @@ pub struct PublicKey {
 }
 
 impl PublicKey {
-
-    /// Initialize the PublicKey with a given pk
+    /// Initialize the PublicKey with a given pk.
     pub fn init(pk: PixelG2) -> Self {
         PublicKey { pk: pk }
     }
@@ -32,9 +31,8 @@ impl PublicKey {
 
     /// Returns the public key element this structure contains.
     pub fn get_pk(&self) -> PixelG2 {
-        self.pk.clone()
+        self.pk
     }
-
 }
 // pub type PublicKey = PixelG2;
 
@@ -84,6 +82,18 @@ impl SecretKey {
     pub fn init(pp: &PubParam, alpha: PixelG1) -> Self {
         // todo: replace 2 with a (deterministic) random r
         let r = Fr::from_str("2").unwrap();
+        let ssk = SubSecretKey::init(&pp, alpha, r);
+        SecretKey {
+            time: 1,
+            ssk: vec![ssk],
+        }
+    }
+
+    /// This function initializes the secret key at time stamp = 1.
+    /// It takes the root secret `alpha` and a field element `r` as inputs.
+    /// Currently this function is used by testing only.
+    #[cfg(test)]
+    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
         let ssk = SubSecretKey::init(&pp, alpha, r);
         SecretKey {
             time: 1,

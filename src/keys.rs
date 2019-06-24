@@ -11,7 +11,32 @@ use PixelG2;
 use std::fmt;
 use util;
 
-pub type PublicKey = PixelG2;
+/// The public key structure is a wrapper of PixelG2 group.
+/// The actual group that the public key lies in depends on `pk_in_g2` flag
+#[derive(Debug, Clone)]
+pub struct PublicKey {
+    pk: PixelG2,
+}
+
+impl PublicKey {
+
+    /// Initialize the PublicKey with a given pk
+    pub fn init(pk: PixelG2) -> Self {
+        PublicKey { pk: pk }
+    }
+
+    /// Set self to the new public key.
+    pub fn set_pk(&mut self, pk: PixelG2) {
+        self.pk = pk
+    }
+
+    /// Returns the public key element this structure contains.
+    pub fn get_pk(&self) -> PixelG2 {
+        self.pk.clone()
+    }
+
+}
+// pub type PublicKey = PixelG2;
 
 /// The keypair is a pair of public and secret keys
 #[derive(Debug, Clone)]
@@ -38,6 +63,7 @@ impl KeyPair {
     pub fn keygen(seed: &[u8], pp: &PubParam) -> Self {
         let (pk, msk) = master_key_gen(seed, &pp);
         let sk = SecretKey::init(&pp, msk);
+        let pk = PublicKey::init(pk);
         Self { sk: sk, pk: pk }
     }
 
@@ -208,7 +234,7 @@ impl SecretKey {
 /// this function is private -- it should be used only as a subroutine to key gen function
 //  todo: decide the right way to hash the seed into master secret
 //        perhaps hash_to_field function?
-fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PublicKey, PixelG1) {
+fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PixelG2, PixelG1) {
     // make sure we have enough entropy
     assert!(
         seed.len() > 31,
@@ -236,7 +262,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PublicKey, PixelG1) {
 
 /// this function tests if a public key and a master secret key has a same exponent
 #[cfg(test)]
-fn validate_master_key(pk: &PublicKey, sk: &PixelG1, pp: &PubParam) -> bool {
+fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
     use ff::Field;
     use pairing::{bls12_381::*, CurveAffine, Engine};
 

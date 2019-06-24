@@ -215,8 +215,11 @@ mod test {
     impl SubSecretKey {
         /// this function is used to verify if a subsecretkey is valid
         /// for some public key
-        /// it is used for test only
+        /// it is used for testing only
         pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
+
+            let pke = pk.get_pk();
+
             let list = pp.get_hlist();
             let t = TimeVec::init(self.time, CONST_D as u32);
 
@@ -253,7 +256,7 @@ mod test {
                     ),
                     (
                         &(pp.get_h().into_affine().prepare()),
-                        &(pk.into_affine().prepare()),
+                        &(pke.into_affine().prepare()),
                     ),
                 ]
                 .into_iter(),
@@ -272,7 +275,7 @@ mod test {
                         &(h2fx.into_affine().prepare()),
                     ),
                     (
-                        &(pk.into_affine().prepare()),
+                        &(pke.into_affine().prepare()),
                         &(pp.get_h().into_affine().prepare()),
                     ),
                 ]
@@ -346,8 +349,9 @@ mod test {
         alpha.mul_assign(msk);
 
         // a random public key
-        let mut pk = pp.get_g2();
-        pk.mul_assign(msk);
+        let mut pke = pp.get_g2();
+        pke.mul_assign(msk);
+        let pk = PublicKey::init(pke);
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);
@@ -384,8 +388,9 @@ mod test {
         alpha.mul_assign(msk);
 
         // a random public key
-        let mut pk = pp.get_g2();
-        pk.mul_assign(msk);
+        let mut pke = pp.get_g2();
+        pke.mul_assign(msk);
+        let pk = PublicKey::init(pke);
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);

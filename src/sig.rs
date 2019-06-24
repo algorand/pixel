@@ -86,6 +86,9 @@ impl Signature {
     pub fn verify(&self, pk: &PublicKey, tar_time: TimeStamp, pp: &PubParam, msg: &[u8]) -> bool {
         // TODO: membership testing
 
+        // extract the group element in pk
+        let pke = pk.get_pk();
+
         // g1^{w[1] * msg}
         let list = pp.get_hlist();
         let mut hfx = list[0];
@@ -119,7 +122,7 @@ impl Signature {
                 ),
                 (
                     &(pp.get_h().into_affine().prepare()),
-                    &(pk.into_affine().prepare()),
+                    &(pke.into_affine().prepare()),
                 ),
             ]
             .into_iter(),
@@ -139,7 +142,7 @@ impl Signature {
                     &(hfx.into_affine().prepare()),
                 ),
                 (
-                    &(pk.into_affine().prepare()),
+                    &(pke.into_affine().prepare()),
                     &(pp.get_h().into_affine().prepare()),
                 ),
             ]

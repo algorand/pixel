@@ -35,8 +35,6 @@ impl TimeVec {
 
     /// init() initialize a TimeVec from a TimeStamp
     /// example with depth = 3
-    /// ```
-    /// use pixel::time::TimeVec;
     /// assert_eq!(TimeVec::init(1,3).get_time_vec(), vec![]);
     /// assert_eq!(TimeVec::init(2,3).get_time_vec(), vec![1]);
     /// assert_eq!(TimeVec::init(3,3).get_time_vec(), vec![1,1]);
@@ -44,7 +42,6 @@ impl TimeVec {
     /// assert_eq!(TimeVec::init(5,3).get_time_vec(), vec![2]);
     /// assert_eq!(TimeVec::init(6,3).get_time_vec(), vec![2,1]);
     /// assert_eq!(TimeVec::init(7,3).get_time_vec(), vec![2,2]);
-    /// ```
     pub fn init(t: TimeStamp, depth: u32) -> Self {
         TimeVec {
             time: t,
@@ -54,7 +51,8 @@ impl TimeVec {
 
     /// into_fr() extracts the time vector and converts
     /// the vector into the Fr form
-    pub fn into_fr(&self) -> Vec<Fr> {
+    #[allow(dead_code)]
+    fn into_fr(&self) -> Vec<Fr> {
         let mut vec: Vec<Fr> = vec![];
         for e in self.get_time_vec() {
             vec.push(Fr::from_repr(FrRepr([e as u64, 0, 0, 0])).unwrap());
@@ -64,13 +62,10 @@ impl TimeVec {
 
     /// checks if self is a prefix of the other time vector
     /// exmample
-    /// ```
-    /// use pixel::time::TimeVec;
+    /// use pixel::pixel_api::TimeVec;
     /// let t1 = TimeVec::init(1,3);
     /// let t2 = TimeVec::init(2,3);
     /// assert_eq!(t1.is_prefix(&t2), true);
-    /// ```
-
     pub fn is_prefix(&self, other: &Self) -> bool {
         if self.time >= other.time {
             return false;

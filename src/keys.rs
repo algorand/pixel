@@ -1,18 +1,15 @@
 use ff::PrimeField;
 use pairing::{bls12_381::Fr, CurveProjective};
-use param::PubParam;
-use param::CONST_D;
-use subkeys::SubSecretKey;
+use param::{PubParam, CONST_D};
+use std::fmt;
+pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
-
+use util;
 use PixelG1;
 use PixelG2;
 
-use std::fmt;
-use util;
-
 /// The public key structure is a wrapper of PixelG2 group.
-/// The actual group that the public key lies in depends on `pk_in_g2` flag
+/// The actual group that the public key lies in depends on `pk_in_g2` flag.
 #[derive(Debug, Clone)]
 pub struct PublicKey {
     pk: PixelG2,
@@ -36,7 +33,7 @@ impl PublicKey {
 }
 // pub type PublicKey = PixelG2;
 
-/// The keypair is a pair of public and secret keys
+/// The keypair is a pair of public and secret keys.
 #[derive(Debug, Clone)]
 pub struct KeyPair {
     sk: SecretKey,

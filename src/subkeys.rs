@@ -1,9 +1,5 @@
-use pairing::bls12_381::Fr;
-
-use param::PubParam;
-use param::CONST_D;
-
-use pairing::CurveProjective;
+use pairing::{bls12_381::Fr, CurveProjective};
+use param::{PubParam, CONST_D};
 use std::fmt;
 use time::{TimeStamp, TimeVec};
 use PixelG1;

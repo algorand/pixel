@@ -1,16 +1,11 @@
 // This file contains deterministic tests, with pre-fixed parameters,
 // and with determinstic, small random numbers, e.g., 1, 2, 3, 4...
 
-use ff::{Field, PrimeField};
-use keys::PublicKey;
-use keys::SecretKey;
-use pairing::EncodedPoint;
-use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
-use param::{PubParam, CONST_D};
+use ff::PrimeField;
+use keys::{PublicKey, SecretKey};
+use pairing::{bls12_381::*, CurveProjective, EncodedPoint};
+use param::PubParam;
 use sig;
-use util;
-use PixelG1;
-use PixelG2;
 
 #[test]
 fn test_det() {
@@ -100,5 +95,5 @@ fn test_det() {
 
     // make sure the signature can be verified
     assert!(sig.verify_fr(&pk, 1, &pp, msg), "Verification failed");
-//    assert_eq!(1, 2)
+    //    assert_eq!(1, 2)
 }

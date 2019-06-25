@@ -9,7 +9,7 @@ use sha2::Digest;
 #[derive(PartialEq, Debug)]
 pub enum HashIDs {
     Sha256,
-    Sha512,
+    //    Sha512,
 }
 
 pub trait HashToField
@@ -44,7 +44,7 @@ where
 
 impl HashToField for Fr {
     /// hash into a list of Fr elements
-    /// ```
+    ///
     /// extern crate pairing;
     /// extern crate ff;
     /// extern crate pixel;
@@ -61,7 +61,7 @@ impl HashToField for Fr {
     ///         0x414e2c2a330cf94e,
     ///     ]))
     ///     .unwrap()]);
-    /// ```
+    ///
     fn hash_to_field(input: &[u8], ctr: u8, m: u8, hashid: HashIDs, hash_reps: u8) -> Vec<Self> {
         assert_eq!(
             hashid,
@@ -143,7 +143,7 @@ impl HashToField for Fr {
 
 impl HashToField for Fq {
     /// hash into a list of Fq elements
-    /// ```
+    ///
     /// extern crate pairing;
     /// extern crate ff;
     /// extern crate pixel;
@@ -162,7 +162,7 @@ impl HashToField for Fq {
     ///         0x04256f4dab6326d7,
     ///     ]))
     ///     .unwrap()]);
-    /// ```
+    ///
     fn hash_to_field(input: &[u8], ctr: u8, m: u8, hashid: HashIDs, hash_reps: u8) -> Vec<Self> {
         assert_eq!(
             hashid,

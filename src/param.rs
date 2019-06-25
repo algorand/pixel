@@ -1,5 +1,4 @@
-use pairing::bls12_381::Fr;
-use pairing::CurveProjective;
+use pairing::{bls12_381::Fr, CurveProjective};
 use std::fmt;
 use util;
 use PixelG1;
@@ -23,9 +22,9 @@ pub const CONST_D: usize = 32;
 pub type Hlist = Vec<PixelG1>;
 
 /// The public parameter consists of the following ...
-/// * g2: group generators for PixelG2 group (may be randomized)
-/// * h: a PixelG2 element,
-/// * hlist: D+1 PixelG2 elements h_0, h_1, ..., h_d
+/// * g2: group generators for `PixelG2` group (may be randomized)
+/// * h: a `PixelG2` element,
+/// * hlist: D+1 PixelG2 elements `h_0, h_1, ..., h_d`
 ///
 /// This struct is read-only once initlized.
 /// By default all fields are private. Use correspoding
@@ -41,40 +40,44 @@ pub struct PubParam {
 
 impl PubParam {
     //  we no longer require a generator on g1
-    /// Returns the PixelG1 generator
+    // Returns the PixelG1 generator
     // pub fn get_g1(&self) -> PixelG1 {
     //     return self.g1;
     // }
 
-    /// Returns the PixelG2 generator
+    /// Returns the `PixelG2` generator. Note: the generator will be different
+    /// from `bls12-381` curve's if randomized generator is used.
     pub fn get_g2(&self) -> PixelG2 {
         return self.g2;
     }
 
-    /// Returns the h parmeter, i.e., the first PixelG2 element of the public param
+    /// Returns the `h` parmeter, i.e., the first `PixelG2` element of the public param.
     pub fn get_h(&self) -> PixelG1 {
         return self.h;
     }
 
-    /// Returns the list of PixelG2 elements of the public param
+    /// Returns the list of `PixelG2` elements of the public param.
     pub fn get_hlist(&self) -> Hlist {
         return self.hlist.clone();
     }
 
-    /// this function initialize the parameter with a default seed = empty string ""
-    /// it should not be used except for testing purpose
+    /// This function initialize the parameter with a default seed = empty string "".
+    /// It should not be used except for testing purpose
     #[cfg(test)]
     pub fn init_without_seed() -> Self {
         println!("warning!!!\nthis function should be used for testing purpose only\nuse PubParam::init() instead\n");
         Self::init(b"this is a long and determinstic seed")
     }
 
-    /// this function takes input a string and output the
+    /// This function takes input a string and outputs the
     /// public parameters as follows
-    /// 1. use hash_to_field(msg, ctr) to hash into many field elements by increasing the ctr
+    /// 1. use `hash_to_field(msg, ctr)` to hash into many field elements by increasing the `ctr`
     /// 2. get random group element by raise to power of the generator
-    /// depending on the configuration `use_rand_generators`
-    /// the generators may be generated randomly
+    ///
+    /// TODO: use `hash_to_group` functions instead.
+    ///
+    /// Note: depending on the configuration `use_rand_generators`,
+    /// the generators may be generated randomly.
     pub fn init(seed: &[u8]) -> Self {
         // make sure we have enough entropy
         assert!(
@@ -142,12 +145,12 @@ impl PubParam {
 
     /// This a deterministic method to generate public parameters that matchs
     /// pixel-python implemetation.
-    /// specifically, the parameters are [g2, g1, g1, g1^2, ... g1^(d+1)]
+    /// Specifically, the parameters are `\[g2, g1, g1, g1^2, ... g1^(d+1)\]`.
     /// The parameters generated here are insecure
     /// Do not use in deployment!
     #[cfg(test)]
     pub fn det_param_gen() -> PubParam {
-        println!("Warning: insecure parameters detected. use for testing only!");
+        println!("Warning: insecure parameters detected. Use for testing only!");
         let h = PixelG1::one();
         let g2 = PixelG2::one();
         let mut hv = [PixelG1::one(); CONST_D + 1].to_vec();

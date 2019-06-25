@@ -55,11 +55,15 @@ impl KeyPair {
     /// generate a pair of public keys and secret keys
     //  todo: decide the right way to hash the seed into master secret
     //        perhaps hash_to_field function?
-    pub fn keygen(seed: &[u8], pp: &PubParam) -> Self {
-        let (pk, msk) = master_key_gen(seed, &pp);
+    pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
+        let res = master_key_gen(seed, &pp);
+        if res.is_err() {
+            return Err(res.err().unwrap());
+        }
+        let (pk, msk) = res.unwrap();
         let sk = SecretKey::init(&pp, msk);
         let pk = PublicKey::init(pk);
-        Self { sk: sk, pk: pk }
+        Ok(Self { sk: sk, pk: pk })
     }
 
     /// Returns the public key in a `KeyPair`
@@ -124,12 +128,19 @@ impl SecretKey {
     /// This function mutate the existing secret keys to the time stamp.
     /// It panics if the new time stamp is invalid (either smaller than
     /// current time or larger than maximum time stamp).
-    pub fn update(&mut self, pp: &PubParam, tar_time: TimeStamp) {
+    pub fn update<'a>(&'a mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String> {
+        // make a clone of self, in case an error is raised, we do not want to mutate the key
+        // the new_sk has a same life time as the old key
+        let mut new_sk = self.clone();
+
         // max time = 2^d - 1
         let max_time = (1u64 << CONST_D) - 1;
-        let cur_time = self.get_time();
+        let cur_time = new_sk.get_time();
         if cur_time >= tar_time || tar_time > max_time {
-            panic!("the input time {} is invalid", tar_time);
+            #[cfg(debug_assertions)]
+            println!("the input time {} is invalid", tar_time);
+
+            return Err("the input time is invalid".to_owned());
         }
 
         // we iterate through all ssk-s, and find the largest time
@@ -144,32 +155,43 @@ impl SecretKey {
         // step 1. find the right ssk from ssk_vec to delegate from
         // (e.g., find ssk_for_t_9)
         // and update self to that TimeStamp
-        let delegator_time = self.get_closest_ssk(tar_time);
-        self.time = delegator_time;
+        let res = new_sk.get_closest_ssk(tar_time);
+        if res.is_err() {
+            return Err(res.err().unwrap());
+        }
+        let delegator_time = res.unwrap();
 
-        // debug info automatically turned off with `build --release`
+        new_sk.time = delegator_time;
+
         #[cfg(debug_assertions)]
         println!(
             "delegating from {} to {} using delegator time {}",
-            self.get_time(),
+            new_sk.get_time(),
             tar_time,
             delegator_time
         );
 
         // udpate self to that TimeStamp by removing all ssk-s
         // whose time stamp is less than delegator's time
-        while self.ssk[0].get_time() != delegator_time {
-            self.ssk.remove(0);
+        while new_sk.ssk[0].get_time() != delegator_time {
+            new_sk.ssk.remove(0);
         }
 
         // there should always be at least one key left
-        assert!(self.ssk.len() > 0, "something is wrong: no ssk left");
+        #[cfg(debug_assertions)]
+        assert!(new_sk.ssk.len() > 0, "something is wrong: no ssk left");
+        if new_sk.ssk.len() == 0 {
+            return Err("something is wrong: no ssk left".to_owned());
+        }
 
         // step 2. if delegator_time == tar_time then we are done
         // the reminder of the sub secret keys happens to form
         // a new secret key for the tar_time
         if delegator_time == tar_time {
-            return;
+            // assign new_sk to self, and return successful
+            // here we rely on Rust's memory safety feature to ensure the old key is erased
+            *self = new_sk;
+            return Ok(());
         }
 
         // step 3. from delegator to target time
@@ -187,15 +209,20 @@ impl SecretKey {
             // we do not delegate
             // since ssk are sorted chronologically
             // we only need to check from i+1 keys for duplications
-            for j in i + 1..self.ssk.len() {
-                if gamma_list[i] == self.ssk[j].get_time_vec() {
+            for j in i + 1..new_sk.ssk.len() {
+                if gamma_list[i] == new_sk.ssk[j].get_time_vec() {
                     continue 'out;
                 }
             }
 
             // delegation
-            let mut new_ssk = self.ssk[0].clone();
-            new_ssk.delegate(gamma_list[i].get_time());
+            let mut new_ssk = new_sk.ssk[0].clone();
+            let res = new_ssk.delegate(gamma_list[i].get_time());
+            // make sure delegation is successful,
+            // or else, pass through the error message
+            if res.is_err() {
+                return res;
+            }
 
             // randomize the new ssk unless it is the first one
             // for the first one we reuse the randomness
@@ -207,12 +234,18 @@ impl SecretKey {
 
             // insert the key to the right place so that
             // all ssk-s are sorted chronologically
-            self.ssk.insert(i + 1, new_ssk);
+            new_sk.ssk.insert(i + 1, new_ssk);
         }
 
         // step 5. remove the first ssk <- this was the ssk for delegator time
-        self.ssk.remove(0);
-        self.time = self.ssk[0].get_time();
+        new_sk.ssk.remove(0);
+        new_sk.time = new_sk.ssk[0].get_time();
+
+        // assign new_sk to self, and return successful
+        // here we rely on Rust's memory safety feature to ensure the old key is erased
+        *self = new_sk;
+
+        Ok(())
     }
 
     /// This function iterates through the existing sub secret keys, find the one for which
@@ -222,10 +255,13 @@ impl SecretKey {
     /// e.g.:
     ///     sk {time: 2, ssks: {omited}}
     ///     sk.get_close_ssk(2, 12) = 9
-    fn get_closest_ssk(&self, tar_time: TimeStamp) -> TimeStamp {
+    fn get_closest_ssk(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
         let mut res = &self.ssk[0];
         if res.get_time() >= tar_time {
-            panic!("the input time {} is invalid", tar_time);
+            #[cfg(debug_assertions)]
+            println!("the input time {} is invalid", tar_time);
+
+            return Err("The input time is invalid for the closest ssk function.".to_owned());
         }
 
         for i in 0..self.ssk.len() - 1 {
@@ -233,7 +269,7 @@ impl SecretKey {
                 res = &self.ssk[i + 1];
             }
         }
-        res.get_time()
+        Ok(res.get_time())
     }
 }
 
@@ -241,13 +277,17 @@ impl SecretKey {
 /// this function is private -- it should be used only as a subroutine to key gen function
 //  todo: decide the right way to hash the seed into master secret
 //        perhaps hash_to_field function?
-fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PixelG2, PixelG1) {
+fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), String> {
     // make sure we have enough entropy
-    assert!(
-        seed.len() > 31,
-        "the seed length {} is not long enough (required as least 32 bytes)",
-        seed.len()
-    );
+    if seed.len() < 32 {
+        #[cfg(debug_assertions)]
+        println!(
+            "the seed length {} is not long enough (required as least 32 bytes)",
+            seed.len()
+        );
+        return Err("The seed length is too short".to_owned());
+    }
+
     // hash_to_field(msg, ctr, p, m, hash_fn, hash_reps)
     //  msg         <- seed
     //  ctr         <- incremantal from 0
@@ -264,7 +304,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> (PixelG2, PixelG1) {
     let mut sk = pp.get_h();
     pk.mul_assign(r[0]);
     sk.mul_assign(r[0]);
-    (pk, sk)
+    Ok((pk, sk))
 }
 
 /// this function tests if a public key and a master secret key has a same exponent
@@ -330,7 +370,9 @@ mod test {
     #[test]
     fn test_master_key() {
         let pp = PubParam::init_without_seed();
-        let (pk, sk) = master_key_gen(b"this is a very very long seed for testing", &pp);
+        let res = master_key_gen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "master key gen failed");
+        let (pk, sk) = res.unwrap();
         assert!(
             super::validate_master_key(&pk, &sk, &pp),
             "master key is invalid"
@@ -340,14 +382,18 @@ mod test {
     #[test]
     fn test_keypair() {
         let pp = PubParam::init_without_seed();
-        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
         println!("{:?}", keypair);
     }
 
     #[test]
     fn test_quick_key_update() {
         let pp = PubParam::init_without_seed();
-        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
         let sk = keypair.sk;
 
         // this double loop
@@ -355,7 +401,8 @@ mod test {
         // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
         for j in 2..16 {
             let mut sk2 = sk.clone();
-            sk2.update(&pp, j);
+            let res = sk2.update(&pp, j);
+            assert!(res.is_ok(), "update failed");
             for ssk in sk2.ssk {
                 assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
             }
@@ -366,7 +413,9 @@ mod test {
     #[test]
     fn test_long_key_update() {
         let pp = PubParam::init_without_seed();
-        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
         let sk = keypair.sk;
 
         // this double loop
@@ -374,11 +423,12 @@ mod test {
         // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
         for j in 2..16 {
             let mut sk2 = sk.clone();
-            sk2.update(&pp, j);
+            let res = sk2.update(&pp, j);
+            assert!(res.is_ok(), "update failed");
             for i in j + 1..16 {
                 let mut sk3 = sk2.clone();
-                sk3.update(&pp, i);
-
+                let res = sk3.update(&pp, i);
+                assert!(res.is_ok(), "update failed");
                 #[cfg(long_tests)]
                 for ssk in sk3.ssk {
                     assert!(ssk.validate(&keypair.pk, &pp), "validation failed");

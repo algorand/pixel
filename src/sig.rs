@@ -14,7 +14,7 @@ use PixelG2;
 /// * `sigma1 = g^r` in `PixelG2`, and
 /// * `sigma2 = ssk.hpoly * hv[d]^m * (h0 * \prod h_i ^ t_i * h_d^m)^r` in `PixelG1`.
 ///
-/// As in the python code, sigma1 and sigma2 are switched -- not consistent with the paper.
+/// As in the python code, sigma1 and sigma2 are switched --  not consistent with the paper.
 pub struct Signature {
     sigma1: PixelG2,
     sigma2: PixelG1,
@@ -22,11 +22,19 @@ pub struct Signature {
 
 impl Signature {
     /// This function signs a message for a time stamp. It does NOT require the
-    /// time stamp to match the secret key. If the time stamp is greater than that
+    /// time stamp to match the secret key.
+    /// * If the time stamp is greater than that
     /// of the secret key, it firstly update the secret key to the new time stamp,
     /// and then use the updated secret key to sign. Note that, for safety reason,
     /// once the key is updated, we no longer have the original secret key.
-    pub fn sign(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam, msg: &[u8]) -> Self {
+    /// * It returns an error if the time stamp is smaller than the that of the secret key.
+    /// The secret key remained unchanged in this case.
+    pub fn sign(
+        sk: &mut SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        msg: &[u8],
+    ) -> Result<Self, String> {
         // TODO: to decide the right way to generate this randomness
         let r: Vec<Fr> = util::HashToField::hash_to_field(
             b"this will be modified",
@@ -38,15 +46,27 @@ impl Signature {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
         let cur_time = sk.get_time();
+
+        #[cfg(debug_assertions)]
         assert!(
             cur_time <= tar_time,
-            "Cannot sign for a previous time stamp!"
+            "Cannot sign for a previous time stamp, current time {} is greater than target time {}",
+            cur_time,
+            tar_time,
         );
+        if cur_time > tar_time {
+            return Err("Cannot sign for a previous time stamp!".to_owned());
+        }
         if cur_time < tar_time {
-            sk.update(&pp, tar_time)
+            let res = sk.update(&pp, tar_time);
+            // handling the error message from update
+            // return an empty signature
+            if res.is_err() {
+                return Err(res.err().unwrap());
+            }
         }
 
-        Signature::sign_bytes(&sk, tar_time, &pp, msg, r[0])
+        Ok(Signature::sign_bytes(&sk, tar_time, &pp, msg, r[0]))
     }
 
     /// This function generates a signature for a message that is a byte of arbitrary length.
@@ -241,7 +261,9 @@ mod signature_test {
     #[test]
     fn test_quick_signature_tests() {
         let pp = PubParam::init_without_seed();
-        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
         let sk = keypair.get_sk();
         let pk = keypair.get_pk();
         let r: Vec<Fr> = util::HashToField::hash_to_field(
@@ -258,7 +280,8 @@ mod signature_test {
 
         for j in 2..16 {
             let mut sk2 = sk.clone();
-            sk2.update(&pp, j);
+            let res = sk2.update(&pp, j);
+            assert!(res.is_ok(), "updating failed");
             let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r[0]);
             assert!(
                 sig.verify_bytes(&pk, sk2.get_time(), &pp, msg),
@@ -273,7 +296,9 @@ mod signature_test {
     #[test]
     fn test_long_signature_tests() {
         let pp = PubParam::init_without_seed();
-        let keypair = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
         let sk = keypair.get_sk();
         let pk = keypair.get_pk();
         let r: Vec<Fr> = util::HashToField::hash_to_field(
@@ -294,10 +319,12 @@ mod signature_test {
         // 3. check that the signature generated from dedicated keys can be verified
         for j in 2..16 {
             let mut sk2 = sk.clone();
-            sk2.update(&pp, j);
+            let res = sk2.update(&pp, j);
+            assert!(res.is_ok(), "updating failed");
             for i in j + 1..16 {
                 let mut sk3 = sk2.clone();
-                sk3.update(&pp, i);
+                let res = sk3.update(&pp, i);
+                assert!(res.is_ok(), "updating failed");
                 println!("{:?}", sk3);
                 let sig = super::Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, r[0]);
                 assert!(

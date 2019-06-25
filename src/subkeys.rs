@@ -140,17 +140,22 @@ impl SubSecretKey {
     /// Input `sk = [g, hpoly, h_{|t|+1}, ..., h_D]`,
     /// and a new time `tn`,
     /// output `sk = [g, hpoly*\prod_{i=|t|}^|tn| hi^tn[i], h_{|tn|+1}, ..., h_D]`.
-    pub fn delegate(&mut self, time: TimeStamp) {
+    pub fn delegate(&mut self, time: TimeStamp) -> Result<(), String> {
         let cur_time_vec = TimeVec::init(self.time, CONST_D as u32);
         let tar_time_vec = TimeVec::init(time, CONST_D as u32);
 
         // check that cur_time_vec is a prefix of tar_time_vec
+        if !cur_time_vec.is_prefix(&tar_time_vec) {
+            return Err("Current time vector is not a prefix of target vector".to_owned());
+        }
+        #[cfg(debug_assertions)]
         assert!(
             cur_time_vec.is_prefix(&tar_time_vec),
             "error:invalid vectors\nthe current time vector is {:?},\n trying to delegeate into {:?}\n",
             cur_time_vec,
             tar_time_vec,
         );
+
         let tv = tar_time_vec.get_time_vec();
         let cur_vec_length = cur_time_vec.get_time_vec_len();
         let tar_vec_length = tar_time_vec.get_time_vec_len();
@@ -175,6 +180,7 @@ impl SubSecretKey {
         }
         // update the time to the new time stamp
         self.time = time;
+        Ok(())
     }
 }
 
@@ -407,7 +413,8 @@ mod test {
         // delegate gradually, 1 -> 2 -> 3 -> 4
         for i in 2..5 {
             // delegate the key to the time
-            t.delegate(i);
+            let res = t.delegate(i);
+            assert!(res.is_ok(), "delegation failed");
             // check if the key remains valid or not
             assert!(
                 t.validate(&pk, &pp),
@@ -430,7 +437,8 @@ mod test {
         // 1 -> 2, 1 -> 3, 1 -> 4
         for i in 2..5 {
             let mut t = t1.clone();
-            t.delegate(i);
+            let res = t.delegate(i);
+            assert!(res.is_ok(), "delegation failed");
             // check if the key remains valid or not
             assert!(
                 t.validate(&pk, &pp),

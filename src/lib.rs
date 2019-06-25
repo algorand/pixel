@@ -17,6 +17,7 @@ mod util;
 /// and with determinstic, small random numbers, e.g., 1, 2, 3, 4...
 /// This test module is only avaliable when public key lies in G2.
 #[cfg(test)]
+#[cfg(debug_assertions)]
 #[cfg(feature = "pk_in_g2")]
 mod det_test;
 
@@ -69,7 +70,8 @@ pub trait PixelSign {
     /// Input a byte string as the seed, and the public parameters.
     /// The seed needs to be at least
     /// 32 bytes long. Output the key pair.
-    fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> KeyPair;
+    /// Returns an error if seed is not long enough.
+    fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<KeyPair, String>;
 
     /// Input a key pair, output its public key.
     fn pixel_get_pk(kp: &KeyPair) -> PublicKey;
@@ -79,13 +81,23 @@ pub trait PixelSign {
 
     /// Input a secret key, the public parameter and a time stamp,
     /// update the key to that time stamp.
-    fn pixel_sk_update(sk: &mut SecretKey, pp: &PubParam, tar_time: TimeStamp);
+    /// Returns an error if the target time is invalid.
+    fn pixel_sk_update(
+        sk: &mut SecretKey,
+        pp: &PubParam,
+        tar_time: TimeStamp,
+    ) -> Result<(), String>;
 
     /// Input a secret key, a time stamp (that is no less than secret key's time stamp),
     /// the public parameter, and a message in the form of a byte string,
     /// output a signature. If the time stamp is greater than that of the secret key,
     /// the key will be updated to the new time stamp.
-    fn pixel_sign(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam, msg: &[u8]) -> Signature;
+    fn pixel_sign(
+        sk: &mut SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        msg: &[u8],
+    ) -> Result<Signature, String>;
 
     /// Input a public key, a time stamp, the public parameter, a message in the form of a byte string,
     /// and a signature, output true if signature is valid w.r.t. the inputs.

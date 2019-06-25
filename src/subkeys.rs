@@ -5,7 +5,7 @@ use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
 
-/// each SubSecretKey consists of
+/// Each SubSecretKey consists of ...
 /// * time: the time stamp for the current key
 /// * g1r: the randomization on G1
 /// * h0poly: h0^{alpha + f(x) r}
@@ -14,7 +14,7 @@ use PixelG2;
 pub struct SubSecretKey {
     /// timestamp for the current subkey
     time: TimeStamp,
-    /// randomization on g1: g1^r
+    /// randomization on g2: g2^r
     g2r: PixelG2,
 
     /// mirroring the public parameter
@@ -70,7 +70,7 @@ impl SubSecretKey {
         hpoly.add_assign(&alpha);
 
         // hi^r
-        let mut hvector: Vec<PixelG1> = vec![];
+        let mut hvector: Vec<PixelG1> = Vec::with_capacity(CONST_D);
         for i in 1..CONST_D + 1 {
             hlist[i].mul_assign(r);
             hvector.push(hlist[i]);
@@ -123,7 +123,7 @@ impl SubSecretKey {
             tmp.add_assign(&tmp2);
         }
 
-        // radomize hpoly += tmp^r
+        // radomize tmp and set hpoly += tmp^r
         tmp.mul_assign(r);
         self.hpoly.add_assign(&tmp);
 

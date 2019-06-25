@@ -65,7 +65,8 @@ pub trait PixelSign {
     /// Input a byte string as the seed. The seed needs to be at least
     /// 32 bytes long. Output the public parameters.
     /// Check `use_rand_generators` flags for randomized generators.
-    fn pixel_param_gen(seed: &[u8]) -> PubParam;
+    /// Returns an error is seed is not long enough.
+    fn pixel_param_gen(seed: &[u8]) -> Result<PubParam, String>;
 
     /// Input a byte string as the seed, and the public parameters.
     /// The seed needs to be at least

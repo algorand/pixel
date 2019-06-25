@@ -10,13 +10,15 @@ impl PixelSign for Pixel {
     /// Input a byte string as the seed. The seed needs to be at least
     /// 32 bytes long. Output the public parameters.
     /// Check `use_rand_generators` flags for randomized generators.
-    fn pixel_param_gen(seed: &[u8]) -> PubParam {
+    /// Returns an error is seed is not long enough.
+    fn pixel_param_gen(seed: &[u8]) -> Result<PubParam, String> {
         PubParam::init(seed)
     }
 
     /// Input a byte string as the seed, and the public parameters.
     /// The seed needs to be at least
     /// 32 bytes long. Output the key pair.
+    /// Returns an error is seed is not long enough.
     fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<KeyPair, String> {
         KeyPair::keygen(seed, &pp)
     }
@@ -72,25 +74,27 @@ impl PixelSign for Pixel {
 fn test_pixel_api() {
     use pixel::Pixel;
 
-    let pp = Pixel::pixel_param_gen(b"this is a very very long seed for parameter testing");
-    let res = Pixel::pixel_key_gen(b"this is a very very long seed for testing", &pp);
+    let res = Pixel::pixel_param_gen(b"this is a very very long seed for parameter testing");
+    assert!(res.is_ok(), "pixel param gen failed");
+    let pp = res.unwrap();
+    let res = Pixel::pixel_key_gen(b"this is a very very long seed for key gen testing", &pp);
     assert!(res.is_ok(), "pixel key gen failed");
     let keypair = res.unwrap();
 
     let pk = Pixel::pixel_get_pk(&keypair);
     let mut sk = Pixel::pixel_get_sk(&keypair);
     let sk2 = sk.clone();
+
     // testing basic signings
     let msg = b"message to sign";
     let res = Pixel::pixel_sign(&mut sk, 1, &pp, msg);
-    println!("{:?}", res);
     assert!(res.is_ok(), "error in signing algorithm");
     let sig = res.unwrap();
     assert!(
         Pixel::pixel_verify(&pk, 1, &pp, msg, sig),
         "verification failed"
     );
-    // testing update-then-sign-for present
+    // testing update-then-sign for present
     for j in 2..16 {
         let res = Pixel::pixel_sk_update(&mut sk, &pp, j);
         assert!(res.is_ok(), "error in key updating");

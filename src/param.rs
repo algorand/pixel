@@ -66,7 +66,7 @@ impl PubParam {
     #[cfg(test)]
     pub fn init_without_seed() -> Self {
         println!("warning!!!\nthis function should be used for testing purpose only\nuse PubParam::init() instead\n");
-        Self::init(b"this is a long and determinstic seed")
+        Self::init(b"this is a long and determinstic seed").unwrap()
     }
 
     /// This function takes input a string and outputs the
@@ -78,13 +78,13 @@ impl PubParam {
     ///
     /// Note: depending on the configuration `use_rand_generators`,
     /// the generators may be generated randomly.
-    pub fn init(seed: &[u8]) -> Self {
+    pub fn init(seed: &[u8]) -> Result<Self, String> {
         // make sure we have enough entropy
-        assert!(
-            seed.len() > 31,
-            "the seed length {} is not long enough (required as least 32 bytes)",
-            seed.len()
-        );
+        if seed.len() < 32 {
+            return Err(
+                "the seed length is not long enough (required as least 32 bytes)".to_owned(),
+            );
+        }
 
         let mut ctr = 0;
 
@@ -135,12 +135,12 @@ impl PubParam {
         }
 
         // format the output
-        PubParam {
+        Ok(PubParam {
             //            g1: g1,
             g2: g2,
             h: h,
             hlist: hlist,
-        }
+        })
     }
 
     /// This a deterministic method to generate public parameters that matchs

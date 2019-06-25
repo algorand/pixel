@@ -58,12 +58,11 @@ impl Signature {
             return Err("Cannot sign for a previous time stamp!".to_owned());
         }
         if cur_time < tar_time {
-            let res = sk.update(&pp, tar_time);
-            // handling the error message from update
-            // return an empty signature
-            if res.is_err() {
-                return Err(res.err().unwrap());
-            }
+            // this is when we update the secret key to target time
+            let () = match sk.update(&pp, tar_time) {
+                Err(e) => return Err(e),
+                Ok(()) => (),
+            };
         }
 
         Ok(Signature::sign_bytes(&sk, tar_time, &pp, msg, r[0]))

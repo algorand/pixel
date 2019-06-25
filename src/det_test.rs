@@ -55,6 +55,9 @@ fn test_det() {
         0xfb, 0x13, 0xdc,
     ];
 
+    // intermidiate elemetns are omited here since we do not have public API to read
+    // elements in an ssk::h_vector other than the last elements
+
     // 5-th element
     //         x = 0x0f81da25ecf1c84b577fefbedd61077a81dc43b00304015b2b596ab67f00e41c86bb00ebd0f90d4b125eb0539891aeed
     //         y = 0x11af629591ec86916d6ce37877b743fe209a3af61147996c1df7fd1c47b03181cd806fd31c3071b739e4deb234bd9e19

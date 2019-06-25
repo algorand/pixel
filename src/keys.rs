@@ -56,11 +56,10 @@ impl KeyPair {
     //  todo: decide the right way to hash the seed into master secret
     //        perhaps hash_to_field function?
     pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
-        let res = master_key_gen(seed, &pp);
-        if res.is_err() {
-            return Err(res.err().unwrap());
-        }
-        let (pk, msk) = res.unwrap();
+        let (pk, msk) = match master_key_gen(seed, &pp) {
+            Err(e) => return Err(e),
+            Ok(f) => f,
+        };
         let sk = SecretKey::init(&pp, msk);
         let pk = PublicKey::init(pk);
         Ok(Self { sk: sk, pk: pk })
@@ -155,11 +154,11 @@ impl SecretKey {
         // step 1. find the right ssk from ssk_vec to delegate from
         // (e.g., find ssk_for_t_9)
         // and update self to that TimeStamp
-        let res = new_sk.get_closest_ssk(tar_time);
-        if res.is_err() {
-            return Err(res.err().unwrap());
-        }
-        let delegator_time = res.unwrap();
+
+        let delegator_time = match new_sk.get_closest_ssk(tar_time) {
+            Err(e) => return Err(e),
+            Ok(p) => p,
+        };
 
         new_sk.time = delegator_time;
 
@@ -217,12 +216,14 @@ impl SecretKey {
 
             // delegation
             let mut new_ssk = new_sk.ssk[0].clone();
-            let res = new_ssk.delegate(gamma_list[i].get_time());
+
             // make sure delegation is successful,
             // or else, pass through the error message
-            if res.is_err() {
-                return res;
-            }
+            let () = match new_ssk.delegate(gamma_list[i].get_time()) {
+                Err(e) => return Err(e),
+                Ok(()) => (),
+            };
+
 
             // randomize the new ssk unless it is the first one
             // for the first one we reuse the randomness

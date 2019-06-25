@@ -155,11 +155,10 @@ impl SecretKey {
         // (e.g., find ssk_for_t_9)
         // and update self to that TimeStamp
 
-        let delegator_time = match new_sk.get_closest_ssk(tar_time) {
+        let delegator_time = match new_sk.find_delegator(tar_time) {
             Err(e) => return Err(e),
             Ok(p) => p,
         };
-
         new_sk.time = delegator_time;
 
         #[cfg(debug_assertions)]
@@ -204,10 +203,11 @@ impl SecretKey {
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
         'out: for i in 0..gamma_list.len() {
-            // if the key already exist, for example, key for [2]
+            // if the ssk already exists in current sk, for example, ssk for [2]
             // we do not delegate
             // since ssk are sorted chronologically
-            // we only need to check from i+1 keys for duplications
+            // the first i ssks are the delegator and the fresh inserted new ssk-s
+            // there for we only need to check from i+1 keys for duplications
             for j in i + 1..new_sk.ssk.len() {
                 if gamma_list[i] == new_sk.ssk[j].get_time_vec() {
                     continue 'out;
@@ -215,18 +215,17 @@ impl SecretKey {
             }
 
             // delegation
-            let mut new_ssk = new_sk.ssk[0].clone();
-
             // make sure delegation is successful,
             // or else, pass through the error message
+            let mut new_ssk = new_sk.ssk[0].clone();
             let () = match new_ssk.delegate(gamma_list[i].get_time()) {
                 Err(e) => return Err(e),
                 Ok(()) => (),
             };
 
-
+            // re-randomization
             // randomize the new ssk unless it is the first one
-            // for the first one we reuse the randomness
+            // for the first one we reuse the randomness from the delegator
             if i != 0 {
                 // TODO: change to a random field element
                 let r = Fr::from_str("2").unwrap();
@@ -238,7 +237,7 @@ impl SecretKey {
             new_sk.ssk.insert(i + 1, new_ssk);
         }
 
-        // step 5. remove the first ssk <- this was the ssk for delegator time
+        // step 5. remove the first ssk <- this was the ssk for delegator
         new_sk.ssk.remove(0);
         new_sk.time = new_sk.ssk[0].get_time();
 
@@ -255,8 +254,9 @@ impl SecretKey {
     /// It returns this subsecretkey's time stamp
     /// e.g.:
     ///     sk {time: 2, ssks: {omited}}
-    ///     sk.get_close_ssk(2, 12) = 9
-    fn get_closest_ssk(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
+    ///     sk.get_close_ssk(12) = 9
+    /// This SubSecretKey will be used to delegate into the target time.
+    fn find_delegator(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
         let mut res = &self.ssk[0];
         if res.get_time() >= tar_time {
             #[cfg(debug_assertions)]

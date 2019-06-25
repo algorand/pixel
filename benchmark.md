@@ -1,4 +1,6 @@
 # Benchmarks
+This benchmark is outdated. It will be updated with the new implementation.
+
 
 This is the benchmark result for consensus signature scheme with `d = 30`.
 

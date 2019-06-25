@@ -17,9 +17,9 @@ pub const CONST_D: usize = 4;
 #[cfg(not(debug_assertions))]
 pub const CONST_D: usize = 32;
 
-/// This is a list of PixelG1 elements with arbitrary length,
-/// a wrapper of `Vec<PixelG1>`.
-pub type Hlist = Vec<PixelG1>;
+/// This is a fixed lenght array of PixelG1 elements,
+/// a wrapper of `[PixelG1; CONST_D + 1]`.
+pub type Hlist = [PixelG1; CONST_D + 1];
 
 /// The public parameter consists of the following ...
 /// * g2: group generators for `PixelG2` group (may be randomized)
@@ -31,8 +31,6 @@ pub type Hlist = Vec<PixelG1>;
 /// functions to access specific field.
 #[derive(Clone)]
 pub struct PubParam {
-    //  we no longer require a generator on g1
-    //    g1: PixelG1,
     g2: PixelG2,
     h: PixelG1,   // h
     hlist: Hlist, // h_0, h_1, ..., h_d
@@ -126,7 +124,7 @@ impl PubParam {
         ctr += 1;
         let mut h = PixelG1::one();
         h.mul_assign(r[0]);
-        let mut hlist: Hlist = [PixelG1::one(); CONST_D + 1].to_vec();
+        let mut hlist: Hlist = [PixelG1::one(); CONST_D + 1];
         for i in 0..CONST_D + 1 {
             let r: Vec<Fr> =
                 util::HashToField::hash_to_field(seed, ctr, 1, util::HashIDs::Sha256, 2);
@@ -136,7 +134,6 @@ impl PubParam {
 
         // format the output
         Ok(PubParam {
-            //            g1: g1,
             g2: g2,
             h: h,
             hlist: hlist,
@@ -153,7 +150,7 @@ impl PubParam {
         println!("Warning: insecure parameters detected. Use for testing only!");
         let h = PixelG1::one();
         let g2 = PixelG2::one();
-        let mut hv = [PixelG1::one(); CONST_D + 1].to_vec();
+        let mut hv = [PixelG1::one(); CONST_D + 1];
         for i in 1..CONST_D + 1 {
             let tmp = hv[i - 1];
             hv[i].add_assign(&tmp);

@@ -37,8 +37,8 @@ impl PixelSign for Pixel {
     /// update the key to that time stamp.
     fn pixel_sk_update(
         sk: &mut SecretKey,
-        pp: &PubParam,
         tar_time: TimeStamp,
+        pp: &PubParam,
     ) -> Result<(), String> {
         sk.update(&pp, tar_time)
     }
@@ -96,7 +96,7 @@ fn test_pixel_api() {
     );
     // testing update-then-sign for present
     for j in 2..16 {
-        let res = Pixel::pixel_sk_update(&mut sk, &pp, j);
+        let res = Pixel::pixel_sk_update(&mut sk, j, &pp);
         assert!(res.is_ok(), "error in key updating");
         let res = Pixel::pixel_sign(&mut sk, j, &pp, msg);
         assert!(res.is_ok(), "error in signing algorithm");

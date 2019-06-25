@@ -85,8 +85,8 @@ pub trait PixelSign {
     /// Returns an error if the target time is invalid.
     fn pixel_sk_update(
         sk: &mut SecretKey,
-        pp: &PubParam,
         tar_time: TimeStamp,
+        pp: &PubParam,
     ) -> Result<(), String>;
 
     /// Input a secret key, a time stamp (that is no less than secret key's time stamp),

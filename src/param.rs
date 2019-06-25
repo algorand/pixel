@@ -103,7 +103,7 @@ impl PubParam {
             let r: Vec<Fr> =
                 util::HashToField::hash_to_field(seed, ctr, 1, util::HashIDs::Sha256, 2);
             ctr += 1;
-            g2.mul_assign(r);
+            g2.mul_assign(r[0]);
             g2
         };
 

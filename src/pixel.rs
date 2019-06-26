@@ -19,19 +19,23 @@ impl PixelSign for Pixel {
     /// The seed needs to be at least
     /// 32 bytes long. Output the key pair.
     /// Returns an error is seed is not long enough.
-    fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<KeyPair, String> {
-        KeyPair::keygen(seed, &pp)
+    fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PublicKey, SecretKey), String> {
+        let kp = match KeyPair::keygen(seed, &pp) {
+            Err(e) => return Err(e),
+            Ok(p) => p,
+        };
+        Ok((kp.get_pk(), kp.get_sk()))
     }
 
-    /// Input a key pair, output its public key.
-    fn pixel_get_pk(kp: &KeyPair) -> PublicKey {
-        kp.get_pk()
-    }
-
-    /// Input a key pair, output its public key.
-    fn pixel_get_sk(kp: &KeyPair) -> SecretKey {
-        kp.get_sk()
-    }
+    // /// Input a key pair, output its public key.
+    // fn pixel_get_pk(kp: &KeyPair) -> PublicKey {
+    //     kp.get_pk()
+    // }
+    //
+    // /// Input a key pair, output its public key.
+    // fn pixel_get_sk(kp: &KeyPair) -> SecretKey {
+    //     kp.get_sk()
+    // }
 
     /// Input a secret key, the public parameter and a time stamp,
     /// update the key to that time stamp.
@@ -77,12 +81,11 @@ fn test_pixel_api() {
     let res = Pixel::pixel_param_gen(b"this is a very very long seed for parameter testing");
     assert!(res.is_ok(), "pixel param gen failed");
     let pp = res.unwrap();
+
     let res = Pixel::pixel_key_gen(b"this is a very very long seed for key gen testing", &pp);
     assert!(res.is_ok(), "pixel key gen failed");
-    let keypair = res.unwrap();
+    let (pk, mut sk) = res.unwrap();
 
-    let pk = Pixel::pixel_get_pk(&keypair);
-    let mut sk = Pixel::pixel_get_sk(&keypair);
     let sk2 = sk.clone();
 
     // testing basic signings

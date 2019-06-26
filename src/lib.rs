@@ -72,13 +72,13 @@ pub trait PixelSign {
     /// The seed needs to be at least
     /// 32 bytes long. Output the key pair.
     /// Returns an error if seed is not long enough.
-    fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<KeyPair, String>;
+    fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PublicKey, SecretKey), String>;
 
-    /// Input a key pair, output its public key.
-    fn pixel_get_pk(kp: &KeyPair) -> PublicKey;
-
-    /// Input a key pair, output its secret key.
-    fn pixel_get_sk(kp: &KeyPair) -> SecretKey;
+    // /// Input a key pair, output its public key.
+    // fn pixel_get_pk(kp: &KeyPair) -> PublicKey;
+    //
+    // /// Input a key pair, output its secret key.
+    // fn pixel_get_sk(kp: &KeyPair) -> SecretKey;
 
     /// Input a secret key, the public parameter and a time stamp,
     /// update the key to that time stamp.

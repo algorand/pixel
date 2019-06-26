@@ -26,11 +26,12 @@
   * Error: if the seed is less than 32 bytes
   * Option: `[use_rand_generators]`; unset by default
 
-* `fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<KeyPair, String>`  
+* `fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PublicKey, SecretKey), String>`  
   * Input: a seed, a public parameter
-  * Output: a key pair
+  * Output: a pair of keys
   * Error: if the seed is less than 32 bytes
 
+<!--
 * `fn pixel_get_pk(kp: &KeyPair) -> PublicKey`
   * Input: a key pair
   * Output: its public key
@@ -38,6 +39,7 @@
 * `fn pixel_get_sk(kp: &KeyPair) -> SecretKey`
   * Input: a key pair
   * Output: its secret key
+ -->
 
 * `fn pixel_sk_update(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam) -> Result<(), String>`
   * Input: a secret key,  a target time stamp, the public parameter

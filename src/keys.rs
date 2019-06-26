@@ -143,19 +143,22 @@ impl SecretKey {
         }
 
         // we iterate through all ssk-s, and find the largest time
-        // that is samller than the target time
+        // that is samller than the target time, this ssk will be the ancestor node
+        // to the target time
         // e.g.
         //  * d = 4,
         //  * cur_time = 3,
         //  * tar_time = 12
         // ssk_vec must have the ssk-s for time 3, 6, 9,
-        // we remove ssk_for_t_2, and use ssk_for_t_9 to delegate to ssk_for_t_12 and ssk_for_t_13
+        // we remove ssk_for_t_3, ssk_for_t_6,
+        // and use ssk_for_t_9 to delegate to ssk_for_t_12 and ssk_for_t_13
 
-        // step 1. find the right ssk from ssk_vec to delegate from
-        // (e.g., find ssk_for_t_9)
-        // and update self to that TimeStamp
+        // step 1. find the ancestor ssk from ssk_vec to delegate from
+        // (e.g., find ssk_for_t_9 in the example)
+        // and update self (sk3 = {ssk_for_t_3, ssk_for_t_6, ssk_for_t_9})
+        // to that TimeStamp (sk9 = {ssk_for_t_9})
 
-        let delegator_time = match new_sk.find_delegator(tar_time) {
+        let delegator_time = match new_sk.find_ancestor(tar_time) {
             Err(e) => return Err(e),
             Ok(p) => p,
         };
@@ -169,8 +172,10 @@ impl SecretKey {
             delegator_time
         );
 
-        // udpate self to that TimeStamp by removing all ssk-s
+        // udpate sk to delegator_time by removing all ssk-s
         // whose time stamp is less than delegator's time
+        // this effectively sets the new_sk to the secret key for time stamp = delegator_time
+        // i.e. we now have a secret key sk9 for time period 9
         while new_sk.ssk[0].get_time() != delegator_time {
             new_sk.ssk.remove(0);
         }
@@ -193,12 +198,20 @@ impl SecretKey {
         }
 
         // step 3. from delegator to target time
-        // from a delegator vector, e.g., [1] to a target vector, e.g. [1,1,1]
-        // we will need [1,1,1], [1,1,2], [1,2], [2]
+        // we use a slightly different example here to show that some ssk-s remains unchanged
+        // we want to delegate from time = 2 to time = 4
+        // from a delegator vector, e.g., [1] (time = 2) to a target vector, e.g. [1,1,1] (time = 4)
+        // at time 4, the secret key should contain ssks for [1,1,1], [1,1,2], [1,2], [2]
         // i.e. all the vectors that [1] is a pre-fix of
-        // this was referred to as "gamma list"
-        let delegator_time_vec = TimeVec::init(tar_time, CONST_D as u32);
-        let gamma_list = delegator_time_vec.gamma_list();
+        // this was referred to as the "gamma list"
+        // the delegation will happen as follows, where the randomness is always reused for the
+        // first delegation
+        //  [1] -> [1,1,1]  with randomness reuse
+        //  [1] -> [1,1,2]  with new randomness
+        //  [1] -> [1,2]    with new randomness
+        // the ssk for [2] already exists in current sk; it remains unchanged
+        let target_time_vec = TimeVec::init(tar_time, CONST_D as u32);
+        let gamma_list = target_time_vec.gamma_list();
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
@@ -207,14 +220,15 @@ impl SecretKey {
             // we do not delegate
             // since ssk are sorted chronologically
             // the first i ssks are the delegator and the fresh inserted new ssk-s
-            // there for we only need to check from i+1 keys for duplications
+            // therefore we only need to check from i+1 keys for duplications
             for j in i + 1..new_sk.ssk.len() {
                 if gamma_list[i] == new_sk.ssk[j].get_time_vec() {
+                    // this happens for time vec  = [2]
                     continue 'out;
                 }
             }
 
-            // delegation
+            // delegation -- this does not re-randomize the ssk
             // make sure delegation is successful,
             // or else, pass through the error message
             let mut new_ssk = new_sk.ssk[0].clone();
@@ -254,9 +268,9 @@ impl SecretKey {
     /// It returns this subsecretkey's time stamp
     /// e.g.:
     ///     sk {time: 2, ssks: {omited}}
-    ///     sk.get_close_ssk(12) = 9
-    /// This SubSecretKey will be used to delegate into the target time.
-    fn find_delegator(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
+    ///     sk.find_ancestor(12) = 9
+    /// This is an ancestor node for the target time.
+    fn find_ancestor(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
         let mut res = &self.ssk[0];
         if res.get_time() >= tar_time {
             #[cfg(debug_assertions)]

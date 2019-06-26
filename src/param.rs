@@ -1,8 +1,13 @@
+// this file defines the structures for the public parameter
+// and its associated methods
+
 use pairing::{bls12_381::Fr, CurveProjective};
 use std::fmt;
 use util;
 use PixelG1;
 use PixelG2;
+
+// todo: decide if the depth
 
 /// This is a global constant which determines the maximum time
 /// stamp, i.e. `max_time_stamp = 2^D-1`.
@@ -31,6 +36,7 @@ pub type Hlist = [PixelG1; CONST_D + 1];
 /// functions to access specific field.
 #[derive(Clone)]
 pub struct PubParam {
+    d: usize, // the depth of the time vector
     g2: PixelG2,
     h: PixelG1,   // h
     hlist: Hlist, // h_0, h_1, ..., h_d
@@ -43,20 +49,25 @@ impl PubParam {
     //     return self.g1;
     // }
 
+    /// Returns the depth of the time stamp.
+    pub fn get_d(&self) -> usize {
+        self.d
+    }
+
     /// Returns the `PixelG2` generator. Note: the generator will be different
     /// from `bls12-381` curve's if randomized generator is used.
     pub fn get_g2(&self) -> PixelG2 {
-        return self.g2;
+        self.g2
     }
 
     /// Returns the `h` parmeter, i.e., the first `PixelG2` element of the public param.
     pub fn get_h(&self) -> PixelG1 {
-        return self.h;
+        self.h
     }
 
     /// Returns the list of `PixelG2` elements of the public param.
     pub fn get_hlist(&self) -> Hlist {
-        return self.hlist.clone();
+        self.hlist.clone()
     }
 
     /// This function initialize the parameter with a default seed = empty string "".
@@ -134,6 +145,7 @@ impl PubParam {
 
         // format the output
         Ok(PubParam {
+            d: CONST_D,
             g2: g2,
             h: h,
             hlist: hlist,
@@ -156,6 +168,7 @@ impl PubParam {
             hv[i].add_assign(&tmp);
         }
         PubParam {
+            d: CONST_D,
             g2: g2,
             h: h,
             hlist: hv,
@@ -169,9 +182,11 @@ impl fmt::Debug for PubParam {
             f,
             "================================\n\
              ==========Public Parameter======\n\
+             depth: {}\n\
              g2 : {:#?}\n\
              h  : {:#?}\n",
             //            self.g1.into_affine(),
+            self.d,
             self.g2.into_affine(),
             self.h.into_affine(),
         )?;

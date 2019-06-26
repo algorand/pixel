@@ -1,6 +1,11 @@
+// functions for
+//  * the key pair
+//  * the public key
+//  * the secret key <- the sub secret keys are defined seperately in subkeys module
+
 use ff::PrimeField;
 use pairing::{bls12_381::Fr, CurveProjective};
-use param::{PubParam, CONST_D};
+use param::PubParam;
 use std::fmt;
 pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
@@ -118,7 +123,9 @@ impl SecretKey {
         self.ssk[0].clone()
     }
 
+    #[cfg(test)]
     /// Returns the whole list of the sub secret keys.
+    /// This function is only used for testing.
     pub fn get_ssk_vec(&self) -> Vec<SubSecretKey> {
         self.ssk.clone()
     }
@@ -133,7 +140,8 @@ impl SecretKey {
         let mut new_sk = self.clone();
 
         // max time = 2^d - 1
-        let max_time = (1u64 << CONST_D) - 1;
+        let depth = pp.get_d();
+        let max_time = (1u64 << depth) - 1;
         let cur_time = new_sk.get_time();
         if cur_time >= tar_time || tar_time > max_time {
             #[cfg(debug_assertions)]
@@ -210,8 +218,8 @@ impl SecretKey {
         //  [1] -> [1,1,2]  with new randomness
         //  [1] -> [1,2]    with new randomness
         // the ssk for [2] already exists in current sk; it remains unchanged
-        let target_time_vec = TimeVec::init(tar_time, CONST_D as u32);
-        let gamma_list = target_time_vec.gamma_list();
+        let target_time_vec = TimeVec::init(tar_time, depth as u32);
+        let gamma_list = target_time_vec.gamma_list(depth);
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
@@ -222,7 +230,7 @@ impl SecretKey {
             // the first i ssks are the delegator and the fresh inserted new ssk-s
             // therefore we only need to check from i+1 keys for duplications
             for j in i + 1..new_sk.ssk.len() {
-                if gamma_list[i] == new_sk.ssk[j].get_time_vec() {
+                if gamma_list[i] == new_sk.ssk[j].get_time_vec(depth) {
                     // this happens for time vec  = [2]
                     continue 'out;
                 }
@@ -232,7 +240,7 @@ impl SecretKey {
             // make sure delegation is successful,
             // or else, pass through the error message
             let mut new_ssk = new_sk.ssk[0].clone();
-            let () = match new_ssk.delegate(gamma_list[i].get_time()) {
+            let () = match new_ssk.delegate(gamma_list[i].get_time(), depth) {
                 Err(e) => return Err(e),
                 Ok(()) => (),
             };
@@ -435,7 +443,7 @@ mod test {
 
         // this double loop
         // 1. performs key updates with all possible `start_time` and `finish_time`
-        // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
+        // 2. for each updated key, checks the validity of its subkeys
         for j in 2..16 {
             let mut sk2 = sk.clone();
             let res = sk2.update(&pp, j);

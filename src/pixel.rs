@@ -1,3 +1,5 @@
+// this file implements the core operations in Pixel signature scheme
+
 use keys::{KeyPair, PublicKey, SecretKey};
 use param::PubParam;
 use sig::Signature;

@@ -11,7 +11,7 @@
 * `cargo test [--features=[pk_in_g2],[use_rand_generators]] [--release]` runs basic tests;
 * `cargo test -- --ignored [--features=[pk_in_g2],[use_rand_generators]] [--release]` runs long tests;
 * `cargo bench [--features=[pk_in_g2],[use_rand_generators]] [--release]` runs benchmarks (TODO).
-* `cargo test --features=pk_in_g2 test_det` runs a deterministic test and compare the intermidiate values against python implementaion.
+* `cargo test --features=pk_in_g2 test_det` runs a deterministic test and compare the intermediate values against python implementation.
 
 ## Document
 * `cargo doc --open` to view the public traits and functions.

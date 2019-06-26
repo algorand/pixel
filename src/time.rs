@@ -1,6 +1,7 @@
+// this module handles the time stamp that is used
+
 use ff::PrimeField;
 use pairing::bls12_381::{Fr, FrRepr};
-use param::CONST_D;
 use std::iter::FromIterator;
 
 /// a time stamp is a unsigned integer of 64 bits
@@ -51,6 +52,7 @@ impl TimeVec {
 
     /// into_fr() extracts the time vector and converts
     /// the vector into the Fr form
+    /// code deprecated
     #[allow(dead_code)]
     fn into_fr(&self) -> Vec<Fr> {
         let mut vec: Vec<Fr> = vec![];
@@ -70,15 +72,8 @@ impl TimeVec {
         if self.time >= other.time {
             return false;
         }
-        if self.vec.len() >= other.vec.len() {
-            return false;
-        }
-        for i in 0..self.vec.len() {
-            if self.vec[i] != other.vec[i] {
-                return false;
-            }
-        }
-        true
+
+        other.vec.starts_with(&self.vec)
     }
 
     /// subrouting to build the gamma list:
@@ -87,7 +82,7 @@ impl TimeVec {
     /// example: for time vec \[1\] and d = 4, the list consist all the
     /// vectors that starts with \[1\]
     /// we will need \[1,1,1\], \[1,1,2\], \[1,2\], \[2\]
-    pub fn gamma_list(&self) -> Vec<Self> {
+    pub fn gamma_list(&self, depth: usize) -> Vec<Self> {
         /*
         pseudo code of this function in python
         def gammat(tvec):
@@ -107,7 +102,7 @@ impl TimeVec {
                 res.insert(
                     1,
                     TimeVec {
-                        time: vec_to_time(tmp.clone(), CONST_D as u64),
+                        time: vec_to_time(tmp.clone(), depth as u64),
                         vec: tmp,
                     },
                 )

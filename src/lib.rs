@@ -1,5 +1,3 @@
-//#[allow(dead_code)]
-
 extern crate bigint;
 extern crate ff;
 extern crate pairing;
@@ -52,7 +50,7 @@ type PixelG1 = pairing::bls12_381::G2;
 type PixelG2 = pairing::bls12_381::G1;
 
 pub use keys::{KeyPair, PublicKey, SecretKey, SubSecretKey};
-pub use param::{PubParam, CONST_D};
+pub use param::PubParam;
 pub use sig::Signature;
 pub use time::TimeStamp;
 

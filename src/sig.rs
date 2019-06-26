@@ -1,7 +1,9 @@
+// implements the signature structure, the signing and verification algorithms
+
 use ff::Field;
 use keys::{PublicKey, SecretKey};
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
-use param::{PubParam, CONST_D};
+use param::PubParam;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
 use util;
@@ -77,6 +79,10 @@ impl Signature {
         msg: &[u8],
         r: Fr,
     ) -> Self {
+        // makes sure that the time stamp matches.
+        // the upper layer has already checked the tar_time is correct
+        // so if the tar_time is incorrect, we should panic here instead of
+        // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
         // TODO: use secure ways to hash message into Field
         let m: Vec<Fr> = util::HashToField::hash_to_field(msg, 0, 1, util::HashIDs::Sha256, 2);
@@ -88,11 +94,17 @@ impl Signature {
     /// It requires that the tar_time matches timestamp of the secret key
     pub fn sign_fr(sk: &SecretKey, tar_time: TimeStamp, pp: &PubParam, msg: Fr, r: Fr) -> Self {
         // makes sure that the time stamp matches.
+        // the upper layer has already checked the tar_time is correct
+        // so if the tar_time is incorrect, we should panic here instead of
+        // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
         // we only use the first sub secret key to sign
         let ssk = sk.get_first_ssk();
+
+        // get all neccessary variables
+        let depth = pp.get_d();
         let hlist = pp.get_hlist();
-        let timevec = ssk.get_time_vec();
+        let timevec = ssk.get_time_vec(depth);
         let tlen = timevec.get_time_vec_len();
         let tv = timevec.get_time_vec();
 
@@ -110,7 +122,7 @@ impl Signature {
             tmp2.mul_assign(tv[i]);
             tmp.add_assign(&tmp2);
         }
-        let mut tmp2 = hlist[CONST_D];
+        let mut tmp2 = hlist[depth];
         tmp2.mul_assign(msg);
         tmp.add_assign(&tmp2);
         // re-randomizing sigma2
@@ -150,13 +162,15 @@ impl Signature {
     pub fn verify_fr(&self, pk: &PublicKey, tar_time: TimeStamp, pp: &PubParam, msg: Fr) -> bool {
         // TODO: membership testing
 
+        let depth = pp.get_d();
+
         // extract the group element in pk
         let pke = pk.get_pk();
 
         // hfx = h0 + h_i * t_i + h_d * m
         let list = pp.get_hlist();
         let mut hfx = list[0];
-        let timevec = TimeVec::init(tar_time, CONST_D as u32).get_time_vec();
+        let timevec = TimeVec::init(tar_time, depth as u32).get_time_vec();
 
         // if timevec[i] == 1 -> hfx += list[i+1]
         // if timevec[i] == 2 -> hfx += list[i+1]*2
@@ -168,7 +182,7 @@ impl Signature {
             hfx.add_assign(&tmp);
         }
         // the last coefficient is multiplied by the message
-        let mut tmp = list[CONST_D];
+        let mut tmp = list[depth];
         tmp.mul_assign(msg);
         hfx.add_assign(&tmp);
 

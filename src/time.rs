@@ -43,7 +43,7 @@ impl TimeVec {
     /// assert_eq!(TimeVec::init(5,3).get_time_vec(), vec![2]);
     /// assert_eq!(TimeVec::init(6,3).get_time_vec(), vec![2,1]);
     /// assert_eq!(TimeVec::init(7,3).get_time_vec(), vec![2,2]);
-    pub fn init(t: TimeStamp, depth: u32) -> Self {
+    pub fn init(t: TimeStamp, depth: usize) -> Self {
         TimeVec {
             time: t,
             vec: time_to_vec(t, depth),
@@ -102,7 +102,7 @@ impl TimeVec {
                 res.insert(
                     1,
                     TimeVec {
-                        time: vec_to_time(tmp.clone(), depth as u64),
+                        time: vec_to_time(tmp.clone(), depth),
                         vec: tmp,
                     },
                 )
@@ -113,7 +113,7 @@ impl TimeVec {
 }
 
 // convert time into a vector
-fn time_to_vec(time: u64, d: u32) -> Vec<u64> {
+fn time_to_vec(time: u64, d: usize) -> Vec<u64> {
     // requires D >=1 and t in {1,2,...,2^D-1}
     assert!(d >= 1, "time_to_vec invalid depth {}", d);
     let max_t = 1 << d;
@@ -138,8 +138,8 @@ fn time_to_vec(time: u64, d: u32) -> Vec<u64> {
     if time == 1 {
         return tmp;
     }
-    if d > 0 && time > 2u64.pow(d - 1) {
-        tmp = time_to_vec(time - 2u64.pow(d - 1), d - 1);
+    if d > 0 && time > 2u64.pow(d as u32 - 1) {
+        tmp = time_to_vec(time - 2u64.pow(d as u32 - 1), d - 1);
         tmp.insert(0, 2);
     } else {
         tmp = time_to_vec(time - 1, d - 1);
@@ -150,7 +150,7 @@ fn time_to_vec(time: u64, d: u32) -> Vec<u64> {
 }
 
 // convert a vector back to time
-fn vec_to_time(mut t_vec: Vec<u64>, d: u64) -> u64 {
+fn vec_to_time(mut t_vec: Vec<u64>, d: usize) -> u64 {
     /*
         if tvec == []:
           return 1

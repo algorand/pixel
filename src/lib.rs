@@ -107,6 +107,34 @@ pub trait PixelSign {
         msg: &[u8],
         sig: Signature,
     ) -> bool;
+
+    /// Convert a parameter set into bytes
+    fn pixel_param_to_bytes(pp: &PubParam) -> &[u8];
+
+    /// Convert bytes into parameters
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_param(blob: &[u8]) -> Result<PubParam, String>;
+
+    /// Convert a public key into bytes
+    fn pixel_pk_to_bytes(pk: &SecretKey) -> &[u8];
+
+    /// Convert bytes into a public key
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_pk(blob: &[u8]) -> Result<PublicKey, String>;
+
+    /// Convert a secret key into bytes
+    fn pixel_sk_to_bytes(sk: &SecretKey) -> &[u8];
+
+    /// Convert bytes into secret keys
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_sk(blob: &[u8]) -> Result<SecretKey, String>;
+
+    /// Convert a signature into bytes
+    fn pixel_sig_to_bytes(sig: &Signature) -> &[u8];
+
+    /// Convert bytes into signatures.
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_sig(blob: &[u8]) -> Result<Signature, String>;
 }
 
 // a simple test to ensure that we have pixel groups mapped to the

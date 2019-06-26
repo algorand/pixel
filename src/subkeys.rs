@@ -36,7 +36,7 @@ impl SubSecretKey {
     /// Returns the time vector associated with the time stamp.
     /// for the current sub secret key.
     pub fn get_time_vec(&self, depth: usize) -> TimeVec {
-        TimeVec::init(self.time, depth as u32)
+        TimeVec::init(self.time, depth)
     }
 
     /// Returns the first element `g^r` in a sub secret key.
@@ -132,8 +132,8 @@ impl SubSecretKey {
     /// and a new time `tn`,
     /// output `sk = [g, hpoly*\prod_{i=|t|}^|tn| hi^tn[i], h_{|tn|+1}, ..., h_D]`.
     pub fn delegate(&mut self, time: TimeStamp, depth: usize) -> Result<(), String> {
-        let cur_time_vec = TimeVec::init(self.time, depth as u32);
-        let tar_time_vec = TimeVec::init(time, depth as u32);
+        let cur_time_vec = TimeVec::init(self.time, depth);
+        let tar_time_vec = TimeVec::init(time, depth);
 
         // check that cur_time_vec is a prefix of tar_time_vec
         if !cur_time_vec.is_prefix(&tar_time_vec) {
@@ -209,7 +209,7 @@ mod test {
             let pke = pk.get_pk();
             let depth = pp.get_d();
             let list = pp.get_hlist();
-            let t = TimeVec::init(self.time, depth as u32);
+            let t = TimeVec::init(self.time, depth);
 
             let timevec = t.get_time_vec();
 

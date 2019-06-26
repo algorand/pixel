@@ -218,7 +218,7 @@ impl SecretKey {
         //  [1] -> [1,1,2]  with new randomness
         //  [1] -> [1,2]    with new randomness
         // the ssk for [2] already exists in current sk; it remains unchanged
-        let target_time_vec = TimeVec::init(tar_time, depth as u32);
+        let target_time_vec = TimeVec::init(tar_time, depth);
         let gamma_list = target_time_vec.gamma_list(depth);
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list

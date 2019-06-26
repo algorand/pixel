@@ -170,7 +170,7 @@ impl Signature {
         // hfx = h0 + h_i * t_i + h_d * m
         let list = pp.get_hlist();
         let mut hfx = list[0];
-        let timevec = TimeVec::init(tar_time, depth as u32).get_time_vec();
+        let timevec = TimeVec::init(tar_time, depth).get_time_vec();
 
         // if timevec[i] == 1 -> hfx += list[i+1]
         // if timevec[i] == 2 -> hfx += list[i+1]*2

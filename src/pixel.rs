@@ -73,6 +73,55 @@ impl PixelSign for Pixel {
     ) -> bool {
         sig.verify_bytes(pk, tar_time, &pp, msg)
     }
+
+    /// Convert a parameter set into bytes
+    fn pixel_param_to_bytes(_pp: &PubParam) -> &[u8] {
+        // TODO place holder
+        &[0; 0]
+    }
+
+    /// Convert bytes into parameters
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_param(_blob: &[u8]) -> Result<PubParam, String> {
+        Err("this is a place holder. function not implemented yet".to_owned())
+    }
+
+    /// Convert a public key into bytes
+    fn pixel_pk_to_bytes(_pk: &SecretKey) -> &[u8] {
+        // TODO place holder
+        &[0; 0]
+    }
+
+    /// Convert bytes into a public key
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_pk(_blob: &[u8]) -> Result<PublicKey, String> {
+        // TODO place holder
+        Err("this is a place holder. function not implemented yet".to_owned())
+    }
+
+    /// Convert a secret key into bytes
+    fn pixel_sk_to_bytes(_sk: &SecretKey) -> &[u8] {
+        // TODO place holder
+        &[0; 0]
+    }
+
+    /// Convert bytes into secret keys
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_sk(_blob: &[u8]) -> Result<SecretKey, String> {
+        Err("this is a place holder. function not implemented yet".to_owned())
+    }
+
+    /// Convert a signature into bytes
+    fn pixel_sig_to_bytes(_sig: &Signature) -> &[u8] {
+        // TODO place holder
+        &[0; 0]
+    }
+
+    /// Convert bytes into signatures
+    /// Returns an error if the decoding failed.
+    fn pixel_bytes_to_sig(_blob: &[u8]) -> Result<Signature, String> {
+        Err("this is a place holder. function not implemented yet".to_owned())
+    }
 }
 
 /// This is a short and simple test on pixel's core APIs

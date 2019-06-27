@@ -1,12 +1,11 @@
 // implements the signature structure, the signing and verification algorithms
-
+use bls_sigs_ref_rs::FromRO;
 use ff::Field;
 use keys::{PublicKey, SecretKey};
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::PubParam;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
-use util;
 use PixelG1;
 use PixelG2;
 
@@ -38,13 +37,8 @@ impl Signature {
         msg: &[u8],
     ) -> Result<Self, String> {
         // TODO: to decide the right way to generate this randomness
-        let r: Vec<Fr> = util::HashToField::hash_to_field(
-            b"this will be modified",
-            0,
-            1,
-            util::HashIDs::Sha256,
-            2,
-        );
+        let r = Fr::from_ro("seed used for signing", 0);
+
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
         let cur_time = sk.get_time();
@@ -67,7 +61,7 @@ impl Signature {
             };
         }
 
-        Ok(Signature::sign_bytes(&sk, tar_time, &pp, msg, r[0]))
+        Ok(Signature::sign_bytes(&sk, tar_time, &pp, msg, r))
     }
 
     /// This function generates a signature for a message that is a byte of arbitrary length.
@@ -84,10 +78,12 @@ impl Signature {
         // so if the tar_time is incorrect, we should panic here instead of
         // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
-        // TODO: use secure ways to hash message into Field
-        let m: Vec<Fr> = util::HashToField::hash_to_field(msg, 0, 1, util::HashIDs::Sha256, 2);
+
+        // hash the message into a field element
+        // TODO: domain seperation?
+        let m = Fr::from_ro(msg, 0);
         // calls the sign_fr subroutine
-        Signature::sign_fr(&sk, tar_time, &pp, m[0], r)
+        Signature::sign_fr(&sk, tar_time, &pp, m, r)
     }
 
     /// This function generates a signature for a message in the form of a field element.
@@ -151,10 +147,11 @@ impl Signature {
     ) -> bool {
         // TODO: membership testing
 
-        // TODO: use secure ways to hash message into Field
-        let m: Vec<Fr> = util::HashToField::hash_to_field(msg, 0, 1, util::HashIDs::Sha256, 2);
+        // hash the message into a field element
+        // TODO: domain seperation?
+        let m = Fr::from_ro(msg, 0);
 
-        Signature::verify_fr(&self, &pk, tar_time, &pp, m[0])
+        Signature::verify_fr(&self, &pk, tar_time, &pp, m)
     }
 
     /// This verification function takes in a public key, a target time, the public parameters
@@ -232,11 +229,7 @@ impl Signature {
             .into_iter(),
         ))
         .unwrap();
-        pairingproduct
-            == Fq12 {
-                c0: Fq6::one(),
-                c1: Fq6::zero(),
-            }
+        pairingproduct == Fq12::one()
     }
 }
 
@@ -260,11 +253,11 @@ impl fmt::Debug for Signature {
 #[cfg(test)]
 mod signature_test {
 
+    use bls_sigs_ref_rs::FromRO;
     use keys::KeyPair;
-
-    use pairing::bls12_381::*;
+    use pairing::bls12_381::Fr;
     use param::PubParam;
-    use util;
+    //    use util;
 
     /// A simple and quick tests on
     /// * key generation
@@ -279,23 +272,18 @@ mod signature_test {
         let keypair = res.unwrap();
         let sk = keypair.get_sk();
         let pk = keypair.get_pk();
-        let r: Vec<Fr> = util::HashToField::hash_to_field(
-            b"this is also a very very long seed for testing",
-            0,
-            1,
-            util::HashIDs::Sha256,
-            2,
-        );
+        let r = Fr::from_ro("this is also a very very long seed for testing", 0);
 
         let msg = b"message to sign";
-        let sig = super::Signature::sign_bytes(&sk, 1, &pp, msg, r[0]);
+        let sig = super::Signature::sign_bytes(&sk, 1, &pp, msg, r);
         assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
 
         for j in 2..16 {
             let mut sk2 = sk.clone();
             let res = sk2.update(&pp, j);
             assert!(res.is_ok(), "updating failed");
-            let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r[0]);
+            let r = Fr::from_ro("this is also a very very long seed for testing", j as u8);
+            let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
             assert!(
                 sig.verify_bytes(&pk, sk2.get_time(), &pp, msg),
                 "signature verification failed"
@@ -314,16 +302,10 @@ mod signature_test {
         let keypair = res.unwrap();
         let sk = keypair.get_sk();
         let pk = keypair.get_pk();
-        let r: Vec<Fr> = util::HashToField::hash_to_field(
-            b"this is also a very very long seed for testing",
-            0,
-            1,
-            util::HashIDs::Sha256,
-            2,
-        );
+        let r = Fr::from_ro("this is also a very very long seed for testing", 0);
 
         let msg = b"message to sign";
-        let sig = super::Signature::sign_bytes(&sk, 1, &pp, msg, r[0]);
+        let sig = super::Signature::sign_bytes(&sk, 1, &pp, msg, r);
         assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
 
         // this double loop
@@ -339,7 +321,12 @@ mod signature_test {
                 let res = sk3.update(&pp, i);
                 assert!(res.is_ok(), "updating failed");
                 println!("{:?}", sk3);
-                let sig = super::Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, r[0]);
+                let r = Fr::from_ro(
+                    "this is also a very very long seed for testing",
+                    (i * 16 + j) as u8,
+                );
+
+                let sig = super::Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, r);
                 assert!(
                     sig.verify_bytes(&pk, sk3.get_time(), &pp, msg),
                     "signature verification failed"
@@ -351,7 +338,9 @@ mod signature_test {
             for ssk in sk2.get_ssk_vec() {
                 assert!(ssk.validate(&pk, &pp), "validation failed");
             }
-            let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r[0]);
+            let r = Fr::from_ro("this is also a very very long seed for testing", 255);
+
+            let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
             assert!(
                 sig.verify_bytes(&pk, sk2.get_time(), &pp, msg),
                 "signature verification failed"

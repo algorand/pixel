@@ -16,10 +16,13 @@ description = "Pixel: Algorand's consensus signature over curve BLS12-381"
 [dependencies]
 rand = "0.4"
 #pairing = "0.14"
-pairing = {git = "https://github.com/zkcrypto/pairing"}
+#pairing = {git = "https://github.com/zkcrypto/pairing"}
+pairing = { version = "0.14.3", git = "https://github.com/kwantam/pairing", features = [ "transmutable" ] }
+
 sha2 = "0.8"
 ff = { version = "0.4", features = ["derive"] }
 bigint = { version = "4", default-features = false }
+bls_sigs_ref-rs = {path= "bls_sigs_ref/rust-impl/"}
 
 [features]
 # this flag indicates that the public key lies in group G1 by default
@@ -31,3 +34,6 @@ pk_in_g2 = []
 # as opposite to default group generators
 # to enable, use `cargo build --features = use_rand_generators`
 use_rand_generators = []
+
+# enable this flag will generate more output during debugging
+verbose = []

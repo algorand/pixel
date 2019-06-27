@@ -3,13 +3,12 @@
 //  * the public key
 //  * the secret key <- the sub secret keys are defined seperately in subkeys module
 
-use ff::PrimeField;
+use bls_sigs_ref_rs::FromRO;
 use pairing::{bls12_381::Fr, CurveProjective};
-use param::PubParam;
+use param::{PubParam, VALID_CIPHERSUITE};
 use std::fmt;
 pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
-use util;
 use PixelG1;
 use PixelG2;
 
@@ -17,13 +16,19 @@ use PixelG2;
 /// The actual group that the public key lies in depends on `pk_in_g2` flag.
 #[derive(Debug, Clone)]
 pub struct PublicKey {
+    /// ciphersuite id
+    ciphersuite: u8,
+    /// the actual public key element
     pk: PixelG2,
 }
 
 impl PublicKey {
     /// Initialize the PublicKey with a given pk.
-    pub fn init(pk: PixelG2) -> Self {
-        PublicKey { pk: pk }
+    pub fn init(pp: &PubParam, pk: PixelG2) -> Self {
+        PublicKey {
+            ciphersuite: pp.get_ciphersuite(),
+            pk: pk,
+        }
     }
 
     /// Set self to the new public key.
@@ -50,6 +55,8 @@ pub struct KeyPair {
 /// they are arranged in a chronological order.
 #[derive(Clone)]
 pub struct SecretKey {
+    /// ciphersuite id
+    ciphersuite: u8,
     /// smallest timestamp for all subkeys
     time: TimeStamp,
     /// the list of the subkeys
@@ -58,15 +65,13 @@ pub struct SecretKey {
 
 impl KeyPair {
     /// generate a pair of public keys and secret keys
-    //  todo: decide the right way to hash the seed into master secret
-    //        perhaps hash_to_field function?
     pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
         let (pk, msk) = match master_key_gen(seed, &pp) {
             Err(e) => return Err(e),
             Ok(f) => f,
         };
         let sk = SecretKey::init(&pp, msk);
-        let pk = PublicKey::init(pk);
+        let pk = PublicKey::init(&pp, pk);
         Ok(Self { sk: sk, pk: pk })
     }
 
@@ -85,10 +90,11 @@ impl SecretKey {
     /// This function initializes the secret key at time stamp = 1.
     /// It takes the root secret `alpha` as the input.
     pub fn init(pp: &PubParam, alpha: PixelG1) -> Self {
-        // todo: replace 2 with a (deterministic) random r
-        let r = Fr::from_str("2").unwrap();
+        // todo: think about seed -- set seed as hash of alpha?
+        let r = Fr::from_ro("seed", 0);
         let ssk = SubSecretKey::init(&pp, alpha, r);
         SecretKey {
+            ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
         }
@@ -101,6 +107,7 @@ impl SecretKey {
     pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
         let ssk = SubSecretKey::init(&pp, alpha, r);
         SecretKey {
+            ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
         }
@@ -311,8 +318,8 @@ impl SecretKey {
             // randomize the new ssk unless it is the first one
             // for the first one we reuse the randomness from the delegator
             if i != 0 {
-                // TODO: change to a random field element
-                let r = Fr::from_str("2").unwrap();
+                // TODO: think about seed -- set seed as previous sk?
+                let r = Fr::from_ro("seed", i as u8);
                 new_ssk.randomization(&pp, r)
             }
 
@@ -388,22 +395,23 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), Stri
         return Err("The seed length is too short".to_owned());
     }
 
-    // hash_to_field(msg, ctr, p, m, hash_fn, hash_reps)
-    //  msg         <- seed
-    //  ctr         <- incremantal from 0
-    //  p           <- group order, implied
-    //  m           <- 1; since we are working on F_{r^1}
-    //  hash_fn     <- Sha256
-    //  hash_reps   <- 2; requires two sha256 runs to get uniform mod p elements
+    // check that the ciphersuite identifier is correct
+    if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+        #[cfg(debug_assertions)]
+        println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+        return Err("Incorrect ciphersuite identifier".to_owned());
+    }
 
-    let r: Vec<Fr> = util::HashToField::hash_to_field(seed, 0, 1, util::HashIDs::Sha256, 2);
+    // use hash_to_field function to generate a random field element
+    // the counter will always be 0 because we only generate one field element
+    let r = Fr::from_ro(seed, 0);
 
     // pk = g2^r
     // sk = h^r
     let mut pk = pp.get_g2();
     let mut sk = pp.get_h();
-    pk.mul_assign(r[0]);
-    sk.mul_assign(r[0]);
+    pk.mul_assign(r);
+    sk.mul_assign(r);
     Ok((pk, sk))
 }
 
@@ -440,11 +448,7 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
 
     // verification is successful if
     //   pairingproduct == 1
-    pairingproduct
-        == Fq12 {
-            c0: Fq6::one(),
-            c1: Fq6::zero(),
-        }
+    pairingproduct == Fq12::one()
 }
 
 /// convenient function to output a subsecretkey object

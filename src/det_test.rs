@@ -15,7 +15,7 @@ fn test_det() {
     let msk = Fr::from_str("3").unwrap();
     let mut pke = pp.get_g2();
     pke.mul_assign(msk);
-    let pk = PublicKey::init(pke);
+    let pk = PublicKey::init(&pp, pke);
 
     let mut alpha = pp.get_h();
     alpha.mul_assign(msk);

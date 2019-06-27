@@ -1,13 +1,17 @@
 // this file defines the structures for the public parameter
 // and its associated methods
 
-use pairing::{bls12_381::Fr, CurveProjective};
+use pairing::CurveProjective;
 use std::fmt;
-use util;
+// use hash to curve functions from bls reference implementation
+use bls_sigs_ref_rs::HashToCurve;
 use PixelG1;
 use PixelG2;
 
-// todo: decide if the depth
+/// Currently, ciphersuite identifier must be either 0 or 1.
+/// The maps between CSID and actual parameters is TBD.
+/// Additional ciphersuite identifiers may be added later.
+pub const VALID_CIPHERSUITE: [u8; 2] = [0, 1];
 
 /// This is a global constant which determines the maximum time
 /// stamp, i.e. `max_time_stamp = 2^D-1`.
@@ -37,6 +41,7 @@ pub type Hlist = [PixelG1; CONST_D + 1];
 #[derive(Clone)]
 pub struct PubParam {
     d: usize, // the depth of the time vector
+    ciphersuite: u8,
     g2: PixelG2,
     h: PixelG1,   // h
     hlist: Hlist, // h_0, h_1, ..., h_d
@@ -48,6 +53,9 @@ impl PubParam {
     // pub fn get_g1(&self) -> PixelG1 {
     //     return self.g1;
     // }
+    pub fn get_ciphersuite(&self) -> u8 {
+        self.ciphersuite
+    }
 
     /// Returns the depth of the time stamp.
     pub fn get_d(&self) -> usize {
@@ -75,77 +83,97 @@ impl PubParam {
     #[cfg(test)]
     pub fn init_without_seed() -> Self {
         println!("warning!!!\nthis function should be used for testing purpose only\nuse PubParam::init() instead\n");
-        Self::init(b"this is a long and determinstic seed").unwrap()
+        Self::init(b"this is a long and determinstic seed", 0).unwrap()
     }
 
-    /// This function takes input a string and outputs the
-    /// public parameters as follows
-    /// 1. use `hash_to_field(msg, ctr)` to hash into many field elements by increasing the `ctr`
-    /// 2. get random group element by raise to power of the generator
-    ///
-    /// TODO: use `hash_to_group` functions instead.
+    /// This function takes input a string seed, and a ciphersuite id, and outputs the
+    /// public parameters using `hash_to_group(seed|ctr, ciphersuite)`
     ///
     /// Note: depending on the configuration `use_rand_generators`,
     /// the generators may be generated randomly.
-    pub fn init(seed: &[u8]) -> Result<Self, String> {
+    pub fn init(seed: &[u8], ciphersuite: u8) -> Result<Self, String> {
         // make sure we have enough entropy
         if seed.len() < 32 {
             return Err(
                 "the seed length is not long enough (required as least 32 bytes)".to_owned(),
             );
         }
+        // make sure the ciphersuite is valid    <- the valid list is tentitive
+        if !VALID_CIPHERSUITE.contains(&ciphersuite) {
+            return Err("Incorrect ciphersuite identifier".to_owned());
+        }
+
+        // the input to the HashToCurve is formated as
+        //  hash_to_group( seed|ctr, ciphersuite)
+        // where ctr starts from 0 and is incremental
 
         let mut ctr = 0;
+        let mut t = seed.to_vec();
+        t.push(ctr);
+
+        #[cfg(feature = "verbose")]
+        #[cfg(debug_assertions)]
+        println!(
+            "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
+            ctr, t, ciphersuite
+        );
 
         // if feature = use_rand_generators then we use randomized generators
-        // #[cfg(feature = "use_rand_generators")]
-        // let g1 = {
-        //     let mut g1 = PixelG1::one();
-        //     let r: Vec<Fr> =
-        //         util::HashToField::hash_to_field(seed, ctr, 1, util::HashIDs::Sha256, 2);
-        //     ctr += 1;
-        //     g1.mul_assign(r[0]);
-        //     g1
-        // };
+        // that is generated from HashToCurve
         #[cfg(feature = "use_rand_generators")]
         let g2 = {
-            let mut g2 = PixelG2::one();
-            // TODO: use hash_to_group function
-            let r: Vec<Fr> =
-                util::HashToField::hash_to_field(seed, ctr, 1, util::HashIDs::Sha256, 2);
+            // generate a new group element, and increment the counter
+            let g2 = PixelG2::hash_to_curve(t.clone(), ciphersuite);
             ctr += 1;
-            g2.mul_assign(r[0]);
+            t.pop();
+            t.push(ctr);
+            #[cfg(feature = "verbose")]
+            #[cfg(debug_assertions)]
+            println!(
+                "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
+                ctr, t, ciphersuite
+            );
             g2
         };
 
         // else we set the generators to the default ones from bls12-381 curve
-        // #[cfg(not(feature = "use_rand_generators"))]
-        // let g1 = PixelG1::one();
         #[cfg(not(feature = "use_rand_generators"))]
         let g2 = PixelG2::one();
 
-        // hash_to_field(msg, ctr, p, m, hash_fn, hash_reps)
-        //  msg         <- seed
-        //  ctr         <- incremantal from 0
-        //  p           <- group order, implied
-        //  m           <- 1; since we are working on F_{r^1}
-        //  hash_fn     <- Sha256
-        //  hash_reps   <- 2; requires two sha256 runs to get uniform mod p elements
-        let r: Vec<Fr> = util::HashToField::hash_to_field(seed, ctr, 1, util::HashIDs::Sha256, 2);
+        // generate h
+        // generate a new group element, and increment the counter
+        let h = PixelG1::hash_to_curve(t.clone(), ciphersuite);
         ctr += 1;
-        let mut h = PixelG1::one();
-        h.mul_assign(r[0]);
-        let mut hlist: Hlist = [PixelG1::one(); CONST_D + 1];
+        t.pop();
+        t.push(ctr);
+
+        #[cfg(feature = "verbose")]
+        #[cfg(debug_assertions)]
+        println!(
+            "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
+            ctr, t, ciphersuite
+        );
+
+        // generate hlist
+        let mut hlist: Hlist = [PixelG1::zero(); CONST_D + 1];
         for i in 0..CONST_D + 1 {
-            let r: Vec<Fr> =
-                util::HashToField::hash_to_field(seed, ctr, 1, util::HashIDs::Sha256, 2);
+            // generate a new group element, and increment the counter
+            hlist[i] = PixelG1::hash_to_curve(t.clone(), ciphersuite);
             ctr += 1;
-            hlist[i].mul_assign(r[0]);
+            t.pop();
+            t.push(ctr);
+            #[cfg(feature = "verbose")]
+            #[cfg(debug_assertions)]
+            println!(
+                "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
+                ctr, t, ciphersuite
+            );
         }
 
         // format the output
         Ok(PubParam {
             d: CONST_D,
+            ciphersuite: ciphersuite,
             g2: g2,
             h: h,
             hlist: hlist,
@@ -169,6 +197,7 @@ impl PubParam {
         }
         PubParam {
             d: CONST_D,
+            ciphersuite: 0,
             g2: g2,
             h: h,
             hlist: hv,
@@ -183,10 +212,12 @@ impl fmt::Debug for PubParam {
             "================================\n\
              ==========Public Parameter======\n\
              depth: {}\n\
+             ciphersuite: {}\n\
              g2 : {:#?}\n\
              h  : {:#?}\n",
             //            self.g1.into_affine(),
             self.d,
+            self.ciphersuite,
             self.g2.into_affine(),
             self.h.into_affine(),
         )?;
@@ -195,4 +226,11 @@ impl fmt::Debug for PubParam {
         }
         write!(f, "================================\n")
     }
+}
+
+#[test]
+fn test_param_gen() {
+    let pp = PubParam::init(b"this is a very long seed to test parameter generation", 0);
+    assert!(pp.is_ok());
+    println!("Public parameter: \n{:?}", pp.unwrap());
 }

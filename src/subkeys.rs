@@ -1,7 +1,10 @@
 // a module for sub secret keys and related functions
 // to decide: whether this should be packed into key.rs?
 
+use ff::Field;
+use keys::PublicKey;
 use pairing::{bls12_381::Fr, CurveProjective};
+use pairing::{bls12_381::*, CurveAffine, Engine};
 use param::PubParam;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
@@ -171,6 +174,80 @@ impl SubSecretKey {
         self.time = time;
         Ok(())
     }
+
+    /// this function is used to verify if a subsecretkey is valid
+    /// for some public key
+    /// it is used for testing only
+    pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
+        let pke = pk.get_pk();
+        let depth = pp.get_d();
+        let list = pp.get_hlist();
+        let t = TimeVec::init(self.time, depth);
+
+        let timevec = t.get_time_vec();
+
+        // h2fx = h0 * \prod hi^ti
+        let mut h2fx = list[0];
+        for i in 0..t.get_time_vec_len() {
+            let mut tmp = list[i + 1];
+            tmp.mul_assign(timevec[i]);
+            h2fx.add_assign(&tmp);
+        }
+
+        // we want to check if
+        //   e(hpoly, g2) == e(h, pk) * e(h0*hi^ti, g2r)
+        // we first negate g2
+        let mut g2 = pp.get_g2();
+        g2.negate();
+
+        // and then use sim-pairing for faster computation
+
+        // due to the api changes in asymmetric pairing,
+        // we need two pieces of codes, depending on which group PK is in
+        #[cfg(feature = "pk_in_g2")]
+        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+            [
+                (
+                    &(self.hpoly.into_affine().prepare()),
+                    &(g2.into_affine().prepare()),
+                ),
+                (
+                    &(h2fx.into_affine().prepare()),
+                    &(self.g2r.into_affine().prepare()),
+                ),
+                (
+                    &(pp.get_h().into_affine().prepare()),
+                    &(pke.into_affine().prepare()),
+                ),
+            ]
+            .into_iter(),
+        ))
+        .unwrap();
+
+        #[cfg(not(feature = "pk_in_g2"))]
+        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+            [
+                (
+                    &(g2.into_affine().prepare()),
+                    &(self.hpoly.into_affine().prepare()),
+                ),
+                (
+                    &(self.g2r.into_affine().prepare()),
+                    &(h2fx.into_affine().prepare()),
+                ),
+                (
+                    &(pke.into_affine().prepare()),
+                    &(pp.get_h().into_affine().prepare()),
+                ),
+            ]
+            .into_iter(),
+        ))
+        .unwrap();
+
+        // verification is successful if
+        //   e(hpoly, -g2) * e(h, pk) * e(h0*hi^ti, g2r) == 1
+        pairingproduct == Fq12::one()
+    }
 }
 
 impl fmt::Debug for SubSecretKey {
@@ -197,89 +274,9 @@ impl fmt::Debug for SubSecretKey {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ff::Field;
     use keys::PublicKey;
-    use pairing::{bls12_381::*, CurveAffine, Engine};
 
     impl SubSecretKey {
-        /// this function is used to verify if a subsecretkey is valid
-        /// for some public key
-        /// it is used for testing only
-        pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
-            let pke = pk.get_pk();
-            let depth = pp.get_d();
-            let list = pp.get_hlist();
-            let t = TimeVec::init(self.time, depth);
-
-            let timevec = t.get_time_vec();
-
-            // h2fx = h0 * \prod hi^ti
-            let mut h2fx = list[0];
-            for i in 0..t.get_time_vec_len() {
-                let mut tmp = list[i + 1];
-                tmp.mul_assign(timevec[i]);
-                h2fx.add_assign(&tmp);
-            }
-
-            // we want to check if
-            //   e(hpoly, g2) == e(h, pk) * e(h0*hi^ti, g2r)
-            // we first negate g2
-            let mut g2 = pp.get_g2();
-            g2.negate();
-
-            // and then use sim-pairing for faster computation
-
-            // due to the api changes in asymmetric pairing,
-            // we need two pieces of codes, depending on which group PK is in
-            #[cfg(feature = "pk_in_g2")]
-            let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-                [
-                    (
-                        &(self.hpoly.into_affine().prepare()),
-                        &(g2.into_affine().prepare()),
-                    ),
-                    (
-                        &(h2fx.into_affine().prepare()),
-                        &(self.g2r.into_affine().prepare()),
-                    ),
-                    (
-                        &(pp.get_h().into_affine().prepare()),
-                        &(pke.into_affine().prepare()),
-                    ),
-                ]
-                .into_iter(),
-            ))
-            .unwrap();
-
-            #[cfg(not(feature = "pk_in_g2"))]
-            let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-                [
-                    (
-                        &(g2.into_affine().prepare()),
-                        &(self.hpoly.into_affine().prepare()),
-                    ),
-                    (
-                        &(self.g2r.into_affine().prepare()),
-                        &(h2fx.into_affine().prepare()),
-                    ),
-                    (
-                        &(pke.into_affine().prepare()),
-                        &(pp.get_h().into_affine().prepare()),
-                    ),
-                ]
-                .into_iter(),
-            ))
-            .unwrap();
-
-            // verification is successful if
-            //   e(hpoly, -g2) * e(h, pk) * e(h0*hi^ti, g2r) == 1
-            pairingproduct
-                == Fq12 {
-                    c0: Fq6::one(),
-                    c1: Fq6::zero(),
-                }
-        }
-
         /// This initialization function uses (re-)randomization
         /// as a subroutine;
         /// it should generate a same subsecret key as Self::init()
@@ -359,7 +356,7 @@ mod test {
         // a random public key
         let mut pke = pp.get_g2();
         pke.mul_assign(msk);
-        let pk = PublicKey::init(pke);
+        let pk = PublicKey::init(&pp, pke);
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);
@@ -399,7 +396,7 @@ mod test {
         // a random public key
         let mut pke = pp.get_g2();
         pke.mul_assign(msk);
-        let pk = PublicKey::init(pke);
+        let pk = PublicKey::init(&pp, pke);
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);

@@ -332,7 +332,7 @@ impl SecretKey {
         //
         // ### new_sk = {12, [ssk_for_t_12, ssk_for_t_13]}                // [2,1,1], [2,1,2] ###
         //
-        
+
         // assign new_sk to self, and return successful
         // here we rely on Rust's memory safety feature to ensure the old key is erased
         *self = new_sk;
@@ -348,6 +348,13 @@ impl SecretKey {
     ///     sk {time: 2, ssks: {omited}}
     ///     sk.find_ancestor(12) = 9
     /// This is an ancestor node for the target time.
+    //  Running example from key update:
+    //    example 1: ancestor of time stamp 12, a.k.a. [2,1,2]
+    //      within the sk = {3, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} // [1,1], [1,2], [2]
+    //      is 9, corresponding to time vector [2], i.e., a pre-fix of [2,1,2]
+    //    example 2: ancestor of time stamp 4, a.k.a. [1,1,1]
+    //      within the sk = {2, [ssk_for_t_2, ssk_for_t_9]}              // [1], [2]
+    //      is 2, corresponding to time vector [1], i.e., a pre-fix of [1,1,1]
     fn find_ancestor(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
         let mut res = &self.ssk[0];
         if res.get_time() >= tar_time {

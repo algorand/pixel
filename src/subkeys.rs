@@ -114,7 +114,7 @@ impl SubSecretKey {
             tmp.add_assign(&tmp2);
         }
 
-        // radomize tmp and set hpoly += tmp^r
+        // radomize tmp and set hpoly *= tmp^r
         tmp.mul_assign(r);
         self.hpoly.add_assign(&tmp);
 
@@ -149,12 +149,12 @@ impl SubSecretKey {
         let cur_vec_length = cur_time_vec.get_time_vec_len();
         let tar_vec_length = tar_time_vec.get_time_vec_len();
 
-        // hpoly += h_i ^ t_i
+        // hpoly *= h_i ^ t_i
         for i in 0..tar_vec_length - cur_vec_length {
             // if tv[i] == 1
-            //  hpoly += tmp
+            //  hpoly *= tmp
             // if tv[2] == 2
-            //  hpoly += tmp^2
+            //  hpoly *= tmp^2
             let mut tmp = self.hvector[i];
             if tv[i + cur_vec_length] == 2 {
                 tmp.double();

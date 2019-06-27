@@ -98,6 +98,31 @@ pub trait PixelSign {
         msg: &[u8],
     ) -> Result<Signature, String>;
 
+    /// Input a secret key, a time stamp that matches the timestamp of the secret key,
+    /// the public parameter, and a message in the form of a byte string,
+    /// output a signature. If the time stamp is not the same as the secret key,
+    /// returns an error
+    fn pixel_sign_present(
+        sk: &mut SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        msg: &[u8],
+    ) -> Result<Signature, String> ;
+
+    /// Input a secret key, a time stamp that matches the timestamp of the secret key,
+    /// the public parameter, and a message in the form of a byte string,
+    /// output a signature, and advance to time stamp +1.
+    /// This feature may be useful to enforce one time signature for each time stamp.
+    /// If the time stamp is not the same as the secret key,
+    /// returns an error
+    fn pixel_sign_then_update(
+        sk: &mut SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        msg: &[u8],
+    ) -> Result<Signature, String>;
+
+
     /// Input a public key, a time stamp, the public parameter, a message in the form of a byte string,
     /// and a signature, output true if signature is valid w.r.t. the inputs.
     fn pixel_verify(

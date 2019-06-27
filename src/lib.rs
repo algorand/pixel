@@ -6,11 +6,9 @@ extern crate sha2;
 
 mod keys;
 mod param;
-
 mod sig;
 mod subkeys;
 mod time;
-//mod util;
 
 /// This file contains deterministic tests, with pre-fixed parameters,
 /// and with determinstic, small random numbers, e.g., 1, 2, 3, 4...

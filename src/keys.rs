@@ -24,11 +24,18 @@ pub struct PublicKey {
 
 impl PublicKey {
     /// Initialize the PublicKey with a given pk.
-    pub fn init(pp: &PubParam, pk: PixelG2) -> Self {
-        PublicKey {
+    /// Returns an error if the ciphersuite id (in parameter) is not valid
+    pub fn init(pp: &PubParam, pk: PixelG2) -> Result<Self, String> {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err("Incorrect ciphersuite identifier".to_owned());
+        }
+        Ok(PublicKey {
             ciphersuite: pp.get_ciphersuite(),
             pk: pk,
-        }
+        })
     }
 
     /// Set self to the new public key.
@@ -39,6 +46,11 @@ impl PublicKey {
     /// Returns the public key element this structure contains.
     pub fn get_pk(&self) -> PixelG2 {
         self.pk
+    }
+
+    /// Returns the public key element this structure contains.
+    pub fn get_ciphersuite(&self) -> u8 {
+        self.ciphersuite
     }
 }
 // pub type PublicKey = PixelG2;
@@ -53,6 +65,8 @@ pub struct KeyPair {
 /// The secret key is a list of SubSecretKeys;
 /// the length of the list can be arbitrary;
 /// they are arranged in a chronological order.
+/// There are two extra fields, the ciphersuite id,
+/// and the time stamp.
 #[derive(Clone)]
 pub struct SecretKey {
     /// ciphersuite id
@@ -66,12 +80,24 @@ pub struct SecretKey {
 impl KeyPair {
     /// generate a pair of public keys and secret keys
     pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
+        // this may fail if the seed is too short or
+        // the ciphersuite is not supported
         let (pk, msk) = match master_key_gen(seed, &pp) {
             Err(e) => return Err(e),
             Ok(f) => f,
         };
-        let sk = SecretKey::init(&pp, msk);
-        let pk = PublicKey::init(&pp, pk);
+
+        // this may fail if the ciphersuite is not supported
+        let sk = match SecretKey::init(&pp, msk) {
+            Err(e) => return Err(e),
+            Ok(f) => f,
+        };
+
+        // this may fail if the ciphersuite is not supported
+        let pk = match PublicKey::init(&pp, pk) {
+            Err(e) => return Err(e),
+            Ok(f) => f,
+        };
         Ok(Self { sk: sk, pk: pk })
     }
 
@@ -89,15 +115,21 @@ impl KeyPair {
 impl SecretKey {
     /// This function initializes the secret key at time stamp = 1.
     /// It takes the root secret `alpha` as the input.
-    pub fn init(pp: &PubParam, alpha: PixelG1) -> Self {
+    pub fn init(pp: &PubParam, alpha: PixelG1) -> Result<Self, String> {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err("Incorrect ciphersuite identifier".to_owned());
+        }
         // todo: think about seed -- set seed as hash of alpha?
         let r = Fr::from_ro("seed", 0);
         let ssk = SubSecretKey::init(&pp, alpha, r);
-        SecretKey {
+        Ok(SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
-        }
+        })
     }
 
     /// This function initializes the secret key at time stamp = 1.
@@ -111,6 +143,11 @@ impl SecretKey {
             time: 1,
             ssk: vec![ssk],
         }
+    }
+
+    /// Returns the ciphersuite id of the secret key
+    pub fn get_ciphersuite(&self) -> u8 {
+        self.ciphersuite
     }
 
     /// Returns the current time stamp for the key.
@@ -130,9 +167,7 @@ impl SecretKey {
         self.ssk[0].clone()
     }
 
-    #[cfg(test)]
     /// Returns the whole list of the sub secret keys.
-    /// This function is only used for testing.
     pub fn get_ssk_vec(&self) -> Vec<SubSecretKey> {
         self.ssk.clone()
     }
@@ -378,6 +413,42 @@ impl SecretKey {
         }
         Ok(res.get_time())
     }
+
+    /// This function checks if the secret key valid w.r.t the
+    /// public key, the parameters and the time stamp. A secret key is valid if ...
+    ///  * sk.ciphersuite == pk.ciphersuite == pp.ciphersuite
+    ///  * sk.ssk.validate(pk, pp)
+    ///  * sk.TimeStamp's gamma list form ssk.TimeVec
+    pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
+
+        // validate the ciphersuite ids
+        if self.get_ciphersuite() != pk.get_ciphersuite() {
+            return false;
+        }
+        if self.get_ciphersuite() != pp.get_ciphersuite() {
+            return false;
+        }
+
+        // get the gamma list of the current sk
+        let depth = pp.get_d();
+        let time_stamp = self.get_time();
+        let time_vec = TimeVec::init(time_stamp, depth);
+        let gamma_list = time_vec.gamma_list(depth);
+
+        let ssk = self.get_ssk_vec();
+        for i in 0..ssk.len() {
+
+            // checks that each ssk is valid
+            if !ssk[i].validate(&pk, &pp) {
+                return false;
+            }
+            // checks that the time for each ssk is valid
+            if ssk[i].get_time() != gamma_list[i].get_time() {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 /// this function generates the master key pair from a seed
@@ -513,6 +584,8 @@ mod test {
         }
     }
 
+    /// this test takes quite some time to finish
+    /// enable this test with `cargo test -- --ignored`
     #[ignore]
     #[test]
     fn test_long_key_update() {
@@ -533,16 +606,60 @@ mod test {
                 let mut sk3 = sk2.clone();
                 let res = sk3.update(&pp, i);
                 assert!(res.is_ok(), "update failed");
-                #[cfg(long_tests)]
                 for ssk in sk3.ssk {
                     assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
                 }
             }
-
-            #[cfg(long_tests)]
             for ssk in sk2.ssk {
                 assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
             }
+        }
+    }
+
+    #[test]
+    fn test_sk_validation() {
+        let pp = PubParam::init_without_seed();
+        let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
+        let sk = keypair.sk;
+        let pk = keypair.pk;
+        assert!(sk.validate(&pk, &pp), "invalid sk");
+        for j in 2..16 {
+            let mut sk2 = sk.clone();
+            let res = sk2.update(&pp, j);
+            assert!(res.is_ok(), "update failed");
+            assert!(sk2.validate(&pk, &pp), "invalid sk");
+        }
+    }
+
+    /// this test takes quite some time to finish
+    /// enable this test with `cargo test -- --ignored`
+    #[ignore]
+    #[test]
+    fn test_long_sk_validation() {
+        let pp = PubParam::init_without_seed();
+        let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
+        let pk = keypair.pk;
+        let sk = keypair.sk;
+        assert!(sk.validate(&pk, &pp), "invalid sk");
+        // this double loop
+        // 1. performs key updates with all possible `start_time` and `finish_time`
+        // 2. for each updated key, checks the validity
+        for j in 2..16 {
+            let mut sk2 = sk.clone();
+            let res = sk2.update(&pp, j);
+            assert!(res.is_ok(), "update failed");
+            assert!(sk2.validate(&pk, &pp), "invalid sk");
+            for i in j + 1..16 {
+                let mut sk3 = sk2.clone();
+                let res = sk3.update(&pp, i);
+                assert!(res.is_ok(), "update failed");
+                assert!(sk3.validate(&pk, &pp), "invalid sk");
+            }
+
         }
     }
 

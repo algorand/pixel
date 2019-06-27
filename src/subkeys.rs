@@ -356,7 +356,7 @@ mod test {
         // a random public key
         let mut pke = pp.get_g2();
         pke.mul_assign(msk);
-        let pk = PublicKey::init(&pp, pke);
+        let pk = PublicKey::init(&pp, pke).unwrap();
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);
@@ -396,7 +396,7 @@ mod test {
         // a random public key
         let mut pke = pp.get_g2();
         pke.mul_assign(msk);
-        let pk = PublicKey::init(&pp, pke);
+        let pk = PublicKey::init(&pp, pke).unwrap();
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);

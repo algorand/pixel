@@ -3,8 +3,7 @@
 
 use ff::Field;
 use keys::PublicKey;
-use pairing::{bls12_381::Fr, CurveProjective};
-use pairing::{bls12_381::*, CurveAffine, Engine};
+use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::PubParam;
 use std::fmt;
 use time::{TimeStamp, TimeVec};

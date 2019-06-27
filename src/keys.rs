@@ -39,8 +39,16 @@ impl PublicKey {
     }
 
     /// Set self to the new public key.
-    pub fn set_pk(&mut self, pk: PixelG2) {
-        self.pk = pk
+    pub fn set_pk(&mut self, pp: &PubParam, pk: PixelG2) -> Result<(), String> {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err("Incorrect ciphersuite identifier".to_owned());
+        }
+        self.ciphersuite = pp.get_ciphersuite();
+        self.pk = pk;
+        Ok(())
     }
 
     /// Returns the public key element this structure contains.
@@ -115,6 +123,7 @@ impl KeyPair {
 impl SecretKey {
     /// This function initializes the secret key at time stamp = 1.
     /// It takes the root secret `alpha` as the input.
+    /// It may returns an error if the ciphersuite is not supported.
     pub fn init(pp: &PubParam, alpha: PixelG1) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
@@ -168,7 +177,9 @@ impl SecretKey {
     }
 
     /// Returns the whole list of the sub secret keys.
-    pub fn get_ssk_vec(&self) -> Vec<SubSecretKey> {
+    /// This is a private function since users do not need to access the whole
+    /// ssk vector other.
+    fn get_ssk_vec(&self) -> Vec<SubSecretKey> {
         self.ssk.clone()
     }
 
@@ -420,7 +431,6 @@ impl SecretKey {
     ///  * sk.ssk.validate(pk, pp)
     ///  * sk.TimeStamp's gamma list form ssk.TimeVec
     pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
-
         // validate the ciphersuite ids
         if self.get_ciphersuite() != pk.get_ciphersuite() {
             return false;
@@ -437,12 +447,11 @@ impl SecretKey {
 
         let ssk = self.get_ssk_vec();
         for i in 0..ssk.len() {
-
             // checks that each ssk is valid
             if !ssk[i].validate(&pk, &pp) {
                 return false;
             }
-            // checks that the time for each ssk is valid
+            // checks that the time for each ssk is valid w.r.t gamma list
             if ssk[i].get_time() != gamma_list[i].get_time() {
                 return false;
             }
@@ -451,10 +460,10 @@ impl SecretKey {
     }
 }
 
-/// this function generates the master key pair from a seed
-/// this function is private -- it should be used only as a subroutine to key gen function
-//  todo: decide the right way to hash the seed into master secret
-//        perhaps hash_to_field function?
+/// This function generates the master key pair from a seed.
+/// Input a seed, it uses hash_to_field function to generate a field element x.
+/// The public/secret key is then set to g2^x and h^x
+/// This function is private -- it should be used only as a subroutine to key gen function
 fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), String> {
     // make sure we have enough entropy
     if seed.len() < 32 {
@@ -659,7 +668,6 @@ mod test {
                 assert!(res.is_ok(), "update failed");
                 assert!(sk3.validate(&pk, &pp), "invalid sk");
             }
-
         }
     }
 

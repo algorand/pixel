@@ -316,11 +316,13 @@ mod signature_test {
             let mut sk2 = sk.clone();
             let res = sk2.update(&pp, j);
             assert!(res.is_ok(), "updating failed");
+            assert!(sk2.validate(&pk, &pp), "validation failed");
+
             for i in j + 1..16 {
                 let mut sk3 = sk2.clone();
                 let res = sk3.update(&pp, i);
                 assert!(res.is_ok(), "updating failed");
-                println!("{:?}", sk3);
+                assert!(sk3.validate(&pk, &pp), "validation failed");
                 let r = Fr::from_ro(
                     "this is also a very very long seed for testing",
                     (i * 16 + j) as u8,
@@ -331,13 +333,8 @@ mod signature_test {
                     sig.verify_bytes(&pk, sk3.get_time(), &pp, msg),
                     "signature verification failed"
                 );
-                for ssk in sk3.get_ssk_vec() {
-                    assert!(ssk.validate(&pk, &pp), "validation failed");
-                }
             }
-            for ssk in sk2.get_ssk_vec() {
-                assert!(ssk.validate(&pk, &pp), "validation failed");
-            }
+
             let r = Fr::from_ro("this is also a very very long seed for testing", 255);
 
             let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);

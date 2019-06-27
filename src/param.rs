@@ -53,6 +53,8 @@ impl PubParam {
     // pub fn get_g1(&self) -> PixelG1 {
     //     return self.g1;
     // }
+
+    /// get the cipher suite id from the public param
     pub fn get_ciphersuite(&self) -> u8 {
         self.ciphersuite
     }
@@ -90,7 +92,7 @@ impl PubParam {
     /// public parameters using `hash_to_group(seed|ctr, ciphersuite)`
     ///
     /// Note: depending on the configuration `use_rand_generators`,
-    /// the generators may be generated randomly.
+    /// the generators will be generated randomly.
     pub fn init(seed: &[u8], ciphersuite: u8) -> Result<Self, String> {
         // make sure we have enough entropy
         if seed.len() < 32 {

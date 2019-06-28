@@ -1,6 +1,6 @@
-// This file contains deterministic tests, with pre-fixed parameters,
-// and with determinstic, small random numbers, e.g., 1, 2, 3, 4...
-
+/// This module contains deterministic tests, with pre-fixed parameters,
+/// and with determinstic, small random numbers, e.g., 1, 2, 3, 4...
+/// This test module is only avaliable when public key lies in G2.
 use ff::PrimeField;
 use keys::{PublicKey, SecretKey};
 use pairing::{bls12_381::*, CurveProjective, EncodedPoint};
@@ -25,11 +25,17 @@ fn test_det() {
 
     let msg = Fr::from_str("1").unwrap();
 
-    let sig = sig::Signature::sign_fr(&sk, 1, &pp, msg, r);
+    let sig = match sig::Signature::sign_fr(&sk, 1, &pp, msg, r) {
+        Err(e) => panic!("failed to sign the message {}", e),
+        Ok(p) => p,
+    };
 
     // we check if the secret key matches known other implementations
     // by checking the first two elements in the first sub secret key
-    let ssk = sk.get_first_ssk();
+    let ssk = match sk.get_first_ssk() {
+        Err(e) => panic!("failed to get the 1-st ssk {}", e),
+        Ok(p) => p,
+    };
     // secret key
     // 0-th element
     //         x0 = 0x1638533957d540a9d2370f17cc7ed5863bc0b995b8825e0ee1ea1e1e4d00dbae81f14b0bf3611b78c952aacab827a053
@@ -88,7 +94,10 @@ fn test_det() {
     );
 
     // compare last element in secert key
-    let hvlast = ssk.get_last_hvector_coeff();
+    let hvlast = match ssk.get_last_hvector_coeff() {
+        Err(e) => panic!("failed to get the last elemet from hv {}", e),
+        Ok(p) => p,
+    };
     let hvlast_str = G1Compressed::from_affine(hvlast.into_affine());
     assert_eq!(
         hvlast_str.as_ref(),

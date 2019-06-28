@@ -11,17 +11,8 @@ mod sig;
 mod subkeys;
 mod time;
 
-/// This file contains deterministic tests, with pre-fixed parameters,
-/// and with determinstic, small random numbers, e.g., 1, 2, 3, 4...
-/// This test module is only avaliable when public key lies in G2.
 #[cfg(test)]
-#[cfg(debug_assertions)]
-#[cfg(feature = "pk_in_g2")]
-mod det_test;
-
-#[cfg(test)]
-mod pixel_test;
-
+mod test;
 // by default the groups are switched so that
 // the public key lies in G2
 // this yields smaller public keys
@@ -52,10 +43,25 @@ type PixelG1 = pairing::bls12_381::G2;
 #[cfg(not(feature = "pk_in_g2"))]
 type PixelG2 = pairing::bls12_381::G1;
 
+// expose the submodules of this crate for debug versions
+#[cfg(debug_assertions)]
 pub use keys::{KeyPair, PublicKey, SecretKey, SubSecretKey};
+#[cfg(debug_assertions)]
 pub use param::PubParam;
+#[cfg(debug_assertions)]
 pub use sig::Signature;
+#[cfg(debug_assertions)]
 pub use time::TimeStamp;
+
+// hide the submodules of this crate for release versions
+#[cfg(not(debug_assertions))]
+use keys::{KeyPair, PublicKey, SecretKey};
+#[cfg(not(debug_assertions))]
+use param::PubParam;
+#[cfg(not(debug_assertions))]
+use sig::Signature;
+#[cfg(not(debug_assertions))]
+use time::TimeStamp;
 
 /// Pixel is an abstract structure that holds related functionalities
 /// of pixel signature algorithms.

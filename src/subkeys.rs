@@ -36,18 +36,12 @@ impl SubSecretKey {
     /// Conver ssk into a blob:
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if serialization fails or time stamp is greater than 2^32-1
-    pub fn into_blob<W: Write>(&self, ciphersuite: u8, writer: &mut W) -> Result<(), String> {
+    /// or invalid ciphersuite.
+    pub fn ssk_serial<W: Write>(&self, ciphersuite: u8, writer: &mut W) -> Result<(), String> {
         if !VALID_CIPHERSUITE.contains(&ciphersuite) {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
         let hvlen = self.hvector.len();
-
-        #[cfg(not(feature = "pk_in_g2"))]
-        let buflen = 5 + (hvlen + 1) * 96 + 48;
-
-        #[cfg(feature = "pk_in_g2")]
-        let buflen = 5 + (hvlen + 1) * 48 + 96;
-
 
         // the first 4 bytes stores the time stamp,
         // the time stamp cannot exceed 2^30
@@ -66,7 +60,6 @@ impl SubSecretKey {
         // next, store one byte which is the length of the hvector
         // this length cannot exceed depth, so we can store it in one byte
         buf.push(hvlen as u8);
-
 
         // the next chunck of data stores g2r
         if self.g2r.serialize(&mut buf, true).is_err() {
@@ -87,15 +80,17 @@ impl SubSecretKey {
         if writer.write_all(&buf).is_err() {
             return Err(ERR_SERIAL.to_owned());
         }
-        println!("{:?} {}", buf.len(), buflen);
+
         return Ok(());
     }
 
-    pub fn from_blob<R: Read>(reader: &mut R, ciphersuite: u8) -> Result<Self, String> {
+    /// Conver a blob into a ssk:
+    /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
+    /// Return an error if deserialization fails or invalid ciphersuite
+    pub fn ssk_deserial<R: Read>(reader: &mut R, ciphersuite: u8) -> Result<Self, String> {
         if !VALID_CIPHERSUITE.contains(&ciphersuite) {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
-
 
         // the first 4 bytes stores the time stamp,
         // the time stamp cannot exceed 2^30
@@ -105,6 +100,7 @@ impl SubSecretKey {
         }
         let time = u32::from_le_bytes(time);
 
+        // the next byte is the length of hvector
         let mut hvlen = [0u8; 1];
         if reader.read(&mut hvlen).is_err() {
             return Err(ERR_DESERIAL.to_owned());
@@ -116,14 +112,13 @@ impl SubSecretKey {
             Ok(p) => p,
         };
 
-        // the next chunck of data stores g2r
+        // the next chunck of data stores hpoly
         let hpoly: PixelG1 = match SerDes::deserialize(reader) {
             Err(_e) => return Err(ERR_DESERIAL.to_owned()),
             Ok(p) => p,
         };
 
-
-        // the next chunck of data stores g2r
+        // the next chunck of data stores hvector
         let mut hv: Vec<PixelG1> = vec![];
         for _i in 0..hvlen[0] {
             let tmp: PixelG1 = match SerDes::deserialize(reader) {
@@ -132,6 +127,7 @@ impl SubSecretKey {
             };
             hv.push(tmp)
         }
+        // form the subsecretkey
         Ok(SubSecretKey {
             time: time as u64,
             g2r: g2r,
@@ -397,282 +393,24 @@ impl fmt::Debug for SubSecretKey {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-    use keys::PublicKey;
-
-    impl SubSecretKey {
-        /// This initialization function uses (re-)randomization
-        /// as a subroutine;
-        /// it should generate a same subsecret key as Self::init()
-        /// as long as the randomness stays the same
-        /// see `test_key_gen()`.
-        fn init_from_randomization(pp: &PubParam, alpha: PixelG1, r: Fr) -> Result<Self, String> {
-            // rust needs to know the size of the array at compile time
-            // hence we use a const here rather than param.get_d()
-            use param::CONST_D;
-            let mut s = SubSecretKey {
-                // time stamp is 1 since this is the root key
-                time: 1,
-                g2r: PixelG2::zero(),
-                hpoly: alpha,
-                hvector: [PixelG1::zero(); CONST_D].to_vec(),
-            };
-            s.randomization(pp, r)?;
-            Ok(s)
-        }
-
-        /// function used for testing only
-        #[allow(dead_code)]
-        fn set_time(&mut self, time: TimeStamp) {
-            self.time = time;
-        }
-    }
-
-    #[test]
-    fn test_key_gen() {
-        use ff::PrimeField;
-
-        // a random field element
-        let r = Fr::from_str(
-            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-        )
-        .unwrap();
-        let pp = PubParam::init_without_seed();
-        // a random master secret key
-        let mut alpha = pp.get_h();
-        let msk = Fr::from_str(
-            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-        )
-        .unwrap();
-        alpha.mul_assign(msk);
-
-        let t = SubSecretKey::init(&pp, alpha, r);
-        let res = SubSecretKey::init_from_randomization(&pp, alpha, r);
-        assert!(
-            res.is_ok(),
-            "ssk initiation from randomization failed\n\
-             error message: {:?}",
-            res.err()
-        );
-        let t1 = res.unwrap();
-        // make sure the sub secret keys are the same
-        assert_eq!(t.g2r, t1.g2r, "g1r incorrect");
-        assert_eq!(
-            t.hpoly.into_affine(),
-            t1.hpoly.into_affine(),
-            "hpoly incorrect"
-        );
-        for i in 0..pp.get_d() {
-            assert_eq!(
-                t.hvector[i], t1.hvector[i],
-                "error on {}th element in hlist",
-                i
-            )
-        }
-    }
-
-    #[test]
-    fn test_randomization() {
-        use ff::PrimeField;
-        let pp = PubParam::init_without_seed();
-        // a random field element
-        let r = Fr::from_str(
-            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-        )
-        .unwrap();
-
-        // a random master secret key
-        let mut alpha = pp.get_h();
-        let msk = Fr::from_str(
-            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-        )
-        .unwrap();
-        alpha.mul_assign(msk);
-
-        // a random public key
-        let mut pke = pp.get_g2();
-        pke.mul_assign(msk);
-        let res = PublicKey::init(&pp, pke);
-        assert!(
-            res.is_ok(),
-            "PK initialization failed\n\
-             error message {:?}",
-            res.err()
-        );
-        let pk = res.unwrap();
-
-        // initialize a random secret key
-        let mut t = SubSecretKey::init(&pp, alpha, r);
-        // check if the key is valid or not
-        assert!(t.validate(&pk, &pp), "initial key failure for validation");
-
-        // randomize the key
-        let r = Fr::from_str("12345").unwrap();
-        let res = t.randomization(&pp, r);
-        assert!(
-            res.is_ok(),
-            "randomization failed\n\
-             error message: {:?}",
-            res.err()
-        );
-
-        // check if the key remains valid or not
-        assert!(
-            t.validate(&pk, &pp),
-            "randomized key failure for validation"
-        );
-    }
-
-    #[test]
-    fn test_delegate() {
-        use ff::PrimeField;
-        let pp = PubParam::init_without_seed();
-        let depth = pp.get_d();
-        // a random field element
-        let r = Fr::from_str(
-            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-        )
-        .unwrap();
-
-        // a random master secret key
-        let mut alpha = pp.get_h();
-        let msk = Fr::from_str(
-            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-        )
-        .unwrap();
-        alpha.mul_assign(msk);
-
-        // a random public key
-        let mut pke = pp.get_g2();
-        pke.mul_assign(msk);
-        let res = PublicKey::init(&pp, pke);
-        assert!(
-            res.is_ok(),
-            "PK initialization failed\n\
-             error message {:?}",
-            res.err()
-        );
-        let pk = res.unwrap();
-
-        // initialize a random secret key
-        let mut t = SubSecretKey::init(&pp, alpha, r);
-        let t1 = t.clone();
-
-        // check if the key is valid or not
-        assert!(t.validate(&pk, &pp), "key validation failed");
-
-        // randomize the key
-        let r = Fr::from_str("12345").unwrap();
-        let res = t.randomization(&pp, r);
-        assert!(
-            res.is_ok(),
-            "randomization failed during ssk delegation\n\
-             error message: {:?}",
-            res.err()
-        );
-        // check if the key remains valid or not
-        assert!(
-            t.validate(&pk, &pp),
-            "randomized key failure for validation"
-        );
-
-        // delegate gradually, 1 -> 2 -> 3 -> 4
-        for i in 2..5 {
-            // delegate the key to the time
-            let res = t.delegate(i, depth);
-            assert!(res.is_ok(), "delegation failed");
-            // check if the key remains valid or not
-            assert!(
-                t.validate(&pk, &pp),
-                "failure: {}-th key after delation, \n{:?}",
-                i,
-                t
-            );
-            // randomize the key
-            let res = t.randomization(&pp, r);
-            assert!(
-                res.is_ok(),
-                "randomization failed during ssk delegation\n\
-                 error message: {:?}",
-                res.err()
-            );
-            // check if the key remains valid or not
-            assert!(
-                t.validate(&pk, &pp),
-                "failure: {}-th key after randomizeation, \n{:?}",
-                i,
-                t
-            );
-        }
-
-        // fast delegation, always starts from t = 1
-        // 1 -> 2, 1 -> 3, 1 -> 4
-        for i in 2..5 {
-            let mut t = t1.clone();
-            let res = t.delegate(i, depth);
-            assert!(
-                res.is_ok(),
-                "delegation failed\n\
-                 error message {:?}",
-                res.err()
-            );
-            // check if the key remains valid or not
-            assert!(
-                t.validate(&pk, &pp),
-                "failure: {}-th key after delation, \n{:?}",
-                i,
-                t
-            );
-            // randomize the key
-            let res = t.randomization(&pp, r);
-            assert!(
-                res.is_ok(),
-                "randomization failed during ssk delegation\n\
-                 error message: {:?}",
-                res.err()
-            );
-            // check if the key remains valid or not
-            assert!(
-                t.validate(&pk, &pp),
-                "failure: {}-th key after randomizeation, \n{:?}",
-                i,
-                t
-            );
-        }
-    }
-
-    #[test]
-    fn test_ssk_serialization() {
-        use ff::PrimeField;
-        use std::io::Cursor;
-        // a random field element
-        let r = Fr::from_str(
-            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-        )
-        .unwrap();
-        let pp = PubParam::init_without_seed();
-        // a random master secret key
-        let mut alpha = pp.get_h();
-        let msk = Fr::from_str(
-            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-        )
-        .unwrap();
-        alpha.mul_assign(msk);
-
-        // generate a sub secret key
-        let t = SubSecretKey::init(&pp, alpha, r);
-
-        // buffer space
-        let mut scratch = [1u8; 1000];
-        // serializae a ssk into buffer
-        let buf = &mut Cursor::new(&mut scratch[..]);
-        assert!(t.into_blob(0, buf).is_ok());
-        // deserialize a buffer into ssk
-        let buf = &mut Cursor::new(&mut scratch[..]);
-        let s = SubSecretKey::from_blob(buf, 0).unwrap();
-
-        // makes sure that the keys match
-        assert_eq!(t, s);
+impl SubSecretKey {
+    /// This initialization function uses (re-)randomization
+    /// as a subroutine;
+    /// it should generate a same subsecret key as Self::init()
+    /// as long as the randomness stays the same
+    /// see `test_key_gen()`.
+    pub fn init_from_randomization(pp: &PubParam, alpha: PixelG1, r: Fr) -> Result<Self, String> {
+        // rust needs to know the size of the array at compile time
+        // hence we use a const here rather than param.get_d()
+        use param::CONST_D;
+        let mut s = SubSecretKey {
+            // time stamp is 1 since this is the root key
+            time: 1,
+            g2r: PixelG2::zero(),
+            hpoly: alpha,
+            hvector: [PixelG1::zero(); CONST_D].to_vec(),
+        };
+        s.randomization(pp, r)?;
+        Ok(s)
     }
 }

@@ -40,6 +40,7 @@ impl PublicKey {
     }
 
     /// Set self to the new public key.
+    /// Returns an error if the ciphersuite is not supported.
     pub fn set_pk(&mut self, pp: &PubParam, pk: PixelG2) -> Result<(), String> {
         // check that the ciphersuite identifier is correct
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
@@ -87,26 +88,20 @@ pub struct SecretKey {
 }
 
 impl KeyPair {
-    /// generate a pair of public keys and secret keys
+    /// Generate a pair of public keys and secret keys.
+    /// Returns an error if
+    /// * the seed is not long enough
+    /// * the ciphersuite is not supported
     pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
         // this may fail if the seed is too short or
         // the ciphersuite is not supported
-        let (pk, msk) = match master_key_gen(seed, &pp) {
-            Err(e) => return Err(e),
-            Ok(f) => f,
-        };
+        let (pk, msk) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
-        let sk = match SecretKey::init(&pp, msk) {
-            Err(e) => return Err(e),
-            Ok(f) => f,
-        };
+        let sk = SecretKey::init(&pp, msk)?;
 
         // this may fail if the ciphersuite is not supported
-        let pk = match PublicKey::init(&pp, pk) {
-            Err(e) => return Err(e),
-            Ok(f) => f,
-        };
+        let pk = PublicKey::init(&pp, pk)?;
         Ok(Self { sk: sk, pk: pk })
     }
 
@@ -132,7 +127,7 @@ impl SecretKey {
             println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
             return Err(ERR_CIPHERSUITE.to_owned());
         }
-        // todo: think about seed -- set seed as hash of alpha?
+        // TODO: think about seed -- set seed as hash of alpha?
         let r = Fr::from_ro("seed", 0);
         let ssk = SubSecretKey::init(&pp, alpha, r);
         Ok(SecretKey {
@@ -171,10 +166,15 @@ impl SecretKey {
     }
 
     /// Returns the first sub secret key on the list.
-    /// Panics if the list is empty.
-    pub fn get_first_ssk(&self) -> SubSecretKey {
-        assert!(self.ssk.len() > 0, "sub secret key list is empty!");
-        self.ssk[0].clone()
+    /// Returns an error if the list is empty.
+    pub fn get_first_ssk(&self) -> Result<SubSecretKey, String> {
+        if self.ssk.len() == 0 {
+            #[cfg(debug_assertions)]
+            println!("Error to find the first key: {}", ERR_SSK_EMPTY);
+            return Err(ERR_SSK_EMPTY.to_owned());
+        }
+
+        Ok(self.ssk[0].clone())
     }
 
     /// Returns the whole list of the sub secret keys.
@@ -186,8 +186,9 @@ impl SecretKey {
 
     /// Updates the secret key into the corresponding time stamp.
     /// This function mutate the existing secret keys to the time stamp.
-    /// It panics if the new time stamp is invalid (either smaller than
-    /// current time or larger than maximum time stamp).
+    /// It propogates an error if
+    /// the new time stamp is invalid (either smaller than
+    /// current time or larger than maximum time stamp)
     pub fn update<'a>(&'a mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String> {
         // make a clone of self, in case an error is raised, we do not want to mutate the key
         // the new_sk has a same life time as the old key
@@ -247,10 +248,7 @@ impl SecretKey {
         // ### new_sk = {9, [ssk_for_t_9]}   // time vector = [2] ###
         //
         // as follows
-        let delegator_time = match new_sk.find_ancestor(tar_time) {
-            Err(e) => return Err(e),
-            Ok(p) => p,
-        };
+        let delegator_time = new_sk.find_ancestor(tar_time)?;
         // step 1.1 update new_sk's time stamp
         // the current sk is ### new_sk = {9, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} ###
         new_sk.time = delegator_time;
@@ -276,10 +274,10 @@ impl SecretKey {
             new_sk.ssk.remove(0);
         }
 
-        // there should always be at least one key left
-        #[cfg(debug_assertions)]
-        assert!(new_sk.ssk.len() > 0, "something is wrong: no ssk left");
+        // there should always be at least one key left\
         if new_sk.ssk.len() == 0 {
+            #[cfg(debug_assertions)]
+            println!("Error in key unpdating: {:?}", ERR_SSK_EMPTY);
             return Err(ERR_SSK_EMPTY.to_owned());
         }
 
@@ -325,8 +323,8 @@ impl SecretKey {
         //  [1] -> [1,1,2]  with new randomness
         //  [1] -> [1,2]    with new randomness
         // the ssk for [2] already exists in current sk; it remains unchanged
-        let target_time_vec = TimeVec::init(tar_time, depth);
-        let gamma_list = target_time_vec.gamma_list(depth);
+        let target_time_vec = TimeVec::init(tar_time, depth)?;
+        let gamma_list = target_time_vec.gamma_list(depth)?;
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
@@ -341,7 +339,8 @@ impl SecretKey {
             // and if we have found a duplicate, it means we have already finished
             // delegation, so we can break the loop
             for j in i + 1..new_sk.ssk.len() {
-                if gamma_list[i] == new_sk.ssk[j].get_time_vec(depth) {
+                let tmp_time_vec = new_sk.ssk[j].get_time_vec(depth)?;
+                if gamma_list[i] == tmp_time_vec {
                     // this happens for time vec  = [2]
                     // no further delegation will happen
                     break 'out;
@@ -356,10 +355,7 @@ impl SecretKey {
             //  i = 0, new_ssk = ssk_for_t_12
             //  i = 1, new_ssk = ssk_for_t_13
             let mut new_ssk = new_sk.ssk[0].clone();
-            let () = match new_ssk.delegate(gamma_list[i].get_time(), depth) {
-                Err(e) => return Err(e),
-                Ok(()) => (),
-            };
+            new_ssk.delegate(gamma_list[i].get_time(), depth)?;
 
             // re-randomization
             // randomize the new ssk unless it is the first one
@@ -367,7 +363,7 @@ impl SecretKey {
             if i != 0 {
                 // TODO: think about seed -- set seed as previous sk?
                 let r = Fr::from_ro("seed", i as u8);
-                new_ssk.randomization(&pp, r)
+                new_ssk.randomization(&pp, r)?;
             }
 
             // insert the key to the right place so that
@@ -397,7 +393,9 @@ impl SecretKey {
     /// This function iterates through the existing sub secret keys, find the one for which
     /// 1. the time stamp is the greatest within existing sub_secret_keys
     /// 2. the time stamp is no greater than tar_time
-    /// It returns this subsecretkey's time stamp
+    /// It returns this subsecretkey's time stamp; or an error if ...
+    /// * there is no ssk in the secret key
+    /// * the target time stamp is invalid for the curret time stamp
     /// e.g.:
     ///     sk {time: 2, ssks: {omited}}
     ///     sk.find_ancestor(12) = 9
@@ -410,14 +408,27 @@ impl SecretKey {
     //      within the sk = {2, [ssk_for_t_2, ssk_for_t_9]}              // [1], [2]
     //      is 2, corresponding to time vector [1], i.e., a pre-fix of [1,1,1]
     fn find_ancestor(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
+        // make sure there is at least one ssk left
+        if self.ssk.len() == 0 {
+            #[cfg(debug_assertions)]
+            println!("Error in finding ancestor: {}", ERR_SSK_EMPTY);
+            return Err(ERR_SSK_EMPTY.to_owned());
+        }
+
         let mut res = &self.ssk[0];
+
+        // make sure that the time stamp is valid
         if res.get_time() >= tar_time {
             #[cfg(debug_assertions)]
-            println!("the input time {} is invalid", tar_time);
-
+            println!(
+                "Error in finding ancestor: the target time {} is invalid for current time {}",
+                tar_time,
+                res.get_time(),
+            );
             return Err(ERR_TIME_STAMP.to_owned());
         }
 
+        // find the ancestor
         for i in 0..self.ssk.len() - 1 {
             if self.ssk[i + 1].get_time() <= tar_time {
                 res = &self.ssk[i + 1];
@@ -433,27 +444,62 @@ impl SecretKey {
     ///  * sk.TimeStamp's gamma list form ssk.TimeVec
     pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
         // validate the ciphersuite ids
-        if self.get_ciphersuite() != pk.get_ciphersuite() {
-            return false;
-        }
-        if self.get_ciphersuite() != pp.get_ciphersuite() {
+        if self.get_ciphersuite() != pk.get_ciphersuite()
+            || self.get_ciphersuite() != pp.get_ciphersuite()
+        {
+            #[cfg(debug_assertions)]
+            println!("Ciphersuite does not match");
+            #[cfg(feature = "verbose")]
+            #[cfg(debug_assertions)]
+            println!(
+                "pk's ciphersuite: {}\n\
+                 sk's ciphersuite: {}\n\
+                 pp's ciphersuite: {}"
+            );
             return false;
         }
 
         // get the gamma list of the current sk
         let depth = pp.get_d();
         let time_stamp = self.get_time();
-        let time_vec = TimeVec::init(time_stamp, depth);
-        let gamma_list = time_vec.gamma_list(depth);
+        // returns false if the time stamp or depth is not valid
+        let time_vec = match TimeVec::init(time_stamp, depth) {
+            Err(_e) => {
+                #[cfg(debug_assertions)]
+                println!("Error in sk validation: {}", _e);
+                return false;
+            }
+            Ok(p) => p,
+        };
+        let gamma_list = match time_vec.gamma_list(depth) {
+            Err(_e) => {
+                #[cfg(debug_assertions)]
+                println!("Error in sk validation: {}", _e);
+                return false;
+            }
+            Ok(p) => p,
+        };
 
         let ssk = self.get_ssk_vec();
         for i in 0..ssk.len() {
             // checks that each ssk is valid
             if !ssk[i].validate(&pk, &pp) {
+                #[cfg(debug_assertions)]
+                println!("Validation failed for {}th SubSecretKey", i);
                 return false;
             }
             // checks that the time for each ssk is valid w.r.t gamma list
             if ssk[i].get_time() != gamma_list[i].get_time() {
+                #[cfg(debug_assertions)]
+                println!("Validation failed: time does not match the gamma_list");
+                #[cfg(feature = "verbose")]
+                #[cfg(debug_assertions)]
+                println!(
+                    "Current time: {}\n\
+                     time from gamma list: {}",
+                    ssk[i].get_time(),
+                    gamma_list[i].get_time()
+                );
                 return false;
             }
         }
@@ -496,7 +542,8 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), Stri
     Ok((pk, sk))
 }
 
-/// this function tests if a public key and a master secret key has a same exponent
+/// This function tests if a public key and a master secret key has a same exponent.
+/// This function is private, and test only, since by default no one shall have the master secret key.
 #[cfg(test)]
 fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
     use ff::Field;
@@ -568,7 +615,12 @@ mod test {
     fn test_keypair() {
         let pp = PubParam::init_without_seed();
         let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
-        assert!(res.is_ok(), "key gen failed");
+        assert!(
+            res.is_ok(),
+            "key gen failed\n\
+             error message {:?}",
+            res.err()
+        );
         let keypair = res.unwrap();
         println!("{:?}", keypair);
     }
@@ -577,7 +629,12 @@ mod test {
     fn test_quick_key_update() {
         let pp = PubParam::init_without_seed();
         let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
-        assert!(res.is_ok(), "key gen failed");
+        assert!(
+            res.is_ok(),
+            "key gen failed\n\
+             error message {:?}",
+            res.err()
+        );
         let keypair = res.unwrap();
         let sk = keypair.sk;
 
@@ -587,7 +644,12 @@ mod test {
         for j in 2..16 {
             let mut sk2 = sk.clone();
             let res = sk2.update(&pp, j);
-            assert!(res.is_ok(), "update failed");
+            assert!(
+                res.is_ok(),
+                "update failed\n\
+                 error message {:?}",
+                res.err()
+            );
             for ssk in sk2.ssk {
                 assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
             }
@@ -601,7 +663,12 @@ mod test {
     fn test_long_key_update() {
         let pp = PubParam::init_without_seed();
         let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
-        assert!(res.is_ok(), "key gen failed");
+        assert!(
+            res.is_ok(),
+            "key gen failed\n\
+             error message {:?}",
+            res.err()
+        );
         let keypair = res.unwrap();
         let sk = keypair.sk;
 
@@ -611,11 +678,21 @@ mod test {
         for j in 2..16 {
             let mut sk2 = sk.clone();
             let res = sk2.update(&pp, j);
-            assert!(res.is_ok(), "update failed");
+            assert!(
+                res.is_ok(),
+                "update failed\n\
+                 error message {:?}",
+                res.err()
+            );
             for i in j + 1..16 {
                 let mut sk3 = sk2.clone();
                 let res = sk3.update(&pp, i);
-                assert!(res.is_ok(), "update failed");
+                assert!(
+                    res.is_ok(),
+                    "update failed\n\
+                     error message {:?}",
+                    res.err()
+                );
                 for ssk in sk3.ssk {
                     assert!(ssk.validate(&keypair.pk, &pp), "validation failed");
                 }
@@ -630,7 +707,12 @@ mod test {
     fn test_sk_validation() {
         let pp = PubParam::init_without_seed();
         let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
-        assert!(res.is_ok(), "key gen failed");
+        assert!(
+            res.is_ok(),
+            "key gen failed\n\
+             error message {:?}",
+            res.err()
+        );
         let keypair = res.unwrap();
         let sk = keypair.sk;
         let pk = keypair.pk;
@@ -638,7 +720,12 @@ mod test {
         for j in 2..16 {
             let mut sk2 = sk.clone();
             let res = sk2.update(&pp, j);
-            assert!(res.is_ok(), "update failed");
+            assert!(
+                res.is_ok(),
+                "update failed\n\
+                 error message {:?}",
+                res.err()
+            );
             assert!(sk2.validate(&pk, &pp), "invalid sk");
         }
     }
@@ -650,7 +737,12 @@ mod test {
     fn test_long_sk_validation() {
         let pp = PubParam::init_without_seed();
         let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
-        assert!(res.is_ok(), "key gen failed");
+        assert!(
+            res.is_ok(),
+            "key gen failed\n\
+             error message {:?}",
+            res.err()
+        );
         let keypair = res.unwrap();
         let pk = keypair.pk;
         let sk = keypair.sk;
@@ -661,12 +753,22 @@ mod test {
         for j in 2..16 {
             let mut sk2 = sk.clone();
             let res = sk2.update(&pp, j);
-            assert!(res.is_ok(), "update failed");
+            assert!(
+                res.is_ok(),
+                "update failed\n\
+                 error message {:?}",
+                res.err()
+            );
             assert!(sk2.validate(&pk, &pp), "invalid sk");
             for i in j + 1..16 {
                 let mut sk3 = sk2.clone();
                 let res = sk3.update(&pp, i);
-                assert!(res.is_ok(), "update failed");
+                assert!(
+                    res.is_ok(),
+                    "update failed\n\
+                     error message {:?}",
+                    res.err()
+                );
                 assert!(sk3.validate(&pk, &pp), "invalid sk");
             }
         }

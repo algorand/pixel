@@ -38,7 +38,8 @@ impl SubSecretKey {
 
     /// Returns the time vector associated with the time stamp.
     /// for the current sub secret key.
-    pub fn get_time_vec(&self, depth: usize) -> TimeVec {
+    /// Returns an error if the depth or time stamp is invalid.
+    pub fn get_time_vec(&self, depth: usize) -> Result<TimeVec, String> {
         TimeVec::init(self.time, depth)
     }
 
@@ -69,7 +70,7 @@ impl SubSecretKey {
     //  It produces a same key as init_from_randomization if
     //  same randomness are used. see `test_key_gen()`.
     pub fn init(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
-        let mut hlist = pp.get_hlist().clone();
+        let mut hlist = pp.get_hlist();
         let depth = pp.get_d();
 
         // g2^r
@@ -100,7 +101,9 @@ impl SubSecretKey {
     /// Given a subsecrerkey `sk = [g^r, (h_0 prod hj^tj)^r, h_{|t|+1}^r, ..., h_D^r]`,
     /// re-randomize it with `r`, and outputs
     /// `g^r, (h_0 prod hj^tj)^r, h_{|t|+1}^r, ..., h_D^r`.
-    pub fn randomization(&mut self, pp: &PubParam, r: Fr) {
+    /// An error is returned if the ssk's time stamp is invalid w.r.t the
+    /// depth in the public parameter.
+    pub fn randomization(&mut self, pp: &PubParam, r: Fr) -> Result<(), String> {
         let depth = pp.get_d();
 
         // randomize g2r
@@ -110,9 +113,9 @@ impl SubSecretKey {
 
         // compute tmp = hv[0] * prod_i h[i]^time_vec[i]
         let hlist = pp.get_hlist();
-        let timevec = self.get_time_vec(depth);
-        let tlen = timevec.get_time_vec_len();
-        let tv = timevec.get_time_vec();
+        let timevec = self.get_time_vec(depth)?;
+        let tlen = timevec.get_vector_len();
+        let tv = timevec.get_vector();
         let mut tmp = hlist[0];
         for i in 0..tlen {
             let mut tmp2 = hlist[i + 1];
@@ -130,6 +133,7 @@ impl SubSecretKey {
             tmp.mul_assign(r);
             self.hvector[i].add_assign(&tmp);
         }
+        Ok(())
     }
 
     /// Delegate the key into TimeStamp time.
@@ -137,9 +141,11 @@ impl SubSecretKey {
     /// Input `sk = [g, hpoly, h_{|t|+1}, ..., h_D]`,
     /// and a new time `tn`,
     /// output `sk = [g, hpoly*\prod_{i=|t|}^|tn| hi^tn[i], h_{|tn|+1}, ..., h_D]`.
-    pub fn delegate(&mut self, time: TimeStamp, depth: usize) -> Result<(), String> {
-        let cur_time_vec = TimeVec::init(self.time, depth);
-        let tar_time_vec = TimeVec::init(time, depth);
+    /// An error is returned if self's time vector is not a prefix of the target time, or
+    /// if self's or target time stamp is invalid w.r.t. depth.
+    pub fn delegate(&mut self, tar_time: TimeStamp, depth: usize) -> Result<(), String> {
+        let cur_time_vec = TimeVec::init(self.time, depth)?;
+        let tar_time_vec = TimeVec::init(tar_time, depth)?;
 
         // check that cur_time_vec is a prefix of tar_time_vec
         if !cur_time_vec.is_prefix(&tar_time_vec) {
@@ -151,9 +157,9 @@ impl SubSecretKey {
             return Err(ERR_TIME_NONE_PREFIX.to_owned());
         }
 
-        let tv = tar_time_vec.get_time_vec();
-        let cur_vec_length = cur_time_vec.get_time_vec_len();
-        let tar_vec_length = tar_time_vec.get_time_vec_len();
+        let tv = tar_time_vec.get_vector();
+        let cur_vec_length = cur_time_vec.get_vector_len();
+        let tar_vec_length = tar_time_vec.get_vector_len();
 
         // hpoly *= h_i ^ t_i
         for i in 0..tar_vec_length - cur_vec_length {
@@ -174,24 +180,31 @@ impl SubSecretKey {
             self.hvector.remove(0);
         }
         // update the time to the new time stamp
-        self.time = time;
+        self.time = tar_time;
         Ok(())
     }
 
-    /// this function is used to verify if a subsecretkey is valid
-    /// for some public key
-    /// it is used for testing only
+    /// This function is used to verify if a subsecretkey is valid
+    /// for some public key.
     pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
         let pke = pk.get_pk();
         let depth = pp.get_d();
         let list = pp.get_hlist();
-        let t = TimeVec::init(self.time, depth);
+        let t = match TimeVec::init(self.time, depth) {
+            Err(_e) => {
+                #[cfg(feature = "verbose")]
+                #[cfg(debug_assertions)]
+                println!("Error in ssk validation: {}", _e);
+                return false;
+            }
+            Ok(p) => p,
+        };
 
-        let timevec = t.get_time_vec();
+        let timevec = t.get_vector();
 
         // h2fx = h0 * \prod hi^ti
         let mut h2fx = list[0];
-        for i in 0..t.get_time_vec_len() {
+        for i in 0..t.get_vector_len() {
             let mut tmp = list[i + 1];
             tmp.mul_assign(timevec[i]);
             h2fx.add_assign(&tmp);
@@ -285,7 +298,7 @@ mod test {
         /// it should generate a same subsecret key as Self::init()
         /// as long as the randomness stays the same
         /// see `test_key_gen()`.
-        fn init_from_randomization(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
+        fn init_from_randomization(pp: &PubParam, alpha: PixelG1, r: Fr) -> Result<Self, String> {
             // rust needs to know the size of the array at compile time
             // hence we use a const here rather than param.get_d()
             use param::CONST_D;
@@ -296,8 +309,8 @@ mod test {
                 hpoly: alpha,
                 hvector: [PixelG1::zero(); CONST_D].to_vec(),
             };
-            s.randomization(pp, r);
-            s
+            s.randomization(pp, r)?;
+            Ok(s)
         }
     }
 
@@ -320,8 +333,14 @@ mod test {
         alpha.mul_assign(msk);
 
         let t = SubSecretKey::init(&pp, alpha, r);
-        let t1 = SubSecretKey::init_from_randomization(&pp, alpha, r);
-
+        let res = SubSecretKey::init_from_randomization(&pp, alpha, r);
+        assert!(
+            res.is_ok(),
+            "ssk initiation from randomization failed\n\
+             error message: {:?}",
+            res.err()
+        );
+        let t1 = res.unwrap();
         // make sure the sub secret keys are the same
         assert_eq!(t.g2r, t1.g2r, "g1r incorrect");
         assert_eq!(
@@ -359,7 +378,14 @@ mod test {
         // a random public key
         let mut pke = pp.get_g2();
         pke.mul_assign(msk);
-        let pk = PublicKey::init(&pp, pke).unwrap();
+        let res = PublicKey::init(&pp, pke);
+        assert!(
+            res.is_ok(),
+            "PK initialization failed\n\
+             error message {:?}",
+            res.err()
+        );
+        let pk = res.unwrap();
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);
@@ -368,7 +394,13 @@ mod test {
 
         // randomize the key
         let r = Fr::from_str("12345").unwrap();
-        t.randomization(&pp, r);
+        let res = t.randomization(&pp, r);
+        assert!(
+            res.is_ok(),
+            "randomization failed\n\
+             error message: {:?}",
+            res.err()
+        );
 
         // check if the key remains valid or not
         assert!(
@@ -399,19 +431,31 @@ mod test {
         // a random public key
         let mut pke = pp.get_g2();
         pke.mul_assign(msk);
-        let pk = PublicKey::init(&pp, pke).unwrap();
+        let res = PublicKey::init(&pp, pke);
+        assert!(
+            res.is_ok(),
+            "PK initialization failed\n\
+             error message {:?}",
+            res.err()
+        );
+        let pk = res.unwrap();
 
         // initialize a random secret key
         let mut t = SubSecretKey::init(&pp, alpha, r);
         let t1 = t.clone();
 
         // check if the key is valid or not
-        assert!(t.validate(&pk, &pp), "fail init");
+        assert!(t.validate(&pk, &pp), "key validation failed");
 
         // randomize the key
         let r = Fr::from_str("12345").unwrap();
-        t.randomization(&pp, r);
-
+        let res = t.randomization(&pp, r);
+        assert!(
+            res.is_ok(),
+            "randomization failed during ssk delegation\n\
+             error message: {:?}",
+            res.err()
+        );
         // check if the key remains valid or not
         assert!(
             t.validate(&pk, &pp),
@@ -431,7 +475,13 @@ mod test {
                 t
             );
             // randomize the key
-            t.randomization(&pp, r);
+            let res = t.randomization(&pp, r);
+            assert!(
+                res.is_ok(),
+                "randomization failed during ssk delegation\n\
+                 error message: {:?}",
+                res.err()
+            );
             // check if the key remains valid or not
             assert!(
                 t.validate(&pk, &pp),
@@ -446,7 +496,12 @@ mod test {
         for i in 2..5 {
             let mut t = t1.clone();
             let res = t.delegate(i, depth);
-            assert!(res.is_ok(), "delegation failed");
+            assert!(
+                res.is_ok(),
+                "delegation failed\n\
+                 error message {:?}",
+                res.err()
+            );
             // check if the key remains valid or not
             assert!(
                 t.validate(&pk, &pp),
@@ -455,7 +510,13 @@ mod test {
                 t
             );
             // randomize the key
-            t.randomization(&pp, r);
+            let res = t.randomization(&pp, r);
+            assert!(
+                res.is_ok(),
+                "randomization failed during ssk delegation\n\
+                 error message: {:?}",
+                res.err()
+            );
             // check if the key remains valid or not
             assert!(
                 t.validate(&pk, &pp),

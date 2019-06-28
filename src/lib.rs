@@ -77,10 +77,7 @@ impl Pixel {
     /// 32 bytes long. Output the key pair.
     /// Returns an error is seed is not long enough.
     pub fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PublicKey, SecretKey), String> {
-        let kp = match KeyPair::keygen(seed, &pp) {
-            Err(e) => return Err(e),
-            Ok(p) => p,
-        };
+        let kp = KeyPair::keygen(seed, &pp)?;
         Ok((kp.get_pk(), kp.get_sk()))
     }
 

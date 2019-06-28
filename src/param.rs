@@ -5,8 +5,10 @@ use pairing::CurveProjective;
 use std::fmt;
 // use hash to curve functions from bls reference implementation
 use bls_sigs_ref_rs::HashToCurve;
+use pixel_err::*;
 use PixelG1;
 use PixelG2;
+
 
 /// Currently, ciphersuite identifier must be either 0 or 1.
 /// The maps between CSID and actual parameters is TBD.
@@ -96,13 +98,11 @@ impl PubParam {
     pub fn init(seed: &[u8], ciphersuite: u8) -> Result<Self, String> {
         // make sure we have enough entropy
         if seed.len() < 32 {
-            return Err(
-                "the seed length is not long enough (required as least 32 bytes)".to_owned(),
-            );
+            return Err(ERR_SEED_TOO_SHORT.to_owned());
         }
         // make sure the ciphersuite is valid    <- the valid list is tentitive
         if !VALID_CIPHERSUITE.contains(&ciphersuite) {
-            return Err("Incorrect ciphersuite identifier".to_owned());
+            return Err(ERR_CIPHERSUITE.to_owned());
         }
 
         // the input to the HashToCurve is formated as
@@ -232,7 +232,7 @@ impl fmt::Debug for PubParam {
 
 #[test]
 fn test_param_gen() {
-    let pp = PubParam::init(b"this is a very long seed to test parameter generation", 0);
-    assert!(pp.is_ok());
-    println!("Public parameter: \n{:?}", pp.unwrap());
+    let res = PubParam::init(b"this is a very long seed to test parameter generation", 0);
+    assert!(res.is_ok());
+    println!("Public parameter: \n{:?}", res.unwrap());
 }

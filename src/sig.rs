@@ -9,6 +9,7 @@ use std::fmt;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
+
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
@@ -43,22 +44,18 @@ impl Signature {
         // if the target time is in future, update self to the future.
         let cur_time = sk.get_time();
 
-        #[cfg(debug_assertions)]
-        assert!(
-            cur_time <= tar_time,
-            "Cannot sign for a previous time stamp, current time {} is greater than target time {}",
-            cur_time,
-            tar_time,
-        );
         if cur_time > tar_time {
+            #[cfg(debug_assertions)]
+            println!(
+                "Cannot sign for a previous time stamp, current time {} is greater than target time {}",
+                cur_time,
+                tar_time,
+            );
             return Err(ERR_TIME_STAMP.to_owned());
         }
         if cur_time < tar_time {
             // this is when we update the secret key to target time
-            let () = match sk.update(&pp, tar_time) {
-                Err(e) => return Err(e),
-                Ok(()) => (),
-            };
+            sk.update(&pp, tar_time)?
         }
 
         Signature::sign_bytes(&sk, tar_time, &pp, msg, r)
@@ -101,14 +98,14 @@ impl Signature {
         // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
         // we only use the first sub secret key to sign
-        let ssk = sk.get_first_ssk();
+        let ssk = sk.get_first_ssk()?;
 
         // get all neccessary variables
         let depth = pp.get_d();
         let hlist = pp.get_hlist();
-        let timevec = ssk.get_time_vec(depth);
-        let tlen = timevec.get_time_vec_len();
-        let tv = timevec.get_time_vec();
+        let timevec = ssk.get_time_vec(depth)?;
+        let tlen = timevec.get_vector_len();
+        let tv = timevec.get_vector();
 
         // re-randomizing sigma1
         // sig1 = ssk.g2r + g2^r
@@ -131,10 +128,7 @@ impl Signature {
         // sig2 = ssk.hpoly * hv[d]^m * tmp^r
         tmp.mul_assign(r);
         let mut sig2 = ssk.get_hpoly();
-        let mut hv_last = match ssk.get_last_hvector_coeff() {
-            Err(e) => return Err(e),
-            Ok(p) => p,
-        };
+        let mut hv_last = ssk.get_last_hvector_coeff()?;
         hv_last.mul_assign(msg);
         sig2.add_assign(&hv_last);
         sig2.add_assign(&tmp);
@@ -146,7 +140,7 @@ impl Signature {
     }
 
     /// This verification function takes in a public key, a target time, the public parameters
-    /// and a message in the form of a byte array. It returns true if the signature is valide.
+    /// and a message in the form of a byte array. It returns true if the signature is valid.
     pub fn verify_bytes(
         &self,
         pk: &PublicKey,
@@ -164,7 +158,7 @@ impl Signature {
     }
 
     /// This verification function takes in a public key, a target time, the public parameters
-    /// and a message in the form of a field element. It returns true if the signature is valide.
+    /// and a message in the form of a field element. It returns true if the signature is valid.
     pub fn verify_fr(&self, pk: &PublicKey, tar_time: TimeStamp, pp: &PubParam, msg: Fr) -> bool {
         // TODO: membership testing
 
@@ -176,7 +170,16 @@ impl Signature {
         // hfx = h0 + h_i * t_i + h_d * m
         let list = pp.get_hlist();
         let mut hfx = list[0];
-        let timevec = TimeVec::init(tar_time, depth).get_time_vec();
+        let timevec = match TimeVec::init(tar_time, depth) {
+            Err(_e) => {
+                #[cfg(feature = "verbose")]
+                #[cfg(debug_assertions)]
+                println!("Error in verification: {}", _e);
+                return false;
+            }
+            Ok(p) => p,
+        }
+        .get_vector();
 
         // if timevec[i] == 1 -> hfx += list[i+1]
         // if timevec[i] == 2 -> hfx += list[i+1]*2
@@ -250,11 +253,9 @@ impl fmt::Debug for Signature {
              ==========Signature======\n\
              sigma1  : {:#?}\n\
              sigma2  : {:#?}\n",
-            //            self.g1.into_affine(),
             self.sigma1.into_affine(),
             self.sigma2.into_affine(),
         )?;
-
         write!(f, "================================\n")
     }
 }

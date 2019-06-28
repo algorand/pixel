@@ -2,6 +2,7 @@
 
 use ff::PrimeField;
 use pairing::bls12_381::{Fr, FrRepr};
+use pixel_err::*;
 use std::iter::FromIterator;
 
 /// a time stamp is a unsigned integer of 64 bits
@@ -25,12 +26,12 @@ impl TimeVec {
     }
 
     /// get_time_vec() returns the time vector of a TimeVec
-    pub fn get_time_vec(&self) -> Vec<u64> {
+    pub fn get_vector(&self) -> Vec<u64> {
         self.vec.clone()
     }
 
     /// returns the length of time vector
-    pub fn get_time_vec_len(&self) -> usize {
+    pub fn get_vector_len(&self) -> usize {
         self.vec.len()
     }
 
@@ -43,11 +44,10 @@ impl TimeVec {
     /// assert_eq!(TimeVec::init(5,3).get_time_vec(), vec![2]);
     /// assert_eq!(TimeVec::init(6,3).get_time_vec(), vec![2,1]);
     /// assert_eq!(TimeVec::init(7,3).get_time_vec(), vec![2,2]);
-    pub fn init(t: TimeStamp, depth: usize) -> Self {
-        TimeVec {
-            time: t,
-            vec: time_to_vec(t, depth),
-        }
+    /// Returns an error if the time stamp or the depth is invalid
+    pub fn init(t: TimeStamp, depth: usize) -> Result<Self, String> {
+        let vec = time_to_vec(t, depth)?;
+        Ok(TimeVec { time: t, vec: vec })
     }
 
     /// into_fr() extracts the time vector and converts
@@ -56,7 +56,7 @@ impl TimeVec {
     #[allow(dead_code)]
     fn into_fr(&self) -> Vec<Fr> {
         let mut vec: Vec<Fr> = vec![];
-        for e in self.get_time_vec() {
+        for e in self.get_vector() {
             vec.push(Fr::from_repr(FrRepr([e as u64, 0, 0, 0])).unwrap());
         }
         vec
@@ -76,13 +76,14 @@ impl TimeVec {
         other.vec.starts_with(&self.vec)
     }
 
-    /// subrouting to build the gamma list:
-    /// converting a time vector to a list of time vectors.
+    /// Subrouting to build the gamma list:
+    /// It converts a time vector to a list of time vectors.
+    /// And propogates error messages if the conversion fails.
     ///
     /// example: for time vec \[1\] and d = 4, the list consist all the
     /// vectors that starts with \[1\]
     /// we will need \[1,1,1\], \[1,1,2\], \[1,2\], \[2\]
-    pub fn gamma_list(&self, depth: usize) -> Vec<Self> {
+    pub fn gamma_list(&self, depth: usize) -> Result<Vec<Self>, String> {
         /*
         pseudo code of this function in python
         def gammat(tvec):
@@ -102,28 +103,39 @@ impl TimeVec {
                 res.insert(
                     1,
                     TimeVec {
-                        time: vec_to_time(tmp.clone(), depth),
+                        time: vec_to_time(tmp.clone(), depth)?,
                         vec: tmp,
                     },
                 )
             }
         }
-        res
+        Ok(res)
     }
 }
 
-// convert time into a vector
-fn time_to_vec(time: u64, d: usize) -> Vec<u64> {
+// Convert time into a vector.
+// Returns an error if the time stamp or the time depth is invalid.
+fn time_to_vec(time: TimeStamp, d: usize) -> Result<Vec<u64>, String> {
     // requires D >=1 and t in {1,2,...,2^D-1}
-    assert!(d >= 1, "time_to_vec invalid depth {}", d);
+    if d == 0 {
+        #[cfg(debug_assertions)]
+        println!("Error in time_to_vec: {}", ERR_TIME_DEPTH);
+        return Err(ERR_TIME_DEPTH.to_owned());
+    }
     let max_t = 1 << d;
-    assert!(
-        time <= max_t && time != 0,
-        "time_to_vec invalid time {} > {} for depth {}",
-        time,
-        max_t,
-        d
-    );
+    if time > max_t || time == 0 {
+        #[cfg(debug_assertions)]
+        println!("Error in time_to_vec: {}", ERR_TIME_STAMP);
+        return Err(ERR_TIME_STAMP.to_owned());
+    }
+
+    // assert!(
+    //     time <= max_t && time != 0,
+    //     "time_to_vec invalid time {} > {} for depth {}",
+    //     time,
+    //     max_t,
+    //     d
+    // );
 
     /*
         if t==1:
@@ -134,23 +146,32 @@ fn time_to_vec(time: u64, d: usize) -> Vec<u64> {
            return [1] + time2vec(t-1,D-1)
     */
 
+    //
+    // if t==1:
+    //   return []
     let mut tmp = Vec::new();
     if time == 1 {
-        return tmp;
+        return Ok(tmp);
     }
-    if d > 0 && time > 2u64.pow(d as u32 - 1) {
-        tmp = time_to_vec(time - 2u64.pow(d as u32 - 1), d - 1);
+
+    //  if D>0 and t > pow(2,D-1):
+    //      return [2] + time2vec(t-pow(2,D-1),D-1)
+    if d > 0 && time > (1 << (d - 1)) {
+        tmp = time_to_vec(time - 2u64.pow(d as u32 - 1), d - 1)?;
         tmp.insert(0, 2);
     } else {
-        tmp = time_to_vec(time - 1, d - 1);
+        // else:
+        //    return [1] + time2vec(t-1,D-1)
+        tmp = time_to_vec(time - 1, d - 1)?;
         tmp.insert(0, 1);
     }
 
-    tmp
+    Ok(tmp)
 }
 
-// convert a vector back to time
-fn vec_to_time(mut t_vec: Vec<u64>, d: usize) -> u64 {
+// Convert a vector back to time.
+// Returns an error if time depth is invalid.
+fn vec_to_time(mut t_vec: Vec<u64>, d: usize) -> Result<u64, String> {
     /*
         if tvec == []:
           return 1
@@ -158,11 +179,16 @@ fn vec_to_time(mut t_vec: Vec<u64>, d: usize) -> u64 {
           ti = tvec.pop(0)
           return 1 + (ti-1) * (pow(2,D-1)-1) + vec2time(tvec,D-1)
     */
-    assert!(d >= 1, "invalid depth");
+    // requires D >=1 and t in {1,2,...,2^D-1}
+    if d == 0 {
+        #[cfg(debug_assertions)]
+        println!("Error in vec_to_time: {}", ERR_TIME_DEPTH);
+        return Err(ERR_TIME_DEPTH.to_owned());
+    }
     if t_vec == [] {
-        return 1;
+        return Ok(1);
     } else {
         let tmp: Vec<u64> = t_vec.drain(0..1).collect();
-        return 1 + (tmp[0] - 1) * ((1u64 << (d - 1)) - 1) + vec_to_time(t_vec, d - 1);
+        return Ok(1 + (tmp[0] - 1) * ((1u64 << (d - 1)) - 1) + vec_to_time(t_vec, d - 1)?);
     }
 }

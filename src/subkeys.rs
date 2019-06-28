@@ -1,12 +1,14 @@
 // a module for sub secret keys and related functions
 // to decide: whether this should be packed into key.rs?
 
+use bls_sigs_ref_rs::SerDes;
 use ff::Field;
 use keys::PublicKey;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
-use param::PubParam;
+use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use std::fmt;
+use std::io::{Read, Write};
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
@@ -31,6 +33,113 @@ pub struct SubSecretKey {
 }
 
 impl SubSecretKey {
+    /// Conver ssk into a blob:
+    /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
+    /// Return an error if serialization fails or time stamp is greater than 2^32-1
+    pub fn into_blob<W: Write>(&self, ciphersuite: u8, writer: &mut W) -> Result<(), String> {
+        if !VALID_CIPHERSUITE.contains(&ciphersuite) {
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
+        let hvlen = self.hvector.len();
+
+        #[cfg(not(feature = "pk_in_g2"))]
+        let buflen = 5 + (hvlen + 1) * 96 + 48;
+
+        #[cfg(feature = "pk_in_g2")]
+        let buflen = 5 + (hvlen + 1) * 48 + 96;
+
+
+        // the first 4 bytes stores the time stamp,
+        // the time stamp cannot exceed 2^30
+        let time = self.time;
+        if time > (1 << 32) {
+            return Err(ERR_TIME_STAMP.to_owned());
+        }
+
+        let mut buf: Vec<u8> = vec![
+            (time & 0xFF) as u8,
+            (time >> 8 & 0xFF) as u8,
+            (time >> 16 & 0xFF) as u8,
+            (time >> 24 & 0xFF) as u8,
+        ];
+
+        // next, store one byte which is the length of the hvector
+        // this length cannot exceed depth, so we can store it in one byte
+        buf.push(hvlen as u8);
+
+
+        // the next chunck of data stores g2r
+        if self.g2r.serialize(&mut buf, true).is_err() {
+            return Err(ERR_SERIAL.to_owned());
+        }
+
+        // the next chunk of data stores hpoly
+        if self.hpoly.serialize(&mut buf, true).is_err() {
+            return Err(ERR_SERIAL.to_owned());
+        }
+
+        // the next chunk of data stores hvector
+        for e in &self.hvector {
+            if e.serialize(&mut buf, true).is_err() {
+                return Err(ERR_SERIAL.to_owned());
+            };
+        }
+        if writer.write_all(&buf).is_err() {
+            return Err(ERR_SERIAL.to_owned());
+        }
+        println!("{:?} {}", buf.len(), buflen);
+        return Ok(());
+    }
+
+    pub fn from_blob<R: Read>(reader: &mut R, ciphersuite: u8) -> Result<Self, String> {
+        if !VALID_CIPHERSUITE.contains(&ciphersuite) {
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
+
+
+        // the first 4 bytes stores the time stamp,
+        // the time stamp cannot exceed 2^30
+        let mut time: [u8; 4] = [0u8; 4];
+        if reader.read(&mut time).is_err() {
+            return Err(ERR_DESERIAL.to_owned());
+        }
+        let time = u32::from_le_bytes(time);
+
+        let mut hvlen = [0u8; 1];
+        if reader.read(&mut hvlen).is_err() {
+            return Err(ERR_DESERIAL.to_owned());
+        }
+
+        // the next chunck of data stores g2r
+        let g2r: PixelG2 = match SerDes::deserialize(reader) {
+            Err(_e) => return Err(ERR_DESERIAL.to_owned()),
+            Ok(p) => p,
+        };
+
+        // the next chunck of data stores g2r
+        let hpoly: PixelG1 = match SerDes::deserialize(reader) {
+            Err(_e) => return Err(ERR_DESERIAL.to_owned()),
+            Ok(p) => p,
+        };
+
+
+        // the next chunck of data stores g2r
+        let mut hv: Vec<PixelG1> = vec![];
+        for _i in 0..hvlen[0] {
+            let tmp: PixelG1 = match SerDes::deserialize(reader) {
+                Err(_e) => return Err(ERR_DESERIAL.to_owned()),
+                Ok(p) => p,
+            };
+            hv.push(tmp)
+        }
+        Ok(SubSecretKey {
+            time: time as u64,
+            g2r: g2r,
+            hpoly: hpoly,
+            hvector: hv,
+        })
+    }
+
     /// Returns the time stamp of the sub secret key.
     pub fn get_time(&self) -> TimeStamp {
         self.time
@@ -312,6 +421,12 @@ mod test {
             s.randomization(pp, r)?;
             Ok(s)
         }
+
+        /// function used for testing only
+        #[allow(dead_code)]
+        fn set_time(&mut self, time: TimeStamp) {
+            self.time = time;
+        }
     }
 
     #[test]
@@ -525,5 +640,39 @@ mod test {
                 t
             );
         }
+    }
+
+    #[test]
+    fn test_ssk_serialization() {
+        use ff::PrimeField;
+        use std::io::Cursor;
+        // a random field element
+        let r = Fr::from_str(
+            "5902757315117623225217061455046442114914317855835382236847240262163311537283",
+        )
+        .unwrap();
+        let pp = PubParam::init_without_seed();
+        // a random master secret key
+        let mut alpha = pp.get_h();
+        let msk = Fr::from_str(
+            "8010751325124863419913799848205334820481433752958938231164954555440305541353",
+        )
+        .unwrap();
+        alpha.mul_assign(msk);
+
+        // generate a sub secret key
+        let t = SubSecretKey::init(&pp, alpha, r);
+
+        // buffer space
+        let mut scratch = [1u8; 1000];
+        // serializae a ssk into buffer
+        let buf = &mut Cursor::new(&mut scratch[..]);
+        assert!(t.into_blob(0, buf).is_ok());
+        // deserialize a buffer into ssk
+        let buf = &mut Cursor::new(&mut scratch[..]);
+        let s = SubSecretKey::from_blob(buf, 0).unwrap();
+
+        // makes sure that the keys match
+        assert_eq!(t, s);
     }
 }

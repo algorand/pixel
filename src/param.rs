@@ -9,7 +9,6 @@ use pixel_err::*;
 use PixelG1;
 use PixelG2;
 
-
 /// Currently, ciphersuite identifier must be either 0 or 1.
 /// The maps between CSID and actual parameters is TBD.
 /// Additional ciphersuite identifiers may be added later.

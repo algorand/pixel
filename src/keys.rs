@@ -6,6 +6,7 @@
 use bls_sigs_ref_rs::FromRO;
 use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
+use pixel_err::*;
 use std::fmt;
 pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
@@ -30,7 +31,7 @@ impl PublicKey {
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
             println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err("Incorrect ciphersuite identifier".to_owned());
+            return Err(ERR_CIPHERSUITE.to_owned());
         }
         Ok(PublicKey {
             ciphersuite: pp.get_ciphersuite(),
@@ -44,7 +45,7 @@ impl PublicKey {
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
             println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err("Incorrect ciphersuite identifier".to_owned());
+            return Err(ERR_CIPHERSUITE.to_owned());
         }
         self.ciphersuite = pp.get_ciphersuite();
         self.pk = pk;
@@ -129,7 +130,7 @@ impl SecretKey {
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
             println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err("Incorrect ciphersuite identifier".to_owned());
+            return Err(ERR_CIPHERSUITE.to_owned());
         }
         // todo: think about seed -- set seed as hash of alpha?
         let r = Fr::from_ro("seed", 0);
@@ -200,7 +201,7 @@ impl SecretKey {
             #[cfg(debug_assertions)]
             println!("the input time {} is invalid", tar_time);
 
-            return Err("the input time is invalid".to_owned());
+            return Err(ERR_TIME_STAMP.to_owned());
         }
 
         // an example of sk-s with depth = 4:
@@ -279,7 +280,7 @@ impl SecretKey {
         #[cfg(debug_assertions)]
         assert!(new_sk.ssk.len() > 0, "something is wrong: no ssk left");
         if new_sk.ssk.len() == 0 {
-            return Err("something is wrong: no ssk left".to_owned());
+            return Err(ERR_SSK_EMPTY.to_owned());
         }
 
         // step 2. if delegator_time == tar_time then we are done
@@ -414,7 +415,7 @@ impl SecretKey {
             #[cfg(debug_assertions)]
             println!("the input time {} is invalid", tar_time);
 
-            return Err("The input time is invalid for the closest ssk function.".to_owned());
+            return Err(ERR_TIME_STAMP.to_owned());
         }
 
         for i in 0..self.ssk.len() - 1 {
@@ -472,14 +473,14 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), Stri
             "the seed length {} is not long enough (required as least 32 bytes)",
             seed.len()
         );
-        return Err("The seed length is too short".to_owned());
+        return Err(ERR_SEED_TOO_SHORT.to_owned());
     }
 
     // check that the ciphersuite identifier is correct
     if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
         #[cfg(debug_assertions)]
         println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-        return Err("Incorrect ciphersuite identifier".to_owned());
+        return Err(ERR_CIPHERSUITE.to_owned());
     }
 
     // use hash_to_field function to generate a random field element

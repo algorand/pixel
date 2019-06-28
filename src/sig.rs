@@ -4,11 +4,11 @@ use ff::Field;
 use keys::{PublicKey, SecretKey};
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::PubParam;
+use pixel_err::*;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
-
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
@@ -51,7 +51,7 @@ impl Signature {
             tar_time,
         );
         if cur_time > tar_time {
-            return Err("Cannot sign for a previous time stamp!".to_owned());
+            return Err(ERR_TIME_STAMP.to_owned());
         }
         if cur_time < tar_time {
             // this is when we update the secret key to target time
@@ -61,7 +61,7 @@ impl Signature {
             };
         }
 
-        Ok(Signature::sign_bytes(&sk, tar_time, &pp, msg, r))
+        Signature::sign_bytes(&sk, tar_time, &pp, msg, r)
     }
 
     /// This function generates a signature for a message that is a byte of arbitrary length.
@@ -72,7 +72,7 @@ impl Signature {
         pp: &PubParam,
         msg: &[u8],
         r: Fr,
-    ) -> Self {
+    ) -> Result<Self, String> {
         // makes sure that the time stamp matches.
         // the upper layer has already checked the tar_time is correct
         // so if the tar_time is incorrect, we should panic here instead of
@@ -88,7 +88,13 @@ impl Signature {
 
     /// This function generates a signature for a message in the form of a field element.
     /// It requires that the tar_time matches timestamp of the secret key
-    pub fn sign_fr(sk: &SecretKey, tar_time: TimeStamp, pp: &PubParam, msg: Fr, r: Fr) -> Self {
+    pub fn sign_fr(
+        sk: &SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        msg: Fr,
+        r: Fr,
+    ) -> Result<Self, String> {
         // makes sure that the time stamp matches.
         // the upper layer has already checked the tar_time is correct
         // so if the tar_time is incorrect, we should panic here instead of
@@ -125,15 +131,18 @@ impl Signature {
         // sig2 = ssk.hpoly * hv[d]^m * tmp^r
         tmp.mul_assign(r);
         let mut sig2 = ssk.get_hpoly();
-        let mut hv_last = ssk.get_last_hvector_coeff();
+        let mut hv_last = match ssk.get_last_hvector_coeff() {
+            Err(e) => return Err(e),
+            Ok(p) => p,
+        };
         hv_last.mul_assign(msg);
         sig2.add_assign(&hv_last);
         sig2.add_assign(&tmp);
 
-        Signature {
+        Ok(Signature {
             sigma1: sig1,
             sigma2: sig2,
-        }
+        })
     }
 
     /// This verification function takes in a public key, a target time, the public parameters
@@ -275,7 +284,9 @@ mod signature_test {
         let r = Fr::from_ro("this is also a very very long seed for testing", 0);
 
         let msg = b"message to sign";
-        let sig = super::Signature::sign_bytes(&sk, 1, &pp, msg, r);
+        let res = super::Signature::sign_bytes(&sk, 1, &pp, msg, r);
+        assert!(res.is_ok(), "signing failed");
+        let sig = res.unwrap();
         assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
 
         for j in 2..16 {
@@ -283,7 +294,9 @@ mod signature_test {
             let res = sk2.update(&pp, j);
             assert!(res.is_ok(), "updating failed");
             let r = Fr::from_ro("this is also a very very long seed for testing", j as u8);
-            let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
+            let res = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
+            assert!(res.is_ok(), "signing failed");
+            let sig = res.unwrap();
             assert!(
                 sig.verify_bytes(&pk, sk2.get_time(), &pp, msg),
                 "signature verification failed"
@@ -305,7 +318,9 @@ mod signature_test {
         let r = Fr::from_ro("this is also a very very long seed for testing", 0);
 
         let msg = b"message to sign";
-        let sig = super::Signature::sign_bytes(&sk, 1, &pp, msg, r);
+        let res = super::Signature::sign_bytes(&sk, 1, &pp, msg, r);
+        assert!(res.is_ok(), "signing failed");
+        let sig = res.unwrap();
         assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
 
         // this double loop
@@ -328,7 +343,9 @@ mod signature_test {
                     (i * 16 + j) as u8,
                 );
 
-                let sig = super::Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, r);
+                let res = super::Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, r);
+                assert!(res.is_ok(), "signing failed");
+                let sig = res.unwrap();
                 assert!(
                     sig.verify_bytes(&pk, sk3.get_time(), &pp, msg),
                     "signature verification failed"
@@ -337,7 +354,9 @@ mod signature_test {
 
             let r = Fr::from_ro("this is also a very very long seed for testing", 255);
 
-            let sig = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
+            let res = super::Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
+            assert!(res.is_ok(), "signing failed");
+            let sig = res.unwrap();
             assert!(
                 sig.verify_bytes(&pk, sk2.get_time(), &pp, msg),
                 "signature verification failed"

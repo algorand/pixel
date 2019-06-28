@@ -6,6 +6,7 @@ extern crate sha2;
 
 mod keys;
 mod param;
+mod pixel_err;
 mod sig;
 mod subkeys;
 mod time;

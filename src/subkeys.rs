@@ -5,6 +5,7 @@ use ff::Field;
 use keys::PublicKey;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::PubParam;
+use pixel_err::*;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
@@ -56,8 +57,11 @@ impl SubSecretKey {
     /// a short cut used by signing algorithm.
     /// note that by default the rest of the elements in
     /// h_vector are private.
-    pub fn get_last_hvector_coeff(&self) -> PixelG1 {
-        self.hvector[self.hvector.len() - 1].clone()
+    pub fn get_last_hvector_coeff(&self) -> Result<PixelG1, String> {
+        if self.hvector.len() == 0 {
+            return Err(ERR_SSK_EMPTY.to_owned());
+        }
+        Ok(self.hvector[self.hvector.len() - 1].clone())
     }
 
     /// This function initializes the root secret key at time stamp = 1,
@@ -144,7 +148,7 @@ impl SubSecretKey {
                 "The current time vector is {:?},\n trying to delegate into {:?}",
                 cur_time_vec, tar_time_vec
             );
-            return Err("Current time vector is not a prefix of target vector".to_owned());
+            return Err(ERR_TIME_NONE_PREFIX.to_owned());
         }
 
         let tv = tar_time_vec.get_time_vec();

@@ -28,7 +28,7 @@ fn test_ssk_serialization() {
     let t = SubSecretKey::init(&pp, alpha, r);
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 1000];
+    let mut scratch = [0u8; 10000];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
     assert!(t.serialize(buf, true).is_ok());
@@ -55,7 +55,7 @@ fn test_sk_serialization() {
     let pk = keypair.get_pk();
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 10000];
+    let mut scratch = [0u8; 100000];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
     assert!(sk.serialize(buf, true).is_ok());
@@ -69,6 +69,7 @@ fn test_sk_serialization() {
     // perform the same serialization/deserialization for the
     // keys from updating
     for j in 2..16 {
+        let mut scratch = [0u8; 100000];
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
         assert!(

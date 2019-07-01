@@ -174,29 +174,25 @@ impl PubParam {
         );
 
         // generate hlist
-        let mut hlist: Hlist = [PixelG1::zero(); CONST_D + 1];
-        for element in &mut hlist {
+        let mut hlist: Vec<PixelG1> = vec![];
+        for _i in 0..=CONST_D {
             // generate a new group element, and increment the counter
-            *element = PixelG1::hash_to_curve(t.clone(), ciphersuite);
+            let element = PixelG1::hash_to_curve(t.clone(), ciphersuite);
             ctr += 1;
             t.pop();
             t.push(ctr);
+
             #[cfg(feature = "verbose")]
             #[cfg(debug_assertions)]
             println!(
                 "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
                 ctr, t, ciphersuite
             );
+            hlist.push(element);
         }
 
         // format the output
-        Ok(PubParam {
-            d: CONST_D,
-            ciphersuite,
-            g2,
-            h,
-            hlist,
-        })
+        Ok(PubParam::construct(CONST_D, ciphersuite, g2, h, hlist))
     }
 
     /// This a deterministic method to generate public parameters that matchs
@@ -262,7 +258,15 @@ impl std::cmp::PartialEq for PubParam {
         if self.h != other.h {
             return false;
         }
-        self.hlist == other.hlist
+        for i in 0..=self.d {
+            if self.hlist[i] != other.hlist[i] {
+                return false;
+            }
+        }
+        self.ciphersuite == other.ciphersuite
+            && self.d == other.d
+            && self.g2 == other.g2
+            && self.h == other.h
     }
 }
 

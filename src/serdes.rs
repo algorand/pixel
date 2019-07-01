@@ -29,7 +29,7 @@ impl SerDes for PubParam {
         self.get_h().serialize(&mut buf, compressed)?;
 
         // serialize hlist
-        for e in &self.get_hlist() {
+        for e in self.get_hlist().iter() {
             e.serialize(&mut buf, compressed)?;
         }
         // format the output

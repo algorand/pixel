@@ -26,6 +26,7 @@ pub struct Signature {
 }
 
 impl Signature {
+    /// Constructing a signature object.
     pub fn construct(ciphersuite: u8, sigma1: PixelG2, sigma2: PixelG1) -> Self {
         Signature {
             ciphersuite,
@@ -34,13 +35,17 @@ impl Signature {
         }
     }
 
+    /// Returns the ciphersuite of a signature.
     pub fn get_ciphersuite(&self) -> u8 {
         self.ciphersuite
     }
 
+    /// Returns the first component of the signature.
     pub fn get_sigma1(&self) -> PixelG2 {
         self.sigma1
     }
+
+    /// Returns the second component of the signature.
     pub fn get_sigma2(&self) -> PixelG1 {
         self.sigma2
     }

@@ -10,10 +10,11 @@ use pixel_err::*;
 use std::fmt;
 pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
+
 use PixelG1;
 use PixelG2;
 
-/// The public key structure is a wrapper of PixelG2 group.
+/// The public key structure is a wrapper of `PixelG2` group.
 /// The actual group that the public key lies in depends on `pk_in_g2` flag.
 #[derive(Debug, Clone)]
 pub struct PublicKey {
@@ -39,6 +40,7 @@ impl PublicKey {
         })
     }
 
+    /// Constructing a PublicKey object.
     pub fn construct(ciphersuite: u8, pk: PixelG2) -> Self {
         PublicKey { ciphersuite, pk }
     }
@@ -67,7 +69,6 @@ impl PublicKey {
         self.ciphersuite
     }
 }
-// pub type PublicKey = PixelG2;
 
 /// The keypair is a pair of public and secret keys.
 #[derive(Debug, Clone)]
@@ -630,8 +631,8 @@ impl std::cmp::PartialEq for SecretKey {
     }
 }
 
-/// convenient function to compare secret key objects
 impl std::cmp::PartialEq for PublicKey {
+    /// Convenient function to compare secret key objects
     fn eq(&self, other: &Self) -> bool {
         self.ciphersuite == other.ciphersuite && self.pk == other.pk
     }

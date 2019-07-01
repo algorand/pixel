@@ -49,6 +49,7 @@ pub struct PubParam {
 }
 
 impl PubParam {
+    /// Constructing a PubParam object.
     pub fn construct(
         d: usize,
         ciphersuite: u8,

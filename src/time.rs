@@ -45,16 +45,16 @@ impl TimeVec {
     /// assert_eq!(TimeVec::init(6,3).get_time_vec(), vec![2,1]);
     /// assert_eq!(TimeVec::init(7,3).get_time_vec(), vec![2,2]);
     /// Returns an error if the time stamp or the depth is invalid
-    pub fn init(t: TimeStamp, depth: usize) -> Result<Self, String> {
-        let vec = time_to_vec(t, depth)?;
-        Ok(TimeVec { time: t, vec: vec })
+    pub fn init(time: TimeStamp, depth: usize) -> Result<Self, String> {
+        let vec = time_to_vec(time, depth)?;
+        Ok(TimeVec { time, vec })
     }
 
     /// into_fr() extracts the time vector and converts
     /// the vector into the Fr form
     /// code deprecated
     #[allow(dead_code)]
-    fn into_fr(&self) -> Vec<Fr> {
+    fn build_fr_vec(&self) -> Vec<Fr> {
         let mut vec: Vec<Fr> = vec![];
         for e in self.get_vector() {
             vec.push(Fr::from_repr(FrRepr([e as u64, 0, 0, 0])).unwrap());
@@ -186,9 +186,9 @@ fn vec_to_time(mut t_vec: Vec<u64>, d: usize) -> Result<u64, String> {
         return Err(ERR_TIME_DEPTH.to_owned());
     }
     if t_vec == [] {
-        return Ok(1);
+        Ok(1)
     } else {
         let tmp: Vec<u64> = t_vec.drain(0..1).collect();
-        return Ok(1 + (tmp[0] - 1) * ((1u64 << (d - 1)) - 1) + vec_to_time(t_vec, d - 1)?);
+        Ok(1 + (tmp[0] - 1) * ((1u64 << (d - 1)) - 1) + vec_to_time(t_vec, d - 1)?)
     }
 }

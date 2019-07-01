@@ -81,7 +81,7 @@ impl SubSecretKey {
             return Err(ERR_SERIAL.to_owned());
         }
 
-        return Ok(());
+        Ok(())
     }
 
     /// Conver a blob into a ssk:
@@ -129,9 +129,9 @@ impl SubSecretKey {
         }
         // form the subsecretkey
         Ok(SubSecretKey {
-            time: time as u64,
-            g2r: g2r,
-            hpoly: hpoly,
+            time: u64::from(time),
+            g2r,
+            hpoly,
             hvector: hv,
         })
     }
@@ -150,13 +150,13 @@ impl SubSecretKey {
 
     /// Returns the first element `g^r` in a sub secret key.
     pub fn get_g2r(&self) -> PixelG2 {
-        self.g2r.clone()
+        self.g2r
     }
 
     /// Returns the second element `(h0 \prod h_i^t_i )^r`
     /// in a sub secret key.
     pub fn get_hpoly(&self) -> PixelG1 {
-        self.hpoly.clone()
+        self.hpoly
     }
 
     /// Returns the last coefficient of the h_vector;
@@ -164,10 +164,10 @@ impl SubSecretKey {
     /// note that by default the rest of the elements in
     /// h_vector are private.
     pub fn get_last_hvector_coeff(&self) -> Result<PixelG1, String> {
-        if self.hvector.len() == 0 {
+        if self.hvector.is_empty() {
             return Err(ERR_SSK_EMPTY.to_owned());
         }
-        Ok(self.hvector[self.hvector.len() - 1].clone())
+        Ok(self.hvector[self.hvector.len() - 1])
     }
 
     /// This function initializes the root secret key at time stamp = 1,
@@ -189,17 +189,17 @@ impl SubSecretKey {
 
         // hi^r
         let mut hvector: Vec<PixelG1> = Vec::with_capacity(depth);
-        for i in 1..depth + 1 {
-            hlist[i].mul_assign(r);
-            hvector.push(hlist[i]);
+        for e in hlist.iter_mut().take(depth + 1).skip(1) {
+            e.mul_assign(r);
+            hvector.push(*e);
         }
         // format the output
         SubSecretKey {
             // time stamp is 1 since this is the root key
             time: 1,
-            g2r: g2r,
-            hpoly: hpoly,
-            hvector: hvector,
+            g2r,
+            hpoly,
+            hvector,
         }
     }
 
@@ -341,7 +341,7 @@ impl SubSecretKey {
                     &(pke.into_affine().prepare()),
                 ),
             ]
-            .into_iter(),
+            .iter(),
         ))
         .unwrap();
 
@@ -361,7 +361,7 @@ impl SubSecretKey {
                     &(pp.get_h().into_affine().prepare()),
                 ),
             ]
-            .into_iter(),
+            .iter(),
         ))
         .unwrap();
 
@@ -386,9 +386,9 @@ impl fmt::Debug for SubSecretKey {
             self.hpoly.into_affine(),
         )?;
         for i in 0..self.hvector.len() {
-            write!(f, "hlist: h{}: {:#?}\n", i, self.hvector[i].into_affine())?;
+            writeln!(f, "hlist: h{}: {:#?}", i, self.hvector[i].into_affine())?;
         }
-        write!(f, "================================\n")
+        writeln!(f, "================================")
     }
 }
 

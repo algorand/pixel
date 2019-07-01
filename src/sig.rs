@@ -217,7 +217,7 @@ impl Signature {
                     &(pke.into_affine().prepare()),
                 ),
             ]
-            .into_iter(),
+            .iter(),
         ))
         .unwrap();
 
@@ -238,7 +238,7 @@ impl Signature {
                     &(pp.get_h().into_affine().prepare()),
                 ),
             ]
-            .into_iter(),
+            .iter(),
         ))
         .unwrap();
         pairingproduct == Fq12::one()
@@ -256,9 +256,6 @@ impl fmt::Debug for Signature {
             self.sigma1.into_affine(),
             self.sigma2.into_affine(),
         )?;
-        write!(f, "================================\n")
+        writeln!(f, "================================")
     }
 }
-
-#[cfg(test)]
-mod signature_test {}

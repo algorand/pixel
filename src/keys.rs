@@ -35,7 +35,7 @@ impl PublicKey {
         }
         Ok(PublicKey {
             ciphersuite: pp.get_ciphersuite(),
-            pk: pk,
+            pk,
         })
     }
 
@@ -102,7 +102,7 @@ impl KeyPair {
 
         // this may fail if the ciphersuite is not supported
         let pk = PublicKey::init(&pp, pk)?;
-        Ok(Self { sk: sk, pk: pk })
+        Ok(Self { sk, pk })
     }
 
     /// Returns the public key in a `KeyPair`
@@ -168,7 +168,7 @@ impl SecretKey {
     /// Returns the first sub secret key on the list.
     /// Returns an error if the list is empty.
     pub fn get_first_ssk(&self) -> Result<SubSecretKey, String> {
-        if self.ssk.len() == 0 {
+        if self.ssk.is_empty() {
             #[cfg(debug_assertions)]
             println!("Error to find the first key: {}", ERR_SSK_EMPTY);
             return Err(ERR_SSK_EMPTY.to_owned());
@@ -273,7 +273,7 @@ impl SecretKey {
         }
 
         // there should always be at least one key left\
-        if new_sk.ssk.len() == 0 {
+        if new_sk.ssk.is_empty() {
             #[cfg(debug_assertions)]
             println!("Error in key unpdating: {:?}", ERR_SSK_EMPTY);
             return Err(ERR_SSK_EMPTY.to_owned());
@@ -326,7 +326,7 @@ impl SecretKey {
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
-        'out: for i in 0..gamma_list.len() {
+        'out: for (i, tmptime) in gamma_list.iter().enumerate() {
             // this loop applies to example 2
             // if the ssk already exists in current sk, for example, ssk_for_t_9, i.e. time vec = [2]
             // we do not delegate
@@ -338,7 +338,7 @@ impl SecretKey {
             // delegation, so we can break the loop
             for j in i + 1..new_sk.ssk.len() {
                 let tmp_time_vec = new_sk.ssk[j].get_time_vec(depth)?;
-                if gamma_list[i] == tmp_time_vec {
+                if tmptime == &tmp_time_vec {
                     // this happens for time vec  = [2]
                     // no further delegation will happen
                     break 'out;
@@ -353,7 +353,7 @@ impl SecretKey {
             //  i = 0, new_ssk = ssk_for_t_12
             //  i = 1, new_ssk = ssk_for_t_13
             let mut new_ssk = new_sk.ssk[0].clone();
-            new_ssk.delegate(gamma_list[i].get_time(), depth)?;
+            new_ssk.delegate(tmptime.get_time(), depth)?;
 
             // re-randomization
             // randomize the new ssk unless it is the first one
@@ -407,7 +407,7 @@ impl SecretKey {
     //      is 2, corresponding to time vector [1], i.e., a pre-fix of [1,1,1]
     fn find_ancestor(&self, tar_time: TimeStamp) -> Result<TimeStamp, String> {
         // make sure there is at least one ssk left
-        if self.ssk.len() == 0 {
+        if self.ssk.is_empty() {
             #[cfg(debug_assertions)]
             println!("Error in finding ancestor: {}", ERR_SSK_EMPTY);
             return Err(ERR_SSK_EMPTY.to_owned());
@@ -452,7 +452,10 @@ impl SecretKey {
             println!(
                 "pk's ciphersuite: {}\n\
                  sk's ciphersuite: {}\n\
-                 pp's ciphersuite: {}"
+                 pp's ciphersuite: {}",
+                 pk.get_ciphersuite(),
+                 self.get_ciphersuite(),
+                 pp.get_ciphersuite()
             );
             return false;
         }
@@ -559,7 +562,7 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
             (&(sk.into_affine().prepare()), &(g2.into_affine().prepare())),
             (&(h.into_affine().prepare()), &(pk.into_affine().prepare())),
         ]
-        .into_iter(),
+        .iter(),
     ))
     .unwrap();
     #[cfg(not(feature = "pk_in_g2"))]
@@ -568,7 +571,7 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
             (&(g2.into_affine().prepare()), &(sk.into_affine().prepare())),
             (&(pk.into_affine().prepare()), &(h.into_affine().prepare())),
         ]
-        .into_iter(),
+        .iter(),
     ))
     .unwrap();
 
@@ -588,7 +591,7 @@ impl fmt::Debug for SecretKey {
                 i, self.ssk[i]
             )?;
         }
-        write!(f, "================================\n")
+        writeln!(f, "================================")
     }
 }
 

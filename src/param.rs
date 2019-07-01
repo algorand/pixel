@@ -78,7 +78,7 @@ impl PubParam {
 
     /// Returns the list of `PixelG2` elements of the public param.
     pub fn get_hlist(&self) -> Hlist {
-        self.hlist.clone()
+        self.hlist
     }
 
     /// This function initialize the parameter with a default seed = empty string "".
@@ -157,9 +157,9 @@ impl PubParam {
 
         // generate hlist
         let mut hlist: Hlist = [PixelG1::zero(); CONST_D + 1];
-        for i in 0..CONST_D + 1 {
+        for element in &mut hlist  {
             // generate a new group element, and increment the counter
-            hlist[i] = PixelG1::hash_to_curve(t.clone(), ciphersuite);
+            *element = PixelG1::hash_to_curve(t.clone(), ciphersuite);
             ctr += 1;
             t.pop();
             t.push(ctr);
@@ -174,10 +174,10 @@ impl PubParam {
         // format the output
         Ok(PubParam {
             d: CONST_D,
-            ciphersuite: ciphersuite,
-            g2: g2,
-            h: h,
-            hlist: hlist,
+            ciphersuite,
+            g2,
+            h,
+            hlist,
         })
     }
 
@@ -192,15 +192,15 @@ impl PubParam {
         let h = PixelG1::one();
         let g2 = PixelG2::one();
         let mut hv = [PixelG1::one(); CONST_D + 1];
-        for i in 1..CONST_D + 1 {
+        for i in 1..=CONST_D {
             let tmp = hv[i - 1];
             hv[i].add_assign(&tmp);
         }
         PubParam {
             d: CONST_D,
             ciphersuite: 0,
-            g2: g2,
-            h: h,
+            g2,
+            h,
             hlist: hv,
         }
     }
@@ -222,10 +222,10 @@ impl fmt::Debug for PubParam {
             self.g2.into_affine(),
             self.h.into_affine(),
         )?;
-        for i in 0..CONST_D + 1 {
-            write!(f, "hlist: h{}: {:#?}\n", i, self.hlist[i].into_affine())?;
+        for i in 0..=CONST_D {
+            writeln!(f, "hlist: h{}: {:#?}", i, self.hlist[i].into_affine())?;
         }
-        write!(f, "================================\n")
+        writeln!(f, "================================")
     }
 }
 

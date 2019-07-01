@@ -95,6 +95,88 @@ impl Signature {
         Signature::sign_bytes(&sk, tar_time, &pp, msg, r)
     }
 
+    /// This function signs a message for current time stamp. It requires the
+    /// time stamp to match the secret key.
+    /// It returns an error if the time stamp is not the same as that of the secret key.
+    /// The secret key remained unchanged.
+    pub fn sign_present(
+        sk: &mut SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        msg: &[u8],
+    ) -> Result<Self, String> {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
+
+        // TODO: to decide the right way to generate this randomness
+        let r = Fr::from_ro("seed used for signing_present", 0);
+
+        // update the sk to the target time;
+        // if the target time is in future, update self to the future.
+        let cur_time = sk.get_time();
+
+        if cur_time != tar_time {
+            #[cfg(debug_assertions)]
+            println!(
+                "Cannot sign for a previous time stamp, current time {} is greater than target time {}",
+                cur_time,
+                tar_time,
+            );
+            return Err(ERR_TIME_STAMP.to_owned());
+        }
+
+        Signature::sign_bytes(&sk, tar_time, &pp, msg, r)
+    }
+
+    /// This function signs a message for current time stamp. It requires the
+    /// time stamp to match the secret key.
+    /// It returns an error if the time stamp is not the same as that of the secret key.
+    /// The secret key is updated to next time stamp.
+    pub fn sign_then_update(
+        sk: &mut SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        msg: &[u8],
+    ) -> Result<Self, String> {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
+
+        // TODO: to decide the right way to generate this randomness
+        let r = Fr::from_ro("seed used for signing_then_update", 0);
+
+        // update the sk to the target time;
+        // if the target time is in future, update self to the future.
+        let cur_time = sk.get_time();
+
+        if cur_time != tar_time {
+            #[cfg(debug_assertions)]
+            println!(
+                "Cannot sign for a previous time stamp, current time {} is greater than target time {}",
+                cur_time,
+                tar_time,
+            );
+            return Err(ERR_TIME_STAMP.to_owned());
+        }
+
+        match Signature::sign_bytes(&sk, tar_time, &pp, msg, r) {
+            // if the signing is successful,
+            // update the key before returning the signature
+            Err(e) => Err(e),
+            Ok(p) => {
+                sk.update(&pp, tar_time + 1)?;
+                Ok(p)
+            }
+        }
+    }
+
     /// This function generates a signature for a message that is a byte of arbitrary length.
     /// It requires that the tar_time to match timestamp of the secret key.
     pub fn sign_bytes(

@@ -87,17 +87,20 @@ pub trait PixelSignature {
     /// 32 bytes long. Output the public parameters.
     /// Check `use_rand_generators` flags for randomized generators.
     /// Returns an error if seed is not long enough.
-    fn param_gen(seed: &[u8], ciphersuite: u8) -> Result<PubParam, String> {
-        PubParam::init(seed, ciphersuite)
+    fn param_gen<Blob: AsRef<[u8]>>(seed: Blob, ciphersuite: u8) -> Result<PubParam, String> {
+        PubParam::init(seed.as_ref(), ciphersuite)
     }
 
     /// Input a byte string as the seed, and the public parameters.
     /// The seed needs to be at least
     /// 32 bytes long. Output the key pair.
     /// Returns an error is seed is not long enough.
-    fn key_gen(seed: &[u8], pp: &PubParam) -> Result<(PublicKey, SecretKey), String> {
+    fn key_gen<Blob: AsRef<[u8]>>(
+        seed: Blob,
+        pp: &PubParam,
+    ) -> Result<(PublicKey, SecretKey), String> {
         use keys::KeyPair;
-        let kp = KeyPair::keygen(seed, &pp)?;
+        let kp = KeyPair::keygen(seed.as_ref(), &pp)?;
         Ok((kp.get_pk(), kp.get_sk()))
     }
 
@@ -111,27 +114,26 @@ pub trait PixelSignature {
     /// the public parameter, and a message in the form of a byte string,
     /// output a signature. If the time stamp is greater than that of the secret key,
     /// the key will be updated to the new time stamp.
-    fn sign(
+    fn sign<Blob: AsRef<[u8]>>(
         sk: &mut SecretKey,
         tar_time: TimeStamp,
         pp: &PubParam,
-        msg: &[u8],
+        msg: Blob,
     ) -> Result<Signature, String> {
-        Signature::sign(sk, tar_time, &pp, msg)
+        Signature::sign(sk, tar_time, &pp, msg.as_ref())
     }
 
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
     /// the public parameter, and a message in the form of a byte string,
     /// output a signature. If the time stamp is not the same as the secret key,
     /// returns an error
-    fn sign_present(
+    fn sign_present<Blob: AsRef<[u8]>>(
         sk: &mut SecretKey,
         tar_time: TimeStamp,
         pp: &PubParam,
-        msg: &[u8],
+        msg: Blob,
     ) -> Result<Signature, String> {
-        // TODO
-        Signature::sign(sk, tar_time, &pp, msg)
+        Signature::sign_present(sk, tar_time, &pp, msg.as_ref())
     }
 
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
@@ -140,26 +142,25 @@ pub trait PixelSignature {
     /// This feature may be useful to enforce one time signature for each time stamp.
     /// If the time stamp is not the same as the secret key,
     /// returns an error
-    fn sign_then_update(
+    fn sign_then_update<Blob: AsRef<[u8]>>(
         sk: &mut SecretKey,
         tar_time: TimeStamp,
         pp: &PubParam,
-        msg: &[u8],
+        msg: Blob,
     ) -> Result<Signature, String> {
-        // TODO
-        Signature::sign(sk, tar_time, &pp, msg)
+        Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref())
     }
 
     /// Input a public key, a time stamp, the public parameter, a message in the form of a byte string,
     /// and a signature, outputs true if signature is valid w.r.t. the inputs.
-    fn verify(
+    fn verify<Blob: AsRef<[u8]>>(
         pk: &PublicKey,
         tar_time: TimeStamp,
         pp: &PubParam,
-        msg: &[u8],
+        msg: Blob,
         sig: Signature,
     ) -> bool {
-        sig.verify_bytes(pk, tar_time, &pp, msg)
+        sig.verify_bytes(pk, tar_time, &pp, msg.as_ref())
     }
 }
 

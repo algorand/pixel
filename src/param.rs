@@ -49,6 +49,24 @@ pub struct PubParam {
 }
 
 impl PubParam {
+    pub fn construct(
+        d: usize,
+        ciphersuite: u8,
+        g2: PixelG2,
+        h: PixelG1,
+        hlist: Vec<PixelG1>,
+    ) -> Self {
+        let mut hlist_array: Hlist = [PixelG1::zero(); CONST_D + 1];
+        hlist_array.copy_from_slice(hlist.as_ref());
+        PubParam {
+            d,
+            ciphersuite,
+            g2,
+            h,
+            hlist: hlist_array,
+        }
+    }
+
     //  we no longer require a generator on g1
     // Returns the PixelG1 generator
     // pub fn get_g1(&self) -> PixelG1 {
@@ -157,7 +175,7 @@ impl PubParam {
 
         // generate hlist
         let mut hlist: Hlist = [PixelG1::zero(); CONST_D + 1];
-        for element in &mut hlist  {
+        for element in &mut hlist {
             // generate a new group element, and increment the counter
             *element = PixelG1::hash_to_curve(t.clone(), ciphersuite);
             ctr += 1;
@@ -226,6 +244,25 @@ impl fmt::Debug for PubParam {
             writeln!(f, "hlist: h{}: {:#?}", i, self.hlist[i].into_affine())?;
         }
         writeln!(f, "================================")
+    }
+}
+
+/// convenient function to compare secret key objects
+impl std::cmp::PartialEq for PubParam {
+    fn eq(&self, other: &Self) -> bool {
+        if self.ciphersuite != other.ciphersuite {
+            return false;
+        }
+        if self.d != other.d {
+            return false;
+        }
+        if self.g2 != other.g2 {
+            return false;
+        }
+        if self.h != other.h {
+            return false;
+        }
+        self.hlist == other.hlist
     }
 }
 

@@ -1,9 +1,9 @@
+use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
 use keys::{KeyPair, PublicKey};
 use pairing::{bls12_381::*, CurveProjective};
 use param::PubParam;
 use subkeys::SubSecretKey;
-
 #[test]
 fn test_keypair() {
     let pp = PubParam::init_without_seed();
@@ -205,13 +205,13 @@ fn test_key_gen() {
     let mut scratch = [0u8; 10000];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(t.ssk_serial(0, buf).is_ok());
+    assert!(t.serialize(buf, true).is_ok());
 
     // buffer space -- this needs to be adquate for large parameters
     let mut scratch2 = [0u8; 10000];
     // serializae a ssk into buffer
     let buf2 = &mut Cursor::new(&mut scratch2[..]);
-    assert!(t1.ssk_serial(0, buf2).is_ok());
+    assert!(t1.serialize(buf2, true).is_ok());
     for i in 0..buf.position() as usize {
         assert_eq!(scratch[i], scratch2[i], "ssk's do not match");
     }
@@ -384,38 +384,4 @@ fn test_delegate() {
             t
         );
     }
-}
-
-#[test]
-fn test_ssk_serialization() {
-    use ff::PrimeField;
-    use std::io::Cursor;
-    // a random field element
-    let r = Fr::from_str(
-        "5902757315117623225217061455046442114914317855835382236847240262163311537283",
-    )
-    .unwrap();
-    let pp = PubParam::init_without_seed();
-    // a random master secret key
-    let mut alpha = pp.get_h();
-    let msk = Fr::from_str(
-        "8010751325124863419913799848205334820481433752958938231164954555440305541353",
-    )
-    .unwrap();
-    alpha.mul_assign(msk);
-
-    // generate a sub secret key
-    let t = SubSecretKey::init(&pp, alpha, r);
-
-    // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [1u8; 10000];
-    // serializae a ssk into buffer
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(t.ssk_serial(0, buf).is_ok());
-    // deserialize a buffer into ssk
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    let s = SubSecretKey::ssk_deserial(buf, 0).unwrap();
-
-    // makes sure that the keys match
-    assert_eq!(t, s);
 }

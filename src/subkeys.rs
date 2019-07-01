@@ -1,14 +1,12 @@
 // a module for sub secret keys and related functions
 // to decide: whether this should be packed into key.rs?
 
-use bls_sigs_ref_rs::SerDes;
 use ff::Field;
 use keys::PublicKey;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
-use param::{PubParam, VALID_CIPHERSUITE};
+use param::PubParam;
 use pixel_err::*;
 use std::fmt;
-use std::io::{Read, Write};
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
@@ -33,107 +31,15 @@ pub struct SubSecretKey {
 }
 
 impl SubSecretKey {
-    /// Conver ssk into a blob:
-    /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
-    /// Return an error if serialization fails or time stamp is greater than 2^32-1
-    /// or invalid ciphersuite.
-    pub fn ssk_serial<W: Write>(&self, ciphersuite: u8, writer: &mut W) -> Result<(), String> {
-        if !VALID_CIPHERSUITE.contains(&ciphersuite) {
-            return Err(ERR_CIPHERSUITE.to_owned());
-        }
-        let hvlen = self.hvector.len();
-
-        // the first 4 bytes stores the time stamp,
-        // the time stamp cannot exceed 2^30
-        let time = self.time;
-        if time > (1 << 32) {
-            return Err(ERR_TIME_STAMP.to_owned());
-        }
-
-        let mut buf: Vec<u8> = vec![
-            (time & 0xFF) as u8,
-            (time >> 8 & 0xFF) as u8,
-            (time >> 16 & 0xFF) as u8,
-            (time >> 24 & 0xFF) as u8,
-        ];
-
-        // next, store one byte which is the length of the hvector
-        // this length cannot exceed depth, so we can store it in one byte
-        buf.push(hvlen as u8);
-
-        // the next chunck of data stores g2r
-        if self.g2r.serialize(&mut buf, true).is_err() {
-            return Err(ERR_SERIAL.to_owned());
-        }
-
-        // the next chunk of data stores hpoly
-        if self.hpoly.serialize(&mut buf, true).is_err() {
-            return Err(ERR_SERIAL.to_owned());
-        }
-
-        // the next chunk of data stores hvector
-        for e in &self.hvector {
-            if e.serialize(&mut buf, true).is_err() {
-                return Err(ERR_SERIAL.to_owned());
-            };
-        }
-        if writer.write_all(&buf).is_err() {
-            return Err(ERR_SERIAL.to_owned());
-        }
-
-        Ok(())
-    }
-
-    /// Conver a blob into a ssk:
-    /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
-    /// Return an error if deserialization fails or invalid ciphersuite
-    pub fn ssk_deserial<R: Read>(reader: &mut R, ciphersuite: u8) -> Result<Self, String> {
-        if !VALID_CIPHERSUITE.contains(&ciphersuite) {
-            return Err(ERR_CIPHERSUITE.to_owned());
-        }
-
-        // the first 4 bytes stores the time stamp,
-        // the time stamp cannot exceed 2^30
-        let mut time: [u8; 4] = [0u8; 4];
-        if reader.read(&mut time).is_err() {
-            return Err(ERR_DESERIAL.to_owned());
-        }
-        let time = u32::from_le_bytes(time);
-
-        // the next byte is the length of hvector
-        let mut hvlen = [0u8; 1];
-        if reader.read(&mut hvlen).is_err() {
-            return Err(ERR_DESERIAL.to_owned());
-        }
-
-        // the next chunck of data stores g2r
-        let g2r: PixelG2 = match SerDes::deserialize(reader) {
-            Err(_e) => return Err(ERR_DESERIAL.to_owned()),
-            Ok(p) => p,
-        };
-
-        // the next chunck of data stores hpoly
-        let hpoly: PixelG1 = match SerDes::deserialize(reader) {
-            Err(_e) => return Err(ERR_DESERIAL.to_owned()),
-            Ok(p) => p,
-        };
-
-        // the next chunck of data stores hvector
-        let mut hv: Vec<PixelG1> = vec![];
-        for _i in 0..hvlen[0] {
-            let tmp: PixelG1 = match SerDes::deserialize(reader) {
-                Err(_e) => return Err(ERR_DESERIAL.to_owned()),
-                Ok(p) => p,
-            };
-            hv.push(tmp)
-        }
-        // form the subsecretkey
-        Ok(SubSecretKey {
-            time: u64::from(time),
+    /// Build a sub secret key from the given inputs. Does not check
+    /// if the validity of the key.
+    pub fn construct(time: TimeStamp, g2r: PixelG2, hpoly: PixelG1, hvector: Vec<PixelG1>) -> Self {
+        SubSecretKey {
+            time,
             g2r,
             hpoly,
-            hvector: hv,
-        })
+            hvector,
+        }
     }
 
     /// Returns the time stamp of the sub secret key.
@@ -159,10 +65,14 @@ impl SubSecretKey {
         self.hpoly
     }
 
+    /// Returns the second element `(h0 \prod h_i^t_i )^r`
+    /// in a sub secret key.
+    pub fn get_hvector(&self) -> Vec<PixelG1> {
+        self.hvector.clone()
+    }
+
     /// Returns the last coefficient of the h_vector;
     /// a short cut used by signing algorithm.
-    /// note that by default the rest of the elements in
-    /// h_vector are private.
     pub fn get_last_hvector_coeff(&self) -> Result<PixelG1, String> {
         if self.hvector.is_empty() {
             return Err(ERR_SSK_EMPTY.to_owned());

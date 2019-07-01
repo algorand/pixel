@@ -4,8 +4,10 @@ use ff::Field;
 use keys::{PublicKey, SecretKey};
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::PubParam;
+use param::VALID_CIPHERSUITE;
 use pixel_err::*;
 use std::fmt;
+
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
@@ -18,11 +20,31 @@ use PixelG2;
 ///
 /// As in the python code, sigma1 and sigma2 are switched --  not consistent with the paper.
 pub struct Signature {
+    ciphersuite: u8,
     sigma1: PixelG2,
     sigma2: PixelG1,
 }
 
 impl Signature {
+    pub fn construct(ciphersuite: u8, sigma1: PixelG2, sigma2: PixelG1) -> Self {
+        Signature {
+            ciphersuite,
+            sigma1,
+            sigma2,
+        }
+    }
+
+    pub fn get_ciphersuite(&self) -> u8 {
+        self.ciphersuite
+    }
+
+    pub fn get_sigma1(&self) -> PixelG2 {
+        self.sigma1
+    }
+    pub fn get_sigma2(&self) -> PixelG1 {
+        self.sigma2
+    }
+
     /// This function signs a message for a time stamp. It does NOT require the
     /// time stamp to match the secret key.
     /// * If the time stamp is greater than that
@@ -37,6 +59,13 @@ impl Signature {
         pp: &PubParam,
         msg: &[u8],
     ) -> Result<Self, String> {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
+
         // TODO: to decide the right way to generate this randomness
         let r = Fr::from_ro("seed used for signing", 0);
 
@@ -134,6 +163,7 @@ impl Signature {
         sig2.add_assign(&tmp);
 
         Ok(Signature {
+            ciphersuite: pp.get_ciphersuite(),
             sigma1: sig1,
             sigma2: sig2,
         })
@@ -148,6 +178,19 @@ impl Signature {
         pp: &PubParam,
         msg: &[u8],
     ) -> bool {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return false;
+        }
+        // check that the ciphersuite identifier is correct
+        if self.ciphersuite != pp.get_ciphersuite() {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return false;
+        }
+
         // TODO: membership testing
 
         // hash the message into a field element
@@ -257,5 +300,16 @@ impl fmt::Debug for Signature {
             self.sigma2.into_affine(),
         )?;
         writeln!(f, "================================")
+    }
+}
+
+/// convenient function to compare secret key objects
+impl std::cmp::PartialEq for Signature {
+    fn eq(&self, other: &Self) -> bool {
+        // if self.ciphersuite != other.ciphersuite {
+        //     return false;
+        // }
+
+        self.sigma1 == other.sigma1 && self.sigma2 == other.sigma2
     }
 }

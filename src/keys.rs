@@ -39,6 +39,10 @@ impl PublicKey {
         })
     }
 
+    pub fn construct(ciphersuite: u8, pk: PixelG2) -> Self {
+        PublicKey { ciphersuite, pk }
+    }
+
     /// Set self to the new public key.
     /// Returns an error if the ciphersuite is not supported.
     pub fn set_pk(&mut self, pp: &PubParam, pk: PixelG2) -> Result<(), String> {
@@ -117,6 +121,16 @@ impl KeyPair {
 }
 
 impl SecretKey {
+    /// Build a secret key from the given inputs. Does not check
+    /// if the validity of the key.
+    pub fn construct(ciphersuite: u8, time: TimeStamp, ssk: Vec<SubSecretKey>) -> Self {
+        SecretKey {
+            ciphersuite,
+            time,
+            ssk,
+        }
+    }
+
     /// This function initializes the secret key at time stamp = 1.
     /// It takes the root secret `alpha` as the input.
     /// It may returns an error if the ciphersuite is not supported.
@@ -453,9 +467,9 @@ impl SecretKey {
                 "pk's ciphersuite: {}\n\
                  sk's ciphersuite: {}\n\
                  pp's ciphersuite: {}",
-                 pk.get_ciphersuite(),
-                 self.get_ciphersuite(),
-                 pp.get_ciphersuite()
+                pk.get_ciphersuite(),
+                self.get_ciphersuite(),
+                pp.get_ciphersuite()
             );
             return false;
         }
@@ -580,7 +594,7 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
     pairingproduct == Fq12::one()
 }
 
-/// convenient function to output a subsecretkey object
+/// convenient function to output a secret key object
 impl fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "================================\ntime:{:?}", self.time)?;
@@ -592,6 +606,34 @@ impl fmt::Debug for SecretKey {
             )?;
         }
         writeln!(f, "================================")
+    }
+}
+
+/// convenient function to compare secret key objects
+impl std::cmp::PartialEq for SecretKey {
+    fn eq(&self, other: &Self) -> bool {
+        if self.ciphersuite != other.ciphersuite {
+            return false;
+        }
+        if self.time != other.time {
+            return false;
+        }
+        if self.get_ssk_number() != other.get_ssk_number() {
+            return false;
+        }
+        for i in 0..self.get_ssk_number() {
+            if self.ssk[i] != other.ssk[i] {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+/// convenient function to compare secret key objects
+impl std::cmp::PartialEq for PublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.ciphersuite == other.ciphersuite && self.pk == other.pk
     }
 }
 

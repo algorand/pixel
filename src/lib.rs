@@ -7,12 +7,14 @@ extern crate sha2;
 mod keys;
 mod param;
 mod pixel_err;
+mod serdes;
 mod sig;
 mod subkeys;
 mod time;
 
 #[cfg(test)]
 mod test;
+
 // by default the groups are switched so that
 // the public key lies in G2
 // this yields smaller public keys

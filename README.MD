@@ -17,6 +17,12 @@
 * `cargo doc --open` to view the public traits and functions.
 
 
+## Quality control
+Following the guidelines from [Facebooks source code](https://developers.libra.org/docs/community/coding-guidelines)
+* `cargo fmt` for coding style
+* `cargo clippy --all-targets --all-features -- -D warnings` for [lint](https://github.com/rust-lang/rust-clippy/blob/master/README.md)
+* `cargo fuzz` for [fuzzing](https://rust-fuzz.github.io/book/introduction.html) (TODO)
+
 ## Interfaces
 
 

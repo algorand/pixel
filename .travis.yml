@@ -16,4 +16,11 @@ script:
   - cargo test --release
   - cargo test --features=pk_in_g2 --release
   - cargo test --features=pk_in_g2,use_rand_generators --release
+  - cargo test -- --ignored
+  - cargo test --features=pk_in_g2 -- --ignored
+  - cargo test --features=pk_in_g2,use_rand_generators -- --ignored
+  - cargo test --release -- --ignored
+  - cargo test --features=pk_in_g2 --release -- --ignored
+  - cargo test --features=pk_in_g2,use_rand_generators --release -- --ignored
+
   # etc.

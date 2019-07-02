@@ -8,10 +8,12 @@ use param::VALID_CIPHERSUITE;
 use pixel_err::*;
 use std::fmt;
 
+use membership::MembershipTesting;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
 
+use domain_sep::DOM_SEP_SIG;
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
@@ -56,24 +58,16 @@ impl Signature {
     /// of the secret key, it firstly update the secret key to the new time stamp,
     /// and then use the updated secret key to sign. Note that, for safety reason,
     /// once the key is updated, we no longer have the original secret key.
-    /// * It returns an error if the time stamp is smaller than the that of the secret key.
+    /// * It returns an error if the time stamp is smaller than the that of the secret key,
+    /// or the seed is too short.
     /// The secret key remained unchanged in this case.
     pub fn sign(
         sk: &mut SecretKey,
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
+        seed: &[u8],
     ) -> Result<Self, String> {
-        // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
-            #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err(ERR_CIPHERSUITE.to_owned());
-        }
-
-        // TODO: to decide the right way to generate this randomness
-        let r = Fr::from_ro("seed used for signing", 0);
-
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
         let cur_time = sk.get_time();
@@ -92,7 +86,7 @@ impl Signature {
             sk.update(&pp, tar_time)?
         }
 
-        Signature::sign_bytes(&sk, tar_time, &pp, msg, r)
+        Signature::sign_bytes(&sk, tar_time, &pp, msg, seed)
     }
 
     /// This function signs a message for current time stamp. It requires the
@@ -104,17 +98,8 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
+        seed: &[u8],
     ) -> Result<Self, String> {
-        // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
-            #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err(ERR_CIPHERSUITE.to_owned());
-        }
-
-        // TODO: to decide the right way to generate this randomness
-        let r = Fr::from_ro("seed used for signing_present", 0);
-
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
         let cur_time = sk.get_time();
@@ -129,7 +114,7 @@ impl Signature {
             return Err(ERR_TIME_STAMP.to_owned());
         }
 
-        Signature::sign_bytes(&sk, tar_time, &pp, msg, r)
+        Signature::sign_bytes(&sk, tar_time, &pp, msg, seed)
     }
 
     /// This function signs a message for current time stamp. It requires the
@@ -141,17 +126,8 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
+        seed: &[u8],
     ) -> Result<Self, String> {
-        // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
-            #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err(ERR_CIPHERSUITE.to_owned());
-        }
-
-        // TODO: to decide the right way to generate this randomness
-        let r = Fr::from_ro("seed used for signing_then_update", 0);
-
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
         let cur_time = sk.get_time();
@@ -166,7 +142,7 @@ impl Signature {
             return Err(ERR_TIME_STAMP.to_owned());
         }
 
-        match Signature::sign_bytes(&sk, tar_time, &pp, msg, r) {
+        match Signature::sign_bytes(&sk, tar_time, &pp, msg, seed) {
             // if the signing is successful,
             // update the key before returning the signature
             Err(e) => Err(e),
@@ -184,17 +160,37 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
-        r: Fr,
+        seed: &[u8],
     ) -> Result<Self, String> {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
+
         // makes sure that the time stamp matches.
         // the upper layer has already checked the tar_time is correct
         // so if the tar_time is incorrect, we should panic here instead of
         // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
 
+        // make sure we have enough entropy
+        if seed.len() < 32 {
+            return Err(ERR_SEED_TOO_SHORT.to_owned());
+        }
+
+        // We generate a random field element from the seed.
+        // output hash(DOM_SEP_SIG|seed, 0)
+        //  DOM_SEP_SIG:    domain seperator
+        //  msg:            input message
+        //  0:              counter, 0 since we use the first field element
+        // TODO: review this part.
+        let ro_input = [DOM_SEP_SIG.as_bytes(), seed].concat();
+        let r = Fr::from_ro(ro_input, 0);
+
         // hash the message into a field element
-        // TODO: domain seperation?
-        let m = Fr::from_ro(msg, 0);
+        let m = hash_msg_into_fr(msg);
         // calls the sign_fr subroutine
         Signature::sign_fr(&sk, tar_time, &pp, m, r)
     }
@@ -257,7 +253,9 @@ impl Signature {
     }
 
     /// This verification function takes in a public key, a target time, the public parameters
-    /// and a message in the form of a byte array. It returns true if the signature is valid.
+    /// a message in the form of a byte array, and a signature.
+    /// The signature may be malformed -- the elements are not in the right group.
+    /// It returns true if the signature is valid.
     pub fn verify_bytes(
         &self,
         pk: &PublicKey,
@@ -278,20 +276,29 @@ impl Signature {
             return false;
         }
 
-        // TODO: membership testing
+        // membership testing
+        if !self.get_sigma1().is_in_prime_group() || !self.get_sigma2().is_in_prime_group() {
+            #[cfg(debug_assertions)]
+            println!(
+                "Signature not it the correct subgroup\n\
+                 sigma1: {}, sigma2: {}",
+                self.get_sigma1().is_in_prime_group(),
+                self.get_sigma2().is_in_prime_group()
+            );
+            return false;
+        }
 
         // hash the message into a field element
-        // TODO: domain seperation?
-        let m = Fr::from_ro(msg, 0);
+        let m = hash_msg_into_fr(msg);
 
         Signature::verify_fr(&self, &pk, tar_time, &pp, m)
     }
 
     /// This verification function takes in a public key, a target time, the public parameters
-    /// and a message in the form of a field element. It returns true if the signature is valid.
+    /// a message in the form of a field element, and a signature.
+    /// It assumes that the signature is well formed (in the right subgroup) already.
+    /// It returns true if the signature is valid.
     pub fn verify_fr(&self, pk: &PublicKey, tar_time: TimeStamp, pp: &PubParam, msg: Fr) -> bool {
-        // TODO: membership testing
-
         let depth = pp.get_d();
 
         // extract the group element in pk
@@ -375,6 +382,19 @@ impl Signature {
     }
 }
 
+/// This function hashes a message into a field element
+/// using the hash_to_field method from BLS signature.
+fn hash_msg_into_fr(msg: &[u8]) -> Fr {
+    use domain_sep::DOM_SEP_HASH_TO_MSG;
+    // TODO: review this part.
+    // output hash(DOM_SEP_HASH_TO_MSG|msg, 0)
+    //  DOM_SEP_HASH_TO_MSG:    domain seperator
+    //  msg:                    input message
+    //  0:                      counter, 0 since we use the first field element
+    let m = [DOM_SEP_HASH_TO_MSG.as_bytes(), msg].concat();
+    Fr::from_ro(m, 0)
+}
+
 impl fmt::Debug for Signature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -393,10 +413,6 @@ impl fmt::Debug for Signature {
 /// convenient function to compare secret key objects
 impl std::cmp::PartialEq for Signature {
     fn eq(&self, other: &Self) -> bool {
-        // if self.ciphersuite != other.ciphersuite {
-        //     return false;
-        // }
-
         self.sigma1 == other.sigma1 && self.sigma2 == other.sigma2
     }
 }

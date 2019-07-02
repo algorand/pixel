@@ -26,12 +26,16 @@ fn test_ssk_serialization() {
 
     // generate a sub secret key
     let t = SubSecretKey::init(&pp, alpha, r);
+    let bufsize = t.get_size();
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 10000];
+    let mut scratch = vec![0u8; bufsize];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
     assert!(t.serialize(buf, true).is_ok());
+    // make sure the buf size is the same as sk.get_size()
+    assert_eq!(buf.position() as usize, bufsize);
+
     // deserialize a buffer into ssk
     let buf = &mut Cursor::new(&mut scratch[..]);
     let s = SubSecretKey::deserialize(buf).unwrap();
@@ -55,11 +59,13 @@ fn test_sk_serialization() {
     let pk = keypair.get_pk();
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 100000];
+    let bufsize = sk.get_size();
+    let mut scratch = vec![0u8; bufsize];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
     assert!(sk.serialize(buf, true).is_ok());
-
+    // make sure the buf size is the same as sk.get_size()
+    assert_eq!(buf.position() as usize, bufsize);
     // deserialize a buffer into ssk
     let buf = &mut Cursor::new(&mut scratch[..]);
     let sk_recover = SecretKey::deserialize(buf).unwrap();
@@ -69,7 +75,7 @@ fn test_sk_serialization() {
     // perform the same serialization/deserialization for the
     // keys from updating
     for j in 2..16 {
-        let mut scratch = [0u8; 100000];
+        // update keys
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
         assert!(
@@ -79,9 +85,14 @@ fn test_sk_serialization() {
             res.err()
         );
         assert!(sk2.validate(&pk, &pp), "invalid sk");
+
+        // serialize the updated key
+        let bufsize = sk2.get_size();
+        let mut scratch = vec![0u8; bufsize];
         let buf = &mut Cursor::new(&mut scratch[..]);
         assert!(sk2.serialize(buf, true).is_ok());
-        println!("{:?}", buf);
+        // make sure the buf size is the same as sk.get_size()
+        assert_eq!(buf.position() as usize, bufsize);
         // deserialize a buffer into ssk
         let buf = &mut Cursor::new(&mut scratch[..]);
         let sk_recover = SecretKey::deserialize(buf).unwrap();
@@ -91,6 +102,8 @@ fn test_sk_serialization() {
 
 #[test]
 fn test_pk_serialization() {
+    use PK_LEN;
+
     let pp = PubParam::init_without_seed();
     let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
     assert!(
@@ -103,7 +116,7 @@ fn test_pk_serialization() {
     let pk = keypair.get_pk();
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 100];
+    let mut scratch = [0u8; PK_LEN];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
     assert!(pk.serialize(buf, true).is_ok());
@@ -117,13 +130,15 @@ fn test_pk_serialization() {
 
 #[test]
 fn test_param_serialization() {
+    use PP_LEN;
     let pp = PubParam::init_without_seed();
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 10000];
+    let mut scratch = [0u8; PP_LEN];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
     assert!(pp.serialize(buf, true).is_ok());
+    println!("{} {} {}", buf.position(), PP_LEN, pp.get_size());
 
     // deserialize a buffer into ssk
     let buf = &mut Cursor::new(&mut scratch[..]);
@@ -134,23 +149,23 @@ fn test_param_serialization() {
 
 #[test]
 fn test_signature_serialization() {
-    use bls_sigs_ref_rs::FromRO;
+    use SIG_LEN;
     let pp = PubParam::init_without_seed();
     let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
     assert!(res.is_ok(), "key gen failed");
     let keypair = res.unwrap();
     let sk = keypair.get_sk();
     let pk = keypair.get_pk();
-    let r = Fr::from_ro("this is also a very very long seed for testing", 0);
 
+    let seedr = b"this is also a very very long seed for testing";
     let msg = b"message to sign";
-    let res = Signature::sign_bytes(&sk, 1, &pp, msg, r);
+    let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 150];
+    let mut scratch = [0u8; SIG_LEN];
     // serializae a ssk into buffer
     let buf = &mut Cursor::new(&mut scratch[..]);
     assert!(sig.serialize(buf, true).is_ok());

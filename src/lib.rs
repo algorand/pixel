@@ -19,7 +19,9 @@ extern crate ff;
 extern crate pairing;
 extern crate sha2;
 
+mod domain_sep;
 mod keys;
+mod membership;
 mod param;
 mod pixel_err;
 mod serdes;
@@ -60,6 +62,59 @@ pub type PixelG1 = pairing::bls12_381::G2;
 #[cfg(not(feature = "pk_in_g2"))]
 pub type PixelG2 = pairing::bls12_381::G1;
 
+/// The size of pk is 49 when PK is in G1. 1 byte for ciphersuite ID
+/// and 48 byte for group element.
+#[cfg(not(feature = "pk_in_g2"))]
+pub const PK_LEN: usize = 49;
+
+/// The size of pk is 97 when PK is in G1. 1 byte for ciphersuite ID
+/// and 96 byte for group element.
+#[cfg(feature = "pk_in_g2")]
+pub const PK_LEN: usize = 97;
+
+/// The Signature size is always 145. 1 byte for ciphersuite ID,
+/// 48+96 for two group elements.
+pub const SIG_LEN: usize = 145;
+
+/// The size of public param is  when PK is in G1...
+/// * 1 byte for ciphersuite ID
+/// * 1 byte for depth
+/// * 144 for g2 and h
+/// * |PIXELG2| *(d+1) for hlist
+#[cfg(not(debug_assertions))]
+#[cfg(not(feature = "pk_in_g2"))]
+pub const PP_LEN: usize = 3314;
+
+/// The size of public param is  when PK is in G1...
+/// * 1 byte for ciphersuite ID
+/// * 1 byte for depth
+/// * 144 for g2 and h
+/// * |PIXELG2| *(d+1) for hlist
+#[cfg(not(debug_assertions))]
+#[cfg(feature = "pk_in_g2")]
+pub const PP_LEN: usize = 1730;
+
+/// The size of public param is  when PK is in G1...
+/// * 1 byte for ciphersuite ID
+/// * 1 byte for depth
+/// * 144 for g2 and h
+/// * |PIXELG2| *(d+1) for hlist
+#[cfg(debug_assertions)]
+#[cfg(not(feature = "pk_in_g2"))]
+pub const PP_LEN: usize = 626;
+
+/// The size of public param is  when PK is in G1...
+/// * 1 byte for ciphersuite ID
+/// * 1 byte for depth
+/// * 144 for g2 and h
+/// * |PIXELG2| *(d+1) for hlist
+#[cfg(debug_assertions)]
+#[cfg(feature = "pk_in_g2")]
+pub const PP_LEN: usize = 386;
+
+// Expose this constant.
+pub use param::CONST_D;
+
 // expose the submodules of this crate for debug versions
 #[cfg(debug_assertions)]
 pub use keys::{PublicKey, SecretKey};
@@ -72,7 +127,7 @@ pub use time::TimeStamp;
 
 // hide the submodules of this crate for release versions
 #[cfg(not(debug_assertions))]
-use keys::{KeyPair, PublicKey, SecretKey};
+use keys::{PublicKey, SecretKey};
 #[cfg(not(debug_assertions))]
 use param::PubParam;
 #[cfg(not(debug_assertions))]
@@ -120,7 +175,8 @@ pub trait PixelSignature {
         pp: &PubParam,
         msg: Blob,
     ) -> Result<Signature, String> {
-        Signature::sign(sk, tar_time, &pp, msg.as_ref())
+        let seed = "this is a very long seed for testing.";
+        Signature::sign(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
     }
 
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
@@ -133,7 +189,8 @@ pub trait PixelSignature {
         pp: &PubParam,
         msg: Blob,
     ) -> Result<Signature, String> {
-        Signature::sign_present(sk, tar_time, &pp, msg.as_ref())
+        let seed = "this is a very long seed for testing.";
+        Signature::sign_present(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
     }
 
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
@@ -148,7 +205,8 @@ pub trait PixelSignature {
         pp: &PubParam,
         msg: Blob,
     ) -> Result<Signature, String> {
-        Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref())
+        let seed = "this is a very long seed for testing.";
+        Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
     }
 
     /// Input a public key, a time stamp, the public parameter, a message in the form of a byte string,
@@ -169,7 +227,9 @@ pub trait PixelSignature {
 #[derive(Debug)]
 pub struct Pixel;
 
+/// Pixel uses default implementaions from PixelSignature trait.
 impl PixelSignature for Pixel {}
+
 //
 // /// This struct implenents the public API's that will can be accessed by external.
 // impl Pixel {

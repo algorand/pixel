@@ -279,6 +279,30 @@ impl SubSecretKey {
         //   e(hpoly, -g2) * e(h, pk) * e(h0*hi^ti, g2r) == 1
         pairingproduct == Fq12::one()
     }
+
+    /// This function returns the storage requirement for this secret key. Recall that
+    /// each ssk is a blob:
+    /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
+    /// where time stamp is 4 bytes and hv_length is 1 byte.
+    /// Return 5 + serial ...
+    pub fn get_size(&self) -> usize {
+        let mut len = 5;
+
+        #[cfg(not(feature = "pk_in_g2"))]
+        let pixel_g1_size = 96;
+
+        #[cfg(feature = "pk_in_g2")]
+        let pixel_g1_size = 48;
+
+        // g2r and hpoly length
+        // this will be a G1 and a G2
+        // so switching group does not change the result
+        len += 144;
+        // hv length = |hv| * pixel g1 size
+        len += self.get_hvector().len() * pixel_g1_size;
+
+        len
+    }
 }
 
 impl fmt::Debug for SubSecretKey {

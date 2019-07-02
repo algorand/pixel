@@ -8,8 +8,8 @@ use PixelG1;
 use PixelG2;
 
 impl SerDes for PubParam {
-    /// Convert a signature into a blob:
-    /// `|ciphersuite id| sigma1 | sigma2 |`
+    /// Convert a public parameter into a blob:
+    /// `|ciphersuite id| depth | g2 | h | hlist |`
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
         // check the cipher suite id
@@ -37,9 +37,9 @@ impl SerDes for PubParam {
         Ok(())
     }
 
-    /// Convert a blob into a signature:
-    /// `|ciphersuite id| sigma1 | sigma2 |`
-    /// Returns an error if serialization fails.
+    /// Convert a blob into a public parameter:
+    /// `|ciphersuite id| depth | g2 | h | hlist |`
+    /// Returns an error if deserialization fails.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // constants stores id and the depth
         let mut constants: [u8; 2] = [0u8; 2];

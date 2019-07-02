@@ -1,9 +1,6 @@
-use bls_sigs_ref_rs::FromRO;
 use keys::KeyPair;
-use pairing::bls12_381::Fr;
 use param::PubParam;
 use sig::Signature;
-//    use util;
 
 /// A simple and quick tests on
 /// * key generation
@@ -18,10 +15,10 @@ fn test_quick_signature_tests() {
     let keypair = res.unwrap();
     let sk = keypair.get_sk();
     let pk = keypair.get_pk();
-    let r = Fr::from_ro("this is also a very very long seed for testing", 0);
+    let seedr = b"this is also a very very long seed for testing";
 
     let msg = b"message to sign";
-    let res = Signature::sign_bytes(&sk, 1, &pp, msg, r);
+    let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
@@ -30,8 +27,12 @@ fn test_quick_signature_tests() {
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
         assert!(res.is_ok(), "updating failed");
-        let r = Fr::from_ro("this is also a very very long seed for testing", j as u8);
-        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
+        let seedr = [
+            b"this is also a very very long seed for testing",
+            [j as u8].as_ref(),
+        ]
+        .concat();
+        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, seedr.as_ref());
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
@@ -52,10 +53,10 @@ fn test_long_signature_tests() {
     let keypair = res.unwrap();
     let sk = keypair.get_sk();
     let pk = keypair.get_pk();
-    let r = Fr::from_ro("this is also a very very long seed for testing", 0);
+    let seedr = b"this is also a very very long seed for testing";
 
     let msg = b"message to sign";
-    let res = Signature::sign_bytes(&sk, 1, &pp, msg, r);
+    let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
@@ -75,12 +76,13 @@ fn test_long_signature_tests() {
             let res = sk3.update(&pp, i);
             assert!(res.is_ok(), "updating failed");
             assert!(sk3.validate(&pk, &pp), "validation failed");
-            let r = Fr::from_ro(
-                "this is also a very very long seed for testing",
-                (i * 16 + j) as u8,
-            );
+            let seedr = [
+                b"this is also a very very long seed for testing",
+                [(i * 16 + j) as u8].as_ref(),
+            ]
+            .concat();
 
-            let res = Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, r);
+            let res = Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, seedr.as_ref());
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(
@@ -89,9 +91,12 @@ fn test_long_signature_tests() {
             );
         }
 
-        let r = Fr::from_ro("this is also a very very long seed for testing", 255);
-
-        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, r);
+        let seedr = [
+            b"this is also a very very long seed for testing",
+            [255u8].as_ref(),
+        ]
+        .concat();
+        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, seedr.as_ref());
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(

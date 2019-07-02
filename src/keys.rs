@@ -521,6 +521,24 @@ impl SecretKey {
         }
         true
     }
+
+    /// This function returns the storage requirement for this secret key. Recall that
+    /// each sk is a blob:
+    /// `|ciphersuite id| number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    /// where ...
+    /// * ciphersuite is 1 byte
+    /// * number of ssk-s is 1 byte - there can not be more than const_d number of ssk-s
+    /// * each ssk is
+    /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
+    /// So the output will be 2 + size of eash ssk
+    pub fn get_size(&self) -> usize {
+        let mut len = 2;
+        let ssk = self.get_ssk_vec();
+        for e in ssk {
+            len += e.get_size();
+        }
+        len
+    }
 }
 
 /// This function generates the master key pair from a seed.
@@ -528,6 +546,8 @@ impl SecretKey {
 /// The public/secret key is then set to g2^x and h^x
 /// This function is private -- it should be used only as a subroutine to key gen function
 fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), String> {
+    use domain_sep::DOM_SEP_MASTER_KEY;
+
     // make sure we have enough entropy
     if seed.len() < 32 {
         #[cfg(debug_assertions)]
@@ -547,7 +567,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), Stri
 
     // use hash_to_field function to generate a random field element
     // the counter will always be 0 because we only generate one field element
-    let r = Fr::from_ro(seed, 0);
+    let r = Fr::from_ro([DOM_SEP_MASTER_KEY.as_ref(), seed].concat(), 0);
 
     // pk = g2^r
     // sk = h^r

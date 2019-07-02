@@ -95,7 +95,7 @@ impl PubParam {
         self.h
     }
 
-    /// Returns the list of `PixelG2` elements of the public param.
+    /// Returns the list of `PixelG1` elements of the public param.
     pub fn get_hlist(&self) -> Hlist {
         self.hlist
     }
@@ -109,11 +109,13 @@ impl PubParam {
     }
 
     /// This function takes input a string seed, and a ciphersuite id, and outputs the
-    /// public parameters using `hash_to_group(seed|ctr, ciphersuite)`
+    /// public parameters using `hash_to_group(DOM_SEP_PARAM_GEN|seed|ctr, ciphersuite)`
     ///
     /// Note: depending on the configuration `use_rand_generators`,
     /// the generators will be generated randomly.
     pub fn init(seed: &[u8], ciphersuite: u8) -> Result<Self, String> {
+        use domain_sep::DOM_SEP_PARAM_GEN;
+
         // make sure we have enough entropy
         if seed.len() < 32 {
             return Err(ERR_SEED_TOO_SHORT.to_owned());
@@ -124,18 +126,15 @@ impl PubParam {
         }
 
         // the input to the HashToCurve is formated as
-        //  hash_to_group( seed|ctr, ciphersuite)
+        //  hash_to_group( DOM_SEP_PARAM_GEN|seed|ctr, ciphersuite)
         // where ctr starts from 0 and is incremental
-
         let mut ctr = 0;
-        let mut t = seed.to_vec();
-        t.push(ctr);
 
         #[cfg(feature = "verbose")]
         #[cfg(debug_assertions)]
         println!(
             "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
-            ctr, t, ciphersuite
+            ctr, hash_input, ciphersuite
         );
 
         // if feature = use_rand_generators then we use randomized generators
@@ -143,15 +142,14 @@ impl PubParam {
         #[cfg(feature = "use_rand_generators")]
         let g2 = {
             // generate a new group element, and increment the counter
-            let g2 = PixelG2::hash_to_curve(t.clone(), ciphersuite);
+            let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
+            let g2 = PixelG2::hash_to_curve(hash_input, ciphersuite);
             ctr += 1;
-            t.pop();
-            t.push(ctr);
             #[cfg(feature = "verbose")]
             #[cfg(debug_assertions)]
             println!(
                 "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
-                ctr, t, ciphersuite
+                ctr, hash_input, ciphersuite
             );
             g2
         };
@@ -162,32 +160,30 @@ impl PubParam {
 
         // generate h
         // generate a new group element, and increment the counter
-        let h = PixelG1::hash_to_curve(t.clone(), ciphersuite);
+        let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
+        let h = PixelG1::hash_to_curve(hash_input, ciphersuite);
         ctr += 1;
-        t.pop();
-        t.push(ctr);
 
         #[cfg(feature = "verbose")]
         #[cfg(debug_assertions)]
         println!(
             "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
-            ctr, t, ciphersuite
+            ctr, hash_input, ciphersuite
         );
 
         // generate hlist
         let mut hlist: Vec<PixelG1> = vec![];
         for _i in 0..=CONST_D {
             // generate a new group element, and increment the counter
-            let element = PixelG1::hash_to_curve(t.clone(), ciphersuite);
+            let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
+            let element = PixelG1::hash_to_curve(hash_input, ciphersuite);
             ctr += 1;
-            t.pop();
-            t.push(ctr);
 
             #[cfg(feature = "verbose")]
             #[cfg(debug_assertions)]
             println!(
                 "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
-                ctr, t, ciphersuite
+                ctr, hash_input, ciphersuite
             );
             hlist.push(element);
         }
@@ -218,6 +214,33 @@ impl PubParam {
             h,
             hlist: hv,
         }
+    }
+
+    /// This function returns the storage requirement for this secret key. Recall that
+    /// each a public parameter is a blob:
+    /// `|ciphersuite id| depth | g2 | h | hlist |`
+    /// where ciphersuite id is 1 byte and depth is 1 byte.
+    /// Return 2 + serial ...
+    //  This code is for test only. The size can be obtained
+    //  by a constant: PP_LEN
+    #[cfg(test)]
+    pub fn get_size(&self) -> usize {
+        let mut len = 2;
+
+        #[cfg(not(feature = "pk_in_g2"))]
+        let pixel_g1_size = 96;
+
+        #[cfg(feature = "pk_in_g2")]
+        let pixel_g1_size = 48;
+
+        // g2r and hpoly length
+        // this will be a G1 and a G2
+        // so switching group does not change the result
+        len += 144;
+        // hv length = |hv| * pixel g1 size
+        len += (self.get_d() + 1) * pixel_g1_size;
+
+        len
     }
 }
 

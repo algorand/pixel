@@ -12,8 +12,8 @@ script:
   - cargo clippy --all-targets --all-features -- -D warnings
   - cargo test
   - cargo test --features=pk_in_g2
-  - cargo test --features=pk_in_g2,use_rand_generator
+  - cargo test --features=pk_in_g2,use_rand_generators
   - cargo test --release
   - cargo test --features=pk_in_g2 --release
-  - cargo test --features=pk_in_g2,use_rand_generator --release
+  - cargo test --features=pk_in_g2,use_rand_generators --release
   # etc.

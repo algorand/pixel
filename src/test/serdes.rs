@@ -6,8 +6,6 @@ use param::PubParam;
 use sig::Signature;
 use subkeys::SubSecretKey;
 
-use std::io::Cursor;
-
 #[test]
 fn test_ssk_serialization() {
     // a random field element
@@ -28,17 +26,13 @@ fn test_ssk_serialization() {
     let t = SubSecretKey::init(&pp, alpha, r);
     let bufsize = t.get_size();
 
-    // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = vec![0u8; bufsize];
+    // buffer space
+    let mut buf: Vec<u8> = vec![];
     // serializae a ssk into buffer
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(t.serialize(buf, true).is_ok());
-    // make sure the buf size is the same as sk.get_size()
-    assert_eq!(buf.position() as usize, bufsize);
-
+    assert!(t.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    let s = SubSecretKey::deserialize(buf).unwrap();
+    let s = SubSecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
 
     // makes sure that the keys match
     assert_eq!(t, s);
@@ -58,17 +52,14 @@ fn test_sk_serialization() {
     let sk = keypair.get_sk();
     let pk = keypair.get_pk();
 
-    // buffer space -- this needs to be adquate for large parameters
     let bufsize = sk.get_size();
-    let mut scratch = vec![0u8; bufsize];
+    // buffer space
+    let mut buf: Vec<u8> = vec![];
     // serializae a ssk into buffer
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(sk.serialize(buf, true).is_ok());
-    // make sure the buf size is the same as sk.get_size()
-    assert_eq!(buf.position() as usize, bufsize);
+    assert!(sk.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    let sk_recover = SecretKey::deserialize(buf).unwrap();
+    let sk_recover = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
     // makes sure that the keys match
     assert_eq!(sk, sk_recover);
 
@@ -88,14 +79,12 @@ fn test_sk_serialization() {
 
         // serialize the updated key
         let bufsize = sk2.get_size();
-        let mut scratch = vec![0u8; bufsize];
-        let buf = &mut Cursor::new(&mut scratch[..]);
-        assert!(sk2.serialize(buf, true).is_ok());
-        // make sure the buf size is the same as sk.get_size()
-        assert_eq!(buf.position() as usize, bufsize);
+        // buffer space
+        let mut buf: Vec<u8> = vec![];
+        assert!(sk2.serialize(&mut buf, true).is_ok());
+        assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
         // deserialize a buffer into ssk
-        let buf = &mut Cursor::new(&mut scratch[..]);
-        let sk_recover = SecretKey::deserialize(buf).unwrap();
+        let sk_recover = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
         assert_eq!(sk_recover, sk2);
     }
 }
@@ -115,15 +104,14 @@ fn test_pk_serialization() {
     let keypair = res.unwrap();
     let pk = keypair.get_pk();
 
-    // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; PK_LEN];
+    // buffer space
+    let mut buf: Vec<u8> = vec![];
     // serializae a ssk into buffer
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(pk.serialize(buf, true).is_ok());
+    assert!(pk.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), PK_LEN, "length of blob is incorrect");
 
     // deserialize a buffer into ssk
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    let pk_recover = PublicKey::deserialize(buf).unwrap();
+    let pk_recover = PublicKey::deserialize(&mut buf[..].as_ref()).unwrap();
     // makes sure that the keys match
     assert_eq!(pk, pk_recover);
 }
@@ -133,16 +121,15 @@ fn test_param_serialization() {
     use PP_LEN;
     let pp = PubParam::init_without_seed();
 
-    // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; PP_LEN];
+    // buffer space
+    let mut buf: Vec<u8> = vec![];
+
     // serializae a ssk into buffer
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(pp.serialize(buf, true).is_ok());
-    println!("{} {} {}", buf.position(), PP_LEN, pp.get_size());
+    assert!(pp.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), PP_LEN, "length of blob is incorrect");
 
     // deserialize a buffer into ssk
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    let pp_recover = PubParam::deserialize(buf).unwrap();
+    let pp_recover = PubParam::deserialize(&mut buf[..].as_ref()).unwrap();
     // makes sure that the keys match
     assert_eq!(pp, pp_recover);
 }
@@ -164,15 +151,14 @@ fn test_signature_serialization() {
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
 
-    // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; SIG_LEN];
+    // buffer space
+    let mut buf: Vec<u8> = vec![];
     // serializae a ssk into buffer
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(sig.serialize(buf, true).is_ok());
-
+    assert!(sig.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), SIG_LEN, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    let sig_recover = Signature::deserialize(buf).unwrap();
+    let sig_recover = Signature::deserialize(&mut buf[..].as_ref()).unwrap();
+    println!("{:?}", sig_recover);
     // makes sure that the keys match
     assert_eq!(sig, sig_recover);
 }

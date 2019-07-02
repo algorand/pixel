@@ -169,8 +169,6 @@ fn test_long_sk_validation() {
 
 #[test]
 fn test_key_gen() {
-    use std::io::Cursor;
-
     // a random field element
     let r = Fr::from_str(
         "5902757315117623225217061455046442114914317855835382236847240262163311537283",
@@ -202,19 +200,17 @@ fn test_key_gen() {
         "hpoly incorrect"
     );
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch = [0u8; 10000];
+    let mut buf = vec![0u8; t.get_size()];
     // serializae a ssk into buffer
-    let buf = &mut Cursor::new(&mut scratch[..]);
-    assert!(t.serialize(buf, true).is_ok());
+    assert!(t.serialize(&mut buf, true).is_ok());
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut scratch2 = [0u8; 10000];
-    // serializae a ssk into buffer
-    let buf2 = &mut Cursor::new(&mut scratch2[..]);
-    assert!(t1.serialize(buf2, true).is_ok());
-    for i in 0..buf.position() as usize {
-        assert_eq!(scratch[i], scratch2[i], "ssk's do not match");
-    }
+    let mut buf2 = vec![0u8; t.get_size()];
+    // serializae a ssk into buffer);
+    assert!(t1.serialize(&mut buf2, true).is_ok());
+    
+    assert_eq!(buf, buf2, "ssk's do not match")
+
 }
 
 #[test]

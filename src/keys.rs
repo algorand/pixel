@@ -699,12 +699,6 @@ impl fmt::Debug for SecretKey {
 /// convenient function to compare secret key objects
 impl std::cmp::PartialEq for SecretKey {
     fn eq(&self, other: &Self) -> bool {
-        if self.ciphersuite != other.ciphersuite {
-            return false;
-        }
-        if self.time != other.time {
-            return false;
-        }
         if self.get_ssk_number() != other.get_ssk_number() {
             return false;
         }
@@ -713,7 +707,7 @@ impl std::cmp::PartialEq for SecretKey {
                 return false;
             }
         }
-        true
+        self.get_ciphersuite() == other.get_ciphersuite() && self.get_time() == other.get_time()
     }
 }
 

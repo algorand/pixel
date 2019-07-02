@@ -284,16 +284,7 @@ impl fmt::Debug for PubParam {
 /// convenient function to compare secret key objects
 impl std::cmp::PartialEq for PubParam {
     fn eq(&self, other: &Self) -> bool {
-        if self.ciphersuite != other.ciphersuite {
-            return false;
-        }
         if self.d != other.d {
-            return false;
-        }
-        if self.g2 != other.g2 {
-            return false;
-        }
-        if self.h != other.h {
             return false;
         }
         for i in 0..=self.d {
@@ -301,10 +292,7 @@ impl std::cmp::PartialEq for PubParam {
                 return false;
             }
         }
-        self.ciphersuite == other.ciphersuite
-            && self.d == other.d
-            && self.g2 == other.g2
-            && self.h == other.h
+        self.ciphersuite == other.ciphersuite && self.g2 == other.g2 && self.h == other.h
     }
 }
 

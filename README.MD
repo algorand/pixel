@@ -1,5 +1,7 @@
 # Pixel signature scheme
 
+[![Build Status](https://travis-ci.com/algorand/go-algorand.svg?token=25XP72ADqbCQJ3TJVC9S&branch=master)](https://travis-ci.com/algorand/pixel)
+
 ## Build options
 
 * `cargo build` builds a debug version; with time depth parameter = 4;

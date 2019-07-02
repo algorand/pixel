@@ -13,8 +13,7 @@
 * `cargo bench [--features=[pk_in_g2],[use_rand_generators]] [--release]` runs benchmarks (TODO).
 * `cargo test --features=pk_in_g2 test_det` runs a deterministic test and compare the intermediate values against python implementation.
 
-## Document
-* `cargo doc --open` to view the public traits and functions.
+
 
 
 ## Quality control
@@ -22,9 +21,13 @@ Following the guidelines from [Facebooks source code](https://developers.libra.o
 * `cargo fmt` for coding style
 * `cargo clippy --all-targets --all-features -- -D warnings` for [lint](https://github.com/rust-lang/rust-clippy/blob/master/README.md)
 * `cargo fuzz` for [fuzzing](https://rust-fuzz.github.io/book/introduction.html) (TODO)
+* `cargo doc` for documentation.
 
 ## Interfaces
+* Run `cargo doc --open`
+* See `target/doc/pixel/index.html`
 
+<!--
 
 * `fn pixel_param_gen(seed: &[u8]) -> Result<PubParam, String>`
   * Input: a byte string as the seed.
@@ -37,7 +40,7 @@ Following the guidelines from [Facebooks source code](https://developers.libra.o
   * Output: a pair of keys
   * Error: if the seed is less than 32 bytes
 
-<!--
+
 * `fn pixel_get_pk(kp: &KeyPair) -> PublicKey`
   * Input: a key pair
   * Output: its public key
@@ -45,7 +48,7 @@ Following the guidelines from [Facebooks source code](https://developers.libra.o
 * `fn pixel_get_sk(kp: &KeyPair) -> SecretKey`
   * Input: a key pair
   * Output: its secret key
- -->
+
 
 * `fn pixel_sk_update(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam) -> Result<(), String>`
   * Input: a secret key,  a target time stamp, the public parameter
@@ -60,3 +63,4 @@ Following the guidelines from [Facebooks source code](https://developers.libra.o
 * `fn pixel_verify( pk: &PublicKey, tar_time: TimeStamp, pp: &PubParam, msg: &[u8], sig: Signature) -> bool`
   * Input: a secret key, a target time stamp, the public parameter, the message, and the signature
   * Output: if the verification passes
+  -->

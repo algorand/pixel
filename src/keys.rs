@@ -4,13 +4,15 @@
 //  * the secret key <- the sub secret keys are defined seperately in subkeys module
 
 use bls_sigs_ref_rs::FromRO;
+use domain_sep;
 use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
+use serdes::SerDes;
+use sha2::Digest;
 use std::fmt;
 pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
-
 use PixelG1;
 use PixelG2;
 
@@ -142,8 +144,21 @@ impl SecretKey {
             println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
             return Err(ERR_CIPHERSUITE.to_owned());
         }
-        // TODO: think about seed -- set seed as hash of alpha?
-        let r = Fr::from_ro("seed", 0);
+
+        // r = hash_to_field(DOM_SEP_KEY_INIT|serial(alpha), 0)
+        // the ctr is always 0 since we require only one random field element.
+        // TODO: decide what to do for non-determistic setting
+        #[cfg(not(feature = "pk_in_g2"))]
+        let mut alpha_array = vec![0; 96];
+        #[cfg(feature = "pk_in_g2")]
+        let mut alpha_array = vec![0; 48];
+        // serializae alpha into buffer
+        if alpha.serialize(&mut alpha_array, true).is_err() {
+            return Err(ERR_SERIAL.to_owned());
+        };
+        // set up the input to hash to field
+        let input = [domain_sep::DOM_SEP_KEY_INIT.as_bytes(), &alpha_array[..]].concat();
+        let r = Fr::from_ro(input, 0);
         let ssk = SubSecretKey::init(&pp, alpha, r);
         Ok(SecretKey {
             ciphersuite: pp.get_ciphersuite(),
@@ -197,11 +212,31 @@ impl SecretKey {
         self.ssk.clone()
     }
 
+    /// Serialize an sk into a blob and then use sha256
+    /// to generate a digest of the blob.
+    /// * `digest = sha256(sk.serialize())`
+    //    #[cfg(feature = "use_det_rand")]
+    pub fn digest(&self) -> Result<Vec<u8>, String> {
+        let mut hashinput = vec![0u8; self.get_size()];
+        // serializae a sk into buffer
+        if self.serialize(&mut hashinput, true).is_err() {
+            return Err(ERR_SERIAL.to_owned());
+        };
+        let mut hasher = sha2::Sha256::new();
+        hasher.input(hashinput);
+        Ok(hasher.result().to_vec())
+    }
+
     /// Updates the secret key into the corresponding time stamp.
     /// This function mutate the existing secret keys to the time stamp.
+    /// If "use_det_rand" is set, then the randomness is generated via
+    ///  * `digest = sha256(sk.serialize())`
+    ///  * `hash_to_field(DOM_SEP_KEY_UPDATE|digest|, ctr)`
+    ///
     /// It propogates an error if
-    /// the new time stamp is invalid (either smaller than
+    ///  * the new time stamp is invalid (either smaller than
     /// current time or larger than maximum time stamp)
+    ///  * serialization error
     pub fn update<'a>(&'a mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String> {
         // make a clone of self, in case an error is raised, we do not want to mutate the key
         // the new_sk has a same life time as the old key
@@ -374,8 +409,14 @@ impl SecretKey {
             // randomize the new ssk unless it is the first one
             // for the first one we reuse the randomness from the delegator
             if i != 0 {
-                // TODO: think about seed -- set seed as previous sk?
-                let r = Fr::from_ro("seed", i as u8);
+                // the following code generates r from sk deterministicly
+                // r = hash_to_field(DOM_SEP_KEY_UPDATE| sk_digest, ctr)
+                let sk_digest = self.digest()?;
+                let input = [domain_sep::DOM_SEP_KEY_UPDATE.as_bytes(), &sk_digest[..]].concat();
+                let r = Fr::from_ro(input, i as u8);
+
+                // TODO: decide what about non-deterministic version?
+
                 new_ssk.randomization(&pp, r)?;
             }
 
@@ -453,8 +494,8 @@ impl SecretKey {
     /// This function checks if the secret key valid w.r.t the
     /// public key, the parameters and the time stamp. A secret key is valid if ...
     ///  * sk.ciphersuite == pk.ciphersuite == pp.ciphersuite
-    ///  * sk.ssk.validate(pk, pp)
-    ///  * sk.TimeStamp's gamma list form ssk.TimeVec
+    ///  * sk.ssk.validate(pk, pp) is valid for all ssk-s
+    ///  * sk.TimeStamp's gamma list forms ssk.TimeVec for all ssk-s
     pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
         // validate the ciphersuite ids
         if self.get_ciphersuite() != pk.get_ciphersuite()
@@ -524,13 +565,17 @@ impl SecretKey {
 
     /// This function returns the storage requirement for this secret key. Recall that
     /// each sk is a blob:
+    ///
     /// `|ciphersuite id| number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    ///
     /// where ...
     /// * ciphersuite is 1 byte
-    /// * number of ssk-s is 1 byte - there can not be more than const_d number of ssk-s
+    /// * number of ssk-s is 1 byte - there cannot be more than const_d number of ssk-s
     /// * each ssk is
+    ///
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
-    /// So the output will be 2 + size of eash ssk
+    ///
+    /// So the output will be 2 + size of eash ssk.
     pub fn get_size(&self) -> usize {
         let mut len = 2;
         let ssk = self.get_ssk_vec();
@@ -567,7 +612,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), Stri
 
     // use hash_to_field function to generate a random field element
     // the counter will always be 0 because we only generate one field element
-    let r = Fr::from_ro([DOM_SEP_MASTER_KEY.as_ref(), seed].concat(), 0);
+    let r = Fr::from_ro([DOM_SEP_MASTER_KEY.as_bytes(), seed].concat(), 0);
 
     // pk = g2^r
     // sk = h^r

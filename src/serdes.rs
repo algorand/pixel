@@ -9,7 +9,9 @@ use PixelG2;
 
 impl SerDes for PubParam {
     /// Convert a public parameter into a blob:
-    /// `|ciphersuite id| depth | g2 | h | hlist |`
+    ///
+    /// `|ciphersuite id| depth | g2 | h | hlist |` => bytes
+    ///
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
         // check the cipher suite id
@@ -38,7 +40,9 @@ impl SerDes for PubParam {
     }
 
     /// Convert a blob into a public parameter:
-    /// `|ciphersuite id| depth | g2 | h | hlist |`
+    ///
+    /// bytes => `|ciphersuite id| depth | g2 | h | hlist |`
+    ///
     /// Returns an error if deserialization fails.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // constants stores id and the depth
@@ -72,7 +76,9 @@ impl SerDes for PubParam {
 
 impl SerDes for Signature {
     /// Convert a signature into a blob:
-    /// `|ciphersuite id| sigma1 | sigma2 |`
+    ///
+    /// `|ciphersuite id| sigma1 | sigma2 |` => bytes
+    ///
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     /// Does not check if the signature is verified or not.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
@@ -93,7 +99,9 @@ impl SerDes for Signature {
     }
 
     /// Convert a blob into a signature:
-    /// `|ciphersuite id| sigma1 | sigma2 |`
+    ///
+    /// bytes => `|ciphersuite id| sigma1 | sigma2 |`
+    ///
     /// Returns an error if deserialization fails.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // constants stores id and the number of ssk-s
@@ -119,7 +127,9 @@ impl SerDes for Signature {
 
 impl SerDes for PublicKey {
     /// Convert pk into a blob:
-    /// `|ciphersuite id| PixelG2 element |`
+    ///
+    /// bytes => `|ciphersuite id| PixelG2 element |`
+    ///
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
         // check the cipher suite id
@@ -135,7 +145,9 @@ impl SerDes for PublicKey {
         Ok(())
     }
     /// Convert blob into a public key:
-    /// `|ciphersuite id| PixelG2 element |`
+    ///
+    /// `|ciphersuite id| PixelG2 element |` => bytes
+    ///
     /// Returns an error if deserialization fails.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // constants stores id and the number of ssk-s
@@ -157,12 +169,16 @@ impl SerDes for PublicKey {
 
 impl SerDes for SecretKey {
     /// Convert sk into a blob:
+    ///
     /// `|ciphersuite id| number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    ///
     /// where ...
     /// * ciphersuite is 1 byte
     /// * number of ssk-s is 1 byte - there can not be more than const_d number of ssk-s
     /// * each ssk is
+    ///
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
+    ///
     /// Return an error if ssk serialization fails
     /// or invalid ciphersuite.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
@@ -187,12 +203,16 @@ impl SerDes for SecretKey {
     }
 
     /// Convert a blob into a sk
+    ///
     /// `|ciphersuite id| number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    ///
     /// where ...
     /// * ciphersuite is 1 byte
     /// * number of ssk-s is 1 byte - there can not be more than const_d number of ssk-s
     /// * each ssk is
+    ///
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
+    ///
     /// Return an error if deserialization fails
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // constants stores id and the number of ssk-s

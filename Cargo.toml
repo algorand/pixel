@@ -37,3 +37,9 @@ use_rand_generators = []
 
 # enable this flag will generate more output during debugging
 verbose = []
+
+# enable this flag will use deterministic randomness during sk updating
+# to enable, use `cargo build --features = use_det_rand`
+# currently the deterministic randomness is set by default
+# no-det is not supported
+# use_det_rand = []

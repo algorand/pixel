@@ -130,27 +130,21 @@ impl PubParam {
         // where ctr starts from 0 and is incremental
         let mut ctr = 0;
 
-        #[cfg(feature = "verbose")]
-        #[cfg(debug_assertions)]
-        println!(
-            "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
-            ctr, hash_input, ciphersuite
-        );
-
         // if feature = use_rand_generators then we use randomized generators
         // that is generated from HashToCurve
         #[cfg(feature = "use_rand_generators")]
         let g2 = {
             // generate a new group element, and increment the counter
             let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
-            let g2 = PixelG2::hash_to_curve(hash_input, ciphersuite);
-            ctr += 1;
             #[cfg(feature = "verbose")]
             #[cfg(debug_assertions)]
             println!(
                 "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
                 ctr, hash_input, ciphersuite
             );
+
+            let g2 = PixelG2::hash_to_curve(hash_input, ciphersuite);
+            ctr += 1;
             g2
         };
 
@@ -161,9 +155,6 @@ impl PubParam {
         // generate h
         // generate a new group element, and increment the counter
         let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
-        let h = PixelG1::hash_to_curve(hash_input, ciphersuite);
-        ctr += 1;
-
         #[cfg(feature = "verbose")]
         #[cfg(debug_assertions)]
         println!(
@@ -171,20 +162,23 @@ impl PubParam {
             ctr, hash_input, ciphersuite
         );
 
+        let h = PixelG1::hash_to_curve(hash_input, ciphersuite);
+        ctr += 1;
+
         // generate hlist
         let mut hlist: Vec<PixelG1> = vec![];
         for _i in 0..=CONST_D {
             // generate a new group element, and increment the counter
             let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
-            let element = PixelG1::hash_to_curve(hash_input, ciphersuite);
-            ctr += 1;
-
             #[cfg(feature = "verbose")]
             #[cfg(debug_assertions)]
             println!(
                 "the {}th input to the hash to curve function is {:?}, with a ciphersuite id = {}",
                 ctr, hash_input, ciphersuite
             );
+
+            let element = PixelG1::hash_to_curve(hash_input, ciphersuite);
+            ctr += 1;
             hlist.push(element);
         }
 

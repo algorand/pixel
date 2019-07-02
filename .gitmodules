@@ -1,8 +1,0 @@
-[submodule "bls_sigs_ref"]
-	path = bls_sigs_ref
-	url = git@github.com:kwantam/bls_sigs_ref.git
-	branch = master
-[submodule "pixel-python"]
-	path = pixel-python
-	url = git@github.com:algorand/pixel-python.git
-	branch = master

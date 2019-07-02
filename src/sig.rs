@@ -1,19 +1,16 @@
 // implements the signature structure, the signing and verification algorithms
 use bls_sigs_ref_rs::FromRO;
+use domain_sep::DOM_SEP_SIG;
 use ff::Field;
 use keys::{PublicKey, SecretKey};
+use membership::MembershipTesting;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
-use param::PubParam;
-use param::VALID_CIPHERSUITE;
+use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use std::fmt;
-
-use membership::MembershipTesting;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
-
-use domain_sep::DOM_SEP_SIG;
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
@@ -181,16 +178,22 @@ impl Signature {
         }
 
         // We generate a random field element from the seed.
-        // output hash(DOM_SEP_SIG|seed, 0)
+        // output hash(DOM_SEP_SIG|ciphersuite|seed, 0)
         //  DOM_SEP_SIG:    domain seperator
-        //  msg:            input message
+        //  ciphersuite:    0 (may change)
+        //  seed:           input seed
         //  0:              counter, 0 since we use the first field element
         // TODO: review this part.
-        let ro_input = [DOM_SEP_SIG.as_bytes(), seed].concat();
+        let ro_input = [
+            DOM_SEP_SIG.as_bytes(),
+            [pp.get_ciphersuite()].as_ref(),
+            seed,
+        ]
+        .concat();
         let r = Fr::from_ro(ro_input, 0);
 
         // hash the message into a field element
-        let m = hash_msg_into_fr(msg);
+        let m = hash_msg_into_fr(msg, pp.get_ciphersuite());
         // calls the sign_fr subroutine
         Signature::sign_fr(&sk, tar_time, &pp, m, r)
     }
@@ -289,7 +292,7 @@ impl Signature {
         }
 
         // hash the message into a field element
-        let m = hash_msg_into_fr(msg);
+        let m = hash_msg_into_fr(msg, pp.get_ciphersuite());
 
         Signature::verify_fr(&self, &pk, tar_time, &pp, m)
     }
@@ -384,14 +387,14 @@ impl Signature {
 
 /// This function hashes a message into a field element
 /// using the hash_to_field method from BLS signature.
-fn hash_msg_into_fr(msg: &[u8]) -> Fr {
+fn hash_msg_into_fr(msg: &[u8], ciphersuite: u8) -> Fr {
     use domain_sep::DOM_SEP_HASH_TO_MSG;
     // TODO: review this part.
-    // output hash(DOM_SEP_HASH_TO_MSG|msg, 0)
+    // output hash(DOM_SEP_HASH_TO_MSG| ciphersuite |msg, 0)
     //  DOM_SEP_HASH_TO_MSG:    domain seperator
     //  msg:                    input message
     //  0:                      counter, 0 since we use the first field element
-    let m = [DOM_SEP_HASH_TO_MSG.as_bytes(), msg].concat();
+    let m = [DOM_SEP_HASH_TO_MSG.as_bytes(), [ciphersuite].as_ref(), msg].concat();
     Fr::from_ro(m, 0)
 }
 

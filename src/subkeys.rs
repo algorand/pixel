@@ -282,7 +282,9 @@ impl SubSecretKey {
 
     /// This function returns the storage requirement for this secret key. Recall that
     /// each ssk is a blob:
+    ///
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
+    ///
     /// where time stamp is 4 bytes and hv_length is 1 byte.
     /// Return 5 + serial ...
     pub fn get_size(&self) -> usize {
@@ -294,7 +296,7 @@ impl SubSecretKey {
         #[cfg(feature = "pk_in_g2")]
         let pixel_g1_size = 48;
 
-        // g2r and hpoly length
+        // g2r and hpoly length is 144
         // this will be a G1 and a G2
         // so switching group does not change the result
         len += 144;

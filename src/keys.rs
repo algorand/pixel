@@ -145,7 +145,7 @@ impl SecretKey {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
-        // r = hash_to_field(DOM_SEP_KEY_INIT|serial(alpha), 0)
+        // r = hash_to_field(DOM_SEP_KEY_INIT|ciphersuite| serial(alpha), 0)
         // the ctr is always 0 since we require only one random field element.
         // TODO: decide what to do for non-determistic setting
         #[cfg(not(feature = "pk_in_g2"))]
@@ -157,7 +157,12 @@ impl SecretKey {
             return Err(ERR_SERIAL.to_owned());
         };
         // set up the input to hash to field
-        let input = [domain_sep::DOM_SEP_KEY_INIT.as_bytes(), &alpha_array[..]].concat();
+        let input = [
+            domain_sep::DOM_SEP_KEY_INIT.as_bytes(),
+            [pp.get_ciphersuite()].as_ref(),
+            &alpha_array[..],
+        ]
+        .concat();
         let r = Fr::from_ro(input, 0);
         let ssk = SubSecretKey::init(&pp, alpha, r);
         Ok(SecretKey {
@@ -231,7 +236,7 @@ impl SecretKey {
     /// This function mutate the existing secret keys to the time stamp.
     /// If "use_det_rand" is set, then the randomness is generated via
     ///  * `digest = sha256(sk.serialize())`
-    ///  * `hash_to_field(DOM_SEP_KEY_UPDATE|digest|, ctr)`
+    ///  * `hash_to_field(DOM_SEP_KEY_UPDATE|ciphersuite|digest, ctr)`
     ///
     /// It propogates an error if
     ///  * the new time stamp is invalid (either smaller than
@@ -241,6 +246,11 @@ impl SecretKey {
         // make a clone of self, in case an error is raised, we do not want to mutate the key
         // the new_sk has a same life time as the old key
         let mut new_sk = self.clone();
+
+        // check the ciphersuites match
+        if self.get_ciphersuite() != pp.get_ciphersuite() {
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
 
         // max time = 2^d - 1
         let depth = pp.get_d();
@@ -410,9 +420,14 @@ impl SecretKey {
             // for the first one we reuse the randomness from the delegator
             if i != 0 {
                 // the following code generates r from sk deterministicly
-                // r = hash_to_field(DOM_SEP_KEY_UPDATE| sk_digest, ctr)
+                // r = hash_to_field(DOM_SEP_KEY_UPDATE|ciphersuite| sk_digest, ctr)
                 let sk_digest = self.digest()?;
-                let input = [domain_sep::DOM_SEP_KEY_UPDATE.as_bytes(), &sk_digest[..]].concat();
+                let input = [
+                    domain_sep::DOM_SEP_KEY_UPDATE.as_bytes(),
+                    [self.get_ciphersuite()].as_ref(),
+                    &sk_digest[..],
+                ]
+                .concat();
                 let r = Fr::from_ro(input, i as u8);
 
                 // TODO: decide what about non-deterministic version?
@@ -591,8 +606,6 @@ impl SecretKey {
 /// The public/secret key is then set to g2^x and h^x
 /// This function is private -- it should be used only as a subroutine to key gen function
 fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), String> {
-    use domain_sep::DOM_SEP_MASTER_KEY;
-
     // make sure we have enough entropy
     if seed.len() < 32 {
         #[cfg(debug_assertions)]
@@ -612,7 +625,15 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), Stri
 
     // use hash_to_field function to generate a random field element
     // the counter will always be 0 because we only generate one field element
-    let r = Fr::from_ro([DOM_SEP_MASTER_KEY.as_bytes(), seed].concat(), 0);
+    let r = Fr::from_ro(
+        [
+            domain_sep::DOM_SEP_MASTER_KEY.as_bytes(),
+            [pp.get_ciphersuite()].as_ref(),
+            seed,
+        ]
+        .concat(),
+        0,
+    );
 
     // pk = g2^r
     // sk = h^r

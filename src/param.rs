@@ -109,7 +109,9 @@ impl PubParam {
     }
 
     /// This function takes input a string seed, and a ciphersuite id, and outputs the
-    /// public parameters using `hash_to_group(DOM_SEP_PARAM_GEN|seed|ctr, ciphersuite)`
+    /// public parameters using
+    ///
+    ///    `hash_to_group(DOM_SEP_PARAM_GEN|ciphersuite|seed|ctr, ciphersuite)`
     ///
     /// Note: depending on the configuration `use_rand_generators`,
     /// the generators will be generated randomly.
@@ -126,7 +128,7 @@ impl PubParam {
         }
 
         // the input to the HashToCurve is formated as
-        //  hash_to_group( DOM_SEP_PARAM_GEN|seed|ctr, ciphersuite)
+        //  hash_to_group( DOM_SEP_PARAM_GEN|ciphersuite|seed|ctr, ciphersuite)
         // where ctr starts from 0 and is incremental
         let mut ctr = 0;
 
@@ -135,7 +137,13 @@ impl PubParam {
         #[cfg(feature = "use_rand_generators")]
         let g2 = {
             // generate a new group element, and increment the counter
-            let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
+            let hash_input = [
+                DOM_SEP_PARAM_GEN.as_ref(),
+                [ciphersuite].as_ref(),
+                seed,
+                [ctr].as_ref(),
+            ]
+            .concat();
             #[cfg(feature = "verbose")]
             #[cfg(debug_assertions)]
             println!(
@@ -154,7 +162,13 @@ impl PubParam {
 
         // generate h
         // generate a new group element, and increment the counter
-        let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
+        let hash_input = [
+            DOM_SEP_PARAM_GEN.as_ref(),
+            [ciphersuite].as_ref(),
+            seed,
+            [ctr].as_ref(),
+        ]
+        .concat();
         #[cfg(feature = "verbose")]
         #[cfg(debug_assertions)]
         println!(
@@ -169,7 +183,13 @@ impl PubParam {
         let mut hlist: Vec<PixelG1> = vec![];
         for _i in 0..=CONST_D {
             // generate a new group element, and increment the counter
-            let hash_input = [DOM_SEP_PARAM_GEN.as_ref(), seed, [ctr].as_ref()].concat();
+            let hash_input = [
+                DOM_SEP_PARAM_GEN.as_ref(),
+                [ciphersuite].as_ref(),
+                seed,
+                [ctr].as_ref(),
+            ]
+            .concat();
             #[cfg(feature = "verbose")]
             #[cfg(debug_assertions)]
             println!(

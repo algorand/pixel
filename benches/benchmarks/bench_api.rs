@@ -60,7 +60,7 @@ fn bench_key_update_next(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
 
-    let max_time = 1 << param.get_d() - 1;
+    let max_time = (1 << param.get_d()) - 1;
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
             .gen_ascii_chars()
@@ -101,7 +101,7 @@ fn bench_key_update_random(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
 
-    let max_time = 1 << param.get_d() - 1;
+    let max_time = (1 << param.get_d()) - 1;
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
             .gen_ascii_chars()
@@ -144,7 +144,7 @@ fn bench_sign(c: &mut Criterion) {
     let mut sklist: Vec<SecretKey> = vec![];
 
     let msg = "the message to be signed in benchmarking";
-    let max_time = 1 << param.get_d() - 1;
+    let max_time = (1 << param.get_d()) - 1;
 
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -186,7 +186,7 @@ fn bench_sign_present(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
     let msg = "the message to be signed in benchmarking";
-    let max_time = 1 << param.get_d() - 1;
+    let max_time = (1 << param.get_d()) - 1;
 
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -228,7 +228,7 @@ fn bench_sign_then_update(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
     let msg = "the message to be signed in benchmarking";
-    let max_time = 1 << param.get_d() - 1;
+    let max_time = (1 << param.get_d()) - 1;
 
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -274,7 +274,7 @@ fn bench_verify(c: &mut Criterion) {
     let mut siglist: Vec<Signature> = vec![];
     let mut tartimelist: Vec<TimeStamp> = vec![];
     let msg = "the message to be signed in benchmarking";
-    let max_time = 1 << param.get_d() - 1;
+    let max_time = (1 << param.get_d()) - 1;
 
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()

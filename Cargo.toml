@@ -18,15 +18,16 @@ rand = "0.4"
 #pairing = "0.14"
 #pairing = {git = "https://github.com/zkcrypto/pairing"}
 pairing = { version = "0.14.3", git = "https://github.com/kwantam/pairing", features = [ "transmutable" ] }
-#criterion = "0.2.11"
+criterion = "0.2.11"
+walkdir = "2.2.7"
 sha2 = "0.8"
 ff = { version = "0.4", features = ["derive"] }
 bigint = { version = "4", default-features = false }
 bls_sigs_ref-rs = {git= "https://github.com/kwantam/bls_sigs_ref"}
 
-#[[bench]]
-#name = "pixel_bench"
-#harness = false
+[[bench]]
+name = "pixel_bench"
+harness = false
 
 [features]
 # this flag indicates that the public key lies in group G1 by default

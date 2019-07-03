@@ -25,4 +25,7 @@ script:
   - cargo test --features=pk_in_g2,use_rand_generators --release
   - cargo test --features=pk_in_g2,use_rand_generators --release -- --ignored
 
+if: rust == stable
+  - cargo bench
+
   # etc.

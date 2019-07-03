@@ -4,5 +4,4 @@ Cargo.lock
 src/keys2.rs
 *.txt
 fuzz/
-benches/
 __pycache__

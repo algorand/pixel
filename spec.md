@@ -1,4 +1,9 @@
 # Pixel Signature
+<!---
+This file is still under construction
+--->
+
+
 
 <!--
 CREDIT: http://patorjk.com/software/taag
@@ -22,7 +27,7 @@ CREDIT: http://patorjk.com/software/taag
   we use a timestamp every `5` second.
 
 ### Public Parameter
-* Structure
+* Structure
   ``` rust
   struct PubParam {
       d:            usize,              // the depth of the time vector
@@ -61,7 +66,7 @@ CREDIT: http://patorjk.com/software/taag
   to have allocated sufficient memory, or an error will be returned.
 
 
-* Initialization:
+* Initialization:
   ``` rust
   fn init(seed: &[u8], ciphersuite: u8) -> Result<PubParam, String> ;
   ```
@@ -84,18 +89,34 @@ CREDIT: http://patorjk.com/software/taag
     2. return `construct(CONST_D, ciphersuite, g2, h, hlist)`    
 
 ## Time
-### TimeStamp
+* TimeStamp is a wrapper of `u64`.
   ``` Rust
   type TimeStamp = u64;
   ```
-### TimeVec  
+* structure  
   ``` rust
   struct TimeVec {
       time: TimeStamp,
       vec: Vec<u64>,
   }
   ```
+* Get various elements from the TimeVec
+  ``` rust
+  fn get_time(&self) -> TimeStamp ;
+  fn get_vector(&self) -> Vec<u64> ;
+  fn get_vector_len(&self) -> usize ;
+  ```
+* Additional functionalities
+  ``` Rust
+  fn gamma_list(&self, depth: usize) -> Result<Vec<TimeVec>, String> {
+  ```
+  It converts a time vector to a list of time vectors,
+  so that any future time stamp greater than self is either with in the gamma list,
+  or is a posterity of the elements in the list.
+    And propagates error messages if the conversion fails.
 
+  Example: for time vector `[1, 1, 1]` and `d = 4`, the list consists
+    `[1,1,1], [1,1,2], [1,2], [2]`.
 ## Master secret key
   * Initialization
     ``` rust

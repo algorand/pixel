@@ -76,13 +76,14 @@ impl TimeVec {
         other.vec.starts_with(&self.vec)
     }
 
-    /// Subrouting to build the gamma list:
-    /// It converts a time vector to a list of time vectors.
-    /// And propogates error messages if the conversion fails.
+    /// Gamma list is a subroutine to sk updates.
+    /// It converts a time vector to a list of time vectors,
+    /// so that any future time stamp is either with in the gamma list,
+    /// or is a posterity of the elements in the list.
+    /// And propagates error messages if the conversion fails.
     ///
-    /// example: for time vec \[1\] and d = 4, the list consist all the
-    /// vectors that starts with \[1\]
-    /// we will need \[1,1,1\], \[1,1,2\], \[1,2\], \[2\]
+    /// example: for time vec \[1, 1, 1\] and d = 4, the list consists
+    /// \[1,1,1\], \[1,1,2\], \[1,2\], \[2\]
     pub fn gamma_list(&self, depth: usize) -> Result<Vec<Self>, String> {
         // pseudo code of this function in python
         // def gammat(tvec):

@@ -1,3 +1,11 @@
+// CREDIT: http://patorjk.com/software/taag
+// .______    __  ___   ___  _______  __
+// |   _  \  |  | \  \ /  / |   ____||  |
+// |  |_)  | |  |  \  V  /  |  |__   |  |
+// |   ___/  |  |   >   <   |   __|  |  |
+// |  |      |  |  /  .  \  |  |____ |  `----.
+// | _|      |__| /__/ \__\ |_______||_______|
+
 #![cfg_attr(feature = "cargo-clippy", deny(warnings))]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))]
 #![deny(missing_debug_implementations)]
@@ -116,24 +124,24 @@ pub const PP_LEN: usize = 386;
 pub use param::CONST_D;
 
 // expose the submodules of this crate for debug versions
-#[cfg(debug_assertions)]
+//#[cfg(debug_assertions)]
 pub use keys::{PublicKey, SecretKey};
-#[cfg(debug_assertions)]
+//#[cfg(debug_assertions)]
 pub use param::PubParam;
-#[cfg(debug_assertions)]
+//#[cfg(debug_assertions)]
 pub use sig::Signature;
-#[cfg(debug_assertions)]
+//#[cfg(debug_assertions)]
 pub use time::TimeStamp;
 
-// hide the submodules of this crate for release versions
-#[cfg(not(debug_assertions))]
-use keys::{PublicKey, SecretKey};
-#[cfg(not(debug_assertions))]
-use param::PubParam;
-#[cfg(not(debug_assertions))]
-use sig::Signature;
-#[cfg(not(debug_assertions))]
-use time::TimeStamp;
+// // hide the submodules of this crate for release versions
+// #[cfg(not(debug_assertions))]
+// use keys::{PublicKey, SecretKey};
+// #[cfg(not(debug_assertions))]
+// use param::PubParam;
+// #[cfg(not(debug_assertions))]
+// use sig::Signature;
+// #[cfg(not(debug_assertions))]
+// use time::TimeStamp;
 
 /// Pixel is a trait that implements the algorithms within the pixel signature scheme.
 pub trait PixelSignature {
@@ -219,7 +227,7 @@ pub trait PixelSignature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: Blob,
-        sig: Signature,
+        sig: &Signature,
     ) -> bool {
         sig.verify_bytes(pk, tar_time, &pp, msg.as_ref())
     }

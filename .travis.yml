@@ -5,6 +5,15 @@ rust:
   - nightly
 before_script:
   - rustup component add clippy
+
+env:
+  - TEST_FLAG=
+  - TEST_FLAG=--features=pk_in_g2
+  - TEST_FLAG=--features=pk_in_g2,use_rand_generators
+  - TEST_FLAG=--release
+  - TEST_FLAG=--features=pk_in_g2 --release
+  - TEST_FLAG=--features=pk_in_g2,use_rand_generators --release -- --ignored
+
 script:
   - cargo clippy
   # if you want the build job to fail when encountering warnings, use
@@ -12,20 +21,10 @@ script:
   # in order to also check tests and non-default crate features, use
   - cargo clippy --all-targets --all-features -- -D warnings
   # all sorts of tests with different compiling flags
-  - cargo test
-  - cargo test -- --ignored
-  - cargo test --features=pk_in_g2
-  - cargo test --features=pk_in_g2 -- --ignored
-  - cargo test --features=pk_in_g2,use_rand_generators
-  - cargo test --features=pk_in_g2,use_rand_generators -- --ignored
-  - cargo test --release
-  - cargo test --release -- --ignored
-  - cargo test --features=pk_in_g2 --release
-  - cargo test --features=pk_in_g2 --release -- --ignored
-  - cargo test --features=pk_in_g2,use_rand_generators --release
-  - cargo test --features=pk_in_g2,use_rand_generators --release -- --ignored
+  - cargo test $TEST_FLAG
+  - cargo test $TEST_FLAG -- --ignored
 
-if: rust == stable
-  - cargo bench
+# if: rust = stable
+#   - cargo bench
 
   # etc.

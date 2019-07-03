@@ -1,6 +1,6 @@
 # Pixel signature scheme
 
-[![Build Status](https://travis-ci.com/algorand/pixel.svg?&branch=master)](https://travis-ci.com/algorand/pixel)
+[![Build Status](https://travis-ci.com/algorand/pixel.svg?token=cs332z4omsgc9ykLW8pu&branch=master)](https://travis-ci.com/algorand/pixel)
 
 ## Build options
 

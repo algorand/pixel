@@ -12,7 +12,7 @@ pub type TimeStamp = u64;
 
 /// a struct for TimeVec includes
 /// * the vector form of the time which is the path of the time tree
-/// * the time stamp itself, for convient access
+/// * the time stamp itself, for convenient access
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeVec {
     time: TimeStamp,
@@ -84,16 +84,14 @@ impl TimeVec {
     /// vectors that starts with \[1\]
     /// we will need \[1,1,1\], \[1,1,2\], \[1,2\], \[2\]
     pub fn gamma_list(&self, depth: usize) -> Result<Vec<Self>, String> {
-        /*
-        pseudo code of this function in python
-        def gammat(tvec):
-           ans = [tvec]
-           for i in range(len(tvec)):
-              if tvec[i] == 1:
-                 print tvec[:i]
-                 ans.append(tvec[:i] + [2])
-           return ans
-        */
+        // pseudo code of this function in python
+        // def gammat(tvec):
+        //    ans = [tvec]
+        //    for i in range(len(tvec)):
+        //       if tvec[i] == 1:
+        //          print tvec[:i]
+        //          ans.append(tvec[:i] + [2])
+        //    return ans
         let mut res = Vec::new();
         res.push(self.clone());
         for i in 0..self.vec.len() {

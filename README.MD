@@ -1,11 +1,25 @@
+<!--
+CREDIT: http://patorjk.com/software/taag
+.______    __  ___   ___  _______  __
+|   _  \  |  | \  \ /  / |   ____||  |
+|  |_)  | |  |  \  V  /  |  |__   |  |
+|   ___/  |  |   >   <   |   __|  |  |
+|  |      |  |  /  .  \  |  |____ |  `----.
+| _|      |__| /__/ \__\ |_______||_______|
+-->
+
+
 # Pixel signature scheme
 
 [![Build Status](https://travis-ci.com/algorand/pixel.svg?token=cs332z4omsgc9ykLW8pu&branch=master)](https://travis-ci.com/algorand/pixel)
 
+
+
+
 ## Build options
 
 * `cargo build` builds a debug version; with time depth parameter = 4;
-* `cargo build --release` builds the release version; with time depth parameter = 30
+* `cargo build --release` builds the release version; with time depth parameter = 32
 * `cargo build --features=pk_in_g2` builds a version where the public key lies in `G2` or `bls12-381` curve; it is turned off by default.
 * `cargo build --features=use_rand_generators` uses randomized generators rather than the generator from `bls12-381` curve;
 

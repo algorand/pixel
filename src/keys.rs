@@ -240,7 +240,7 @@ impl SecretKey {
 
     /// Updates the secret key into the corresponding time stamp.
     /// This function mutate the existing secret keys to the time stamp.
-    /// If "use_det_rand" is set, then the randomness is generated via
+    /// The randomness is generated via
     ///  * `digest = sha256(sk.serialize())`
     ///  * `hash_to_field(DOM_SEP_KEY_UPDATE|ciphersuite|digest, ctr)`
     ///
@@ -390,6 +390,8 @@ impl SecretKey {
         let target_time_vec = TimeVec::init(tar_time, depth)?;
         let gamma_list = target_time_vec.gamma_list(depth)?;
 
+        // digest sk into a shorter blob, and use it for hash_to_field
+        let sk_digest = self.digest()?;
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
         'out: for (i, tmptime) in gamma_list.iter().enumerate() {
@@ -427,14 +429,13 @@ impl SecretKey {
             if i != 0 {
                 // the following code generates r from sk deterministicly
                 // r = hash_to_field(DOM_SEP_KEY_UPDATE|ciphersuite| sk_digest, ctr)
-                let sk_digest = self.digest()?;
                 let input = [
                     domain_sep::DOM_SEP_KEY_UPDATE.as_bytes(),
                     [self.get_ciphersuite()].as_ref(),
                     &sk_digest[..],
                 ]
                 .concat();
-                let r = Fr::from_ro(input, i as u8);
+                let r = Fr::from_ro(input, (i - 1) as u8);
 
                 // TODO: decide what about non-deterministic version?
 

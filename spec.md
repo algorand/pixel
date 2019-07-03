@@ -1,6 +1,14 @@
 # Pixel Signature
 
-
+<!--
+CREDIT: http://patorjk.com/software/taag
+.______    __  ___   ___  _______  __
+|   _  \  |  | \  \ /  / |   ____||  |
+|  |_)  | |  |  \  V  /  |  |__   |  |
+|   ___/  |  |   >   <   |   __|  |  |
+|  |      |  |  /  .  \  |  |____ |  `----.
+| _|      |__| /__/ \__\ |_______||_______|
+-->
 
 ## Parameter
 
@@ -10,7 +18,7 @@
   * Additional ciphersuite identifiers may be added later.
 
 ### Depth of time tree
-  * `CONST_D`: A constant set to `30`. This allows for `170` years of time stamps if
+  * `CONST_D`: A constant set to `32`. This allows for `780` years of time stamps if
   we use a timestamp every `5` second.
 
 ### Public Parameter
@@ -75,6 +83,18 @@
           2. `counter += 1`
     2. return `construct(CONST_D, ciphersuite, g2, h, hlist)`    
 
+## Time
+### TimeStamp
+  ``` Rust
+  type TimeStamp = u64;
+  ```
+### TimeVec  
+  ``` rust
+  struct TimeVec {
+      time: TimeStamp,
+      vec: Vec<u64>,
+  }
+  ```
 
 ## Master secret key
   * Initialization
@@ -145,7 +165,8 @@
   struct SecretKey {
       ciphersuite:  u8,                 // ciphersuite id
       time:         TimeStamp,          // smallest timestamp for all subkeys
-      ssk:          Vec<SubSecretKey>,  // the list of the subsecretkeys
+      ssk:          Vec<SubSecretKey>,  // the list of the subsecretkeys that are
+                                        // stored chronologically based on time stamp
   }
   ```
 * Construct a secret key object from some input:
@@ -185,6 +206,33 @@
     5. return `construct(pp.get_ciphersuite(), 1, [ssk])`
 
 * Update:
+
+  ``` Rust
+  fn update<'a>(&'a mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String>
+  ```
+  * Input: self: a secret key
+  * Input: public parameter
+  * Input: target time
+  * Output: mutate self to an sk for target time
+  * Error: ERR_CIPHERSUITE, ERR_SERIAL, ERR_TIME_STAMP
+  * Steps:
+    1. If the time or ciphersuite is not correct, returns an error
+    2. Find the ancestor node `delegator = sk.find_ancestor(tar_time)`, returns an error if time is not correct
+    3. Update self to an sk for delegator's time by removing SubSecretKeys whose time stamps are smaller than delegator's time, returns an error if no SubSecretKey is left after removal
+    4. If delegator's time equals target time, return success
+    5. Generate a gamma list from target time `GammaList = target_time.gamma_list(pp.get_d())`, returns an error if time stamp is invalid
+    6. Digest the sk into a shorter blob `sk_digest = sk.digest()`
+    6. Use the first ssk to delegate `delegator_ssk = sk.get_first_ssk()`
+    6. for (i, TimeStamp) in Gammalist
+        1. if delegator's time is a prefix of TimeStamp
+            * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.get_d())`
+            * if `i!=0`
+              * `r = hash_to_field(DOM_SEP_KEY_UPDATE | ciphersuite | sk_digest,i-1)`
+              * re-randomize the ssk via `new_ssk.randomization(pp, r)`
+            * `sk.ssk.insert(i+ 1, new_ssk)` so that ssk remains sorted
+    6. Remove the delegator's ssk via `sk.ssk.remove(0)`
+    7. Update sk's time stamp `sk.time = sk.ssk[0].time`        
+    6. Return success
 
 * Additional functionalities:
   ``` rust

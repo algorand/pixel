@@ -208,9 +208,8 @@ fn test_key_gen() {
     let mut buf2 = vec![0u8; t.get_size()];
     // serializae a ssk into buffer);
     assert!(t1.serialize(&mut buf2, true).is_ok());
-    
-    assert_eq!(buf, buf2, "ssk's do not match")
 
+    assert_eq!(buf, buf2, "ssk's do not match")
 }
 
 #[test]

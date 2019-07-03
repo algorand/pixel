@@ -15,6 +15,7 @@ pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
+use PK_LEN;
 
 /// The public key structure is a wrapper of `PixelG2` group.
 /// The actual group that the public key lies in depends on `pk_in_g2` flag.
@@ -47,19 +48,24 @@ impl PublicKey {
         PublicKey { ciphersuite, pk }
     }
 
-    /// Set self to the new public key.
-    /// Returns an error if the ciphersuite is not supported.
-    pub fn set_pk(&mut self, pp: &PubParam, pk: PixelG2) -> Result<(), String> {
-        // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
-            #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err(ERR_CIPHERSUITE.to_owned());
-        }
-        self.ciphersuite = pp.get_ciphersuite();
-        self.pk = pk;
-        Ok(())
+    /// This function returns the storage requirement for this Public Key
+    pub fn get_size(&self) -> usize {
+        PK_LEN
     }
+
+    // /// Set self to the new public key.
+    // /// Returns an error if the ciphersuite is not supported.
+    // pub fn set_pk(&mut self, pp: &PubParam, pk: PixelG2) -> Result<(), String> {
+    //     // check that the ciphersuite identifier is correct
+    //     if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+    //         #[cfg(debug_assertions)]
+    //         println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+    //         return Err(ERR_CIPHERSUITE.to_owned());
+    //     }
+    //     self.ciphersuite = pp.get_ciphersuite();
+    //     self.pk = pk;
+    //     Ok(())
+    // }
 
     /// Returns the public key element this structure contains.
     pub fn get_pk(&self) -> PixelG2 {

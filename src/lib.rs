@@ -232,16 +232,3 @@ pub struct Pixel;
 
 /// Pixel uses default implementaions from PixelSignature trait.
 impl PixelSignature for Pixel {}
-
-// a simple test to ensure that we have pixel groups mapped to the
-// right groups over the BLS12-381 curve
-// the code will generate a compiler error if we are in a wrong group
-#[test]
-fn test_group_is_correct() {
-    use pairing::CurveProjective;
-    let a = PixelG1::one();
-    #[cfg(not(feature = "pk_in_g2"))]
-    assert_eq!(a, pairing::bls12_381::G2::one());
-    #[cfg(feature = "pk_in_g2")]
-    assert_eq!(a, pairing::bls12_381::G1::one());
-}

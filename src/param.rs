@@ -22,10 +22,10 @@ pub const CONST_D: usize = 4;
 
 /// This is a global constant which determines the maximum time
 /// stamp, i.e. `max_time_stamp = 2^D-1`.
-/// For deployment we use a depth = 32 which should be more than
+/// For deployment we use a depth = 30 which should be more than
 /// enough in practise.
 #[cfg(not(debug_assertions))]
-pub const CONST_D: usize = 32;
+pub const CONST_D: usize = 30;
 
 /// This is a fixed lenght array of PixelG1 elements,
 /// a wrapper of `[PixelG1; CONST_D + 1]`.
@@ -230,14 +230,12 @@ impl PubParam {
         }
     }
 
-    /// This function returns the storage requirement for this secret key. Recall that
+    /// This function returns the storage requirement for this Public parameter. Recall that
     /// each a public parameter is a blob:
     /// `|ciphersuite id| depth | g2 | h | hlist |`
     /// where ciphersuite id is 1 byte and depth is 1 byte.
     /// Return 2 + serial ...
-    //  This code is for test only. The size can be obtained
-    //  by a constant: PP_LEN
-    #[cfg(test)]
+    //  This code is the same as the constant PP_LEN
     pub fn get_size(&self) -> usize {
         let mut len = 2;
 

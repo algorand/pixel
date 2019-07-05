@@ -5,6 +5,7 @@ use super::rand::Rng;
 use criterion::Criterion;
 
 /// benchmark parameter generation
+#[allow(dead_code)]
 fn bench_param(c: &mut Criterion) {
     // benchmarking
     c.bench_function("param generation", move |b| {
@@ -21,6 +22,7 @@ fn bench_param(c: &mut Criterion) {
 }
 
 /// benchmark key generation
+#[allow(dead_code)]
 fn bench_keygen(c: &mut Criterion) {
     // this benchmark uses a same set of parameter
     let seed = rand::thread_rng()
@@ -85,6 +87,7 @@ fn bench_key_update_next(c: &mut Criterion) {
 }
 
 /// benchmark key update: update to the a random time stamp
+#[allow(dead_code)]
 fn bench_key_update_random(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 
@@ -127,6 +130,7 @@ fn bench_key_update_random(c: &mut Criterion) {
 }
 
 /// benchmark sign at a random present/future time
+#[allow(dead_code)]
 fn bench_sign(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 

@@ -4,3 +4,4 @@ extern crate rand;
 
 pub mod bench_api;
 pub mod bench_curve;
+pub mod bench_sk_ops;

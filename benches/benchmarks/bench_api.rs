@@ -1,10 +1,7 @@
-extern crate pixel;
-extern crate rand;
-
-use self::pixel::Pixel;
-use self::pixel::PixelSignature;
-use self::pixel::{PublicKey, SecretKey, Signature, TimeStamp};
-use self::rand::Rng;
+use super::pixel::Pixel;
+use super::pixel::PixelSignature;
+use super::pixel::{PublicKey, SecretKey, Signature, TimeStamp};
+use super::rand::Rng;
 use criterion::Criterion;
 
 /// benchmark parameter generation
@@ -295,7 +292,7 @@ fn bench_verify(c: &mut Criterion) {
 
     // benchmarking
     let mut counter = 0;
-    c.bench_function("sk at random time, sign then update", move |b| {
+    c.bench_function("verification", move |b| {
         b.iter(|| {
             let res = Pixel::verify(
                 &pklist[counter],
@@ -311,12 +308,16 @@ fn bench_verify(c: &mut Criterion) {
 }
 criterion_group!(
     api,
-    bench_param,
-    bench_keygen,
     bench_key_update_next,
-    bench_key_update_random,
-    bench_sign,
     bench_sign_present,
     bench_sign_then_update,
     bench_verify
+);
+
+criterion_group!(
+    api_slow,
+    bench_param,
+    bench_keygen,
+    bench_key_update_random,
+    bench_sign,
 );

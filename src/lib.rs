@@ -29,7 +29,9 @@ extern crate sha2;
 
 mod domain_sep;
 mod keys;
-mod membership;
+
+/// this module defines memebership tests for Pixel Groups
+pub mod membership;
 mod param;
 mod pixel_err;
 mod serdes;

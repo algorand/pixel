@@ -13,7 +13,9 @@ env:
   - TEST_FLAG=--release
   - TEST_FLAG=--features=pk_in_g2 --release
   - TEST_FLAG=--features=pk_in_g2,use_rand_generators --release -- --ignored
-
+  - CARGO_FLAG=test $TEST_FLAG
+  - CARGO_FLAG=test $TEST_FLAG --ignored
+  - CARGO_FLAG=bench
 script:
   - cargo clippy
   # if you want the build job to fail when encountering warnings, use
@@ -21,9 +23,7 @@ script:
   # in order to also check tests and non-default crate features, use
   - cargo clippy --all-targets --all-features -- -D warnings
   # all sorts of tests with different compiling flags
-  - cargo test $TEST_FLAG
-  - cargo test $TEST_FLAG -- --ignored
-
+  - cargo $CARGO_FLAG
 # if: rust = stable
 #   - cargo bench
 

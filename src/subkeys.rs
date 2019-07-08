@@ -305,6 +305,23 @@ impl SubSecretKey {
 
         len
     }
+
+    /// TODO: description
+    pub fn to_bytes(&self) -> String {
+        let hv = self.get_hvector();
+        let mut res = format!(
+            //"time: {}, h vector length {}, g2r {:?}, hploy {:?}, hvector ",
+            "{}{}{}{}",
+            self.get_time(),
+            hv.len(),
+            self.get_g2r().as_tuple().0,
+            self.get_hpoly().as_tuple().0
+        );
+        for e in hv {
+            res.push_str(&format!("{:?}", e.as_tuple().0));
+        }
+        res
+    }
 }
 
 impl fmt::Debug for SubSecretKey {

@@ -83,6 +83,30 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
         sklist.push(sk);
     }
 
+    // benchmark time of to_byte function for ssk
+    let message = format!("ssk to bytes for ssk at time {}", sklist[0].get_time());
+    let sklist_clone = sklist.clone();
+    c.bench_function(&message, move |b| {
+        let mut counter = 0;
+        b.iter(|| {
+            let sknew = sklist_clone[counter].clone();
+            let _res = sknew.get_first_ssk().unwrap().to_bytes();
+            counter = (counter + 1) % SAMPLES;
+        })
+    });
+
+    // benchmark time of to_byte function for sk
+    let message = format!("sk to bytes for sk at time {}", sklist[0].get_time(),);
+    let sklist_clone = sklist.clone();
+    c.bench_function(&message, move |b| {
+        let mut counter = 0;
+        b.iter(|| {
+            let sknew = sklist_clone[counter].clone();
+            let _res = sknew.to_bytes();
+            counter = (counter + 1) % SAMPLES;
+        })
+    });
+
     // benchmark time to generate a digest
     let message = format!("sk digest for sk at time {}", sklist[0].get_time(),);
     let sklist_clone = sklist.clone();

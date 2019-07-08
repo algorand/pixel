@@ -230,12 +230,15 @@ impl SecretKey {
     /// it converts all the group elements into
     /// their affine coordinates before serialize them.
     //    #[cfg(feature = "use_det_rand")]
+    //  TODO: add new description
     pub fn digest(&self) -> Result<Vec<u8>, String> {
-        let mut hashinput = vec![0u8; self.get_size()];
-        // serializae a sk into buffer
-        if self.serialize(&mut hashinput, true).is_err() {
-            return Err(ERR_SERIAL.to_owned());
-        };
+        // let mut hashinput = vec![0u8; self.get_size()];
+        // // serializae a sk into buffer
+        // if self.serialize(&mut hashinput, true).is_err() {
+        //     return Err(ERR_SERIAL.to_owned());
+        // };
+
+        let hashinput = self.to_bytes();
         let mut hasher = sha2::Sha256::new();
         hasher.input(hashinput);
         Ok(hasher.result().to_vec())
@@ -608,6 +611,21 @@ impl SecretKey {
             len += e.get_size();
         }
         len
+    }
+
+    /// TODO: description
+    pub fn to_bytes(&self) -> String {
+        let mut res = format!(
+            //        "ciphersuite {}, number of ssk {}, ",
+            "{}{}",
+            self.get_ciphersuite(),
+            self.get_ssk_number()
+        );
+        //        let ssk_list = self.get_ssk_vec();
+        for e in &self.ssk {
+            res.push_str(&e.to_bytes());
+        }
+        res
     }
 }
 

@@ -98,6 +98,8 @@ pub struct SecretKey {
     time: TimeStamp,
     /// the list of the subkeys
     ssk: Vec<SubSecretKey>,
+    /// a seed that is used to generate the randomness during key updating
+    rngseed: [u8; 32],
 }
 
 impl KeyPair {
@@ -106,12 +108,23 @@ impl KeyPair {
     /// * the seed is not long enough
     /// * the ciphersuite is not supported
     pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
+        // update then extract the seed
+        // make sure we have enough entropy
+        if seed.len() < 32 {
+            #[cfg(debug_assertions)]
+            println!(
+                "the seed length {} is not long enough (required as least 32 bytes)",
+                seed.len()
+            );
+            return Err(ERR_SEED_TOO_SHORT.to_owned());
+        }
+
         // this may fail if the seed is too short or
         // the ciphersuite is not supported
-        let (pk, msk) = master_key_gen(seed, &pp)?;
+        let (pk, msk, rngseed) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
-        let sk = SecretKey::init(&pp, msk)?;
+        let sk = SecretKey::init(&pp, msk, rngseed)?;
 
         // this may fail if the ciphersuite is not supported
         let pk = PublicKey::init(&pp, pk)?;
@@ -132,18 +145,24 @@ impl KeyPair {
 impl SecretKey {
     /// Build a secret key from the given inputs. Does not check
     /// if the validity of the key.
-    pub fn construct(ciphersuite: u8, time: TimeStamp, ssk: Vec<SubSecretKey>) -> Self {
+    pub fn construct(
+        ciphersuite: u8,
+        time: TimeStamp,
+        ssk: Vec<SubSecretKey>,
+        rngseed: [u8; 32],
+    ) -> Self {
         SecretKey {
             ciphersuite,
             time,
             ssk,
+            rngseed,
         }
     }
 
     /// This function initializes the secret key at time stamp = 1.
     /// It takes the root secret `alpha` as the input.
     /// It may returns an error if the ciphersuite is not supported.
-    pub fn init(pp: &PubParam, alpha: PixelG1) -> Result<Self, String> {
+    pub fn init(pp: &PubParam, alpha: PixelG1, rngseed: [u8; 32]) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
@@ -175,6 +194,7 @@ impl SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
+            rngseed,
         })
     }
 
@@ -182,12 +202,13 @@ impl SecretKey {
     /// It takes the root secret `alpha` and a field element `r` as inputs.
     /// Currently this function is used by testing only.
     #[cfg(test)]
-    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
+    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr, rngseed: [u8; 32]) -> Self {
         let ssk = SubSecretKey::init(&pp, alpha, r);
         SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
+            rngseed,
         }
     }
 
@@ -204,6 +225,11 @@ impl SecretKey {
     /// Returns the number of sub_secret_keys.
     pub fn get_ssk_number(&self) -> usize {
         self.ssk.len()
+    }
+
+    /// Returns the prng seed.
+    pub fn get_rngseed(&self) -> [u8; 32] {
+        self.rngseed
     }
 
     /// Returns the first sub secret key on the list.
@@ -229,16 +255,14 @@ impl SecretKey {
     /// This function turns out to be a bit slow because
     /// it converts all the group elements into
     /// their affine coordinates before serialize them.
-    //    #[cfg(feature = "use_det_rand")]
-    //  TODO: add new description
     pub fn digest(&self) -> Result<Vec<u8>, String> {
-        // let mut hashinput = vec![0u8; self.get_size()];
-        // // serializae a sk into buffer
-        // if self.serialize(&mut hashinput, true).is_err() {
-        //     return Err(ERR_SERIAL.to_owned());
-        // };
+        let mut hashinput = vec![0u8; self.get_size()];
+        // serializae a sk into buffer
+        if self.serialize(&mut hashinput, true).is_err() {
+            return Err(ERR_SERIAL.to_owned());
+        };
 
-        let hashinput = self.to_bytes();
+        //        let hashinput = self.to_bytes();
         let mut hasher = sha2::Sha256::new();
         hasher.input(hashinput);
         Ok(hasher.result().to_vec())
@@ -396,8 +420,10 @@ impl SecretKey {
         let target_time_vec = TimeVec::init(tar_time, depth)?;
         let gamma_list = target_time_vec.gamma_list(depth)?;
 
-        // digest sk into a shorter blob, and use it for hash_to_field
-        let sk_digest = self.digest()?;
+        // originally: digest sk into a shorter blob, and use it for hash_to_field
+        // now: expand the rngseed into two parts, use 1st part for hash_to_field,
+        // update rngseed to the second part
+        let (extract, updated) = rngseed_extract_and_update(&self.rngseed);
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
         'out: for (i, tmptime) in gamma_list.iter().enumerate() {
@@ -438,7 +464,7 @@ impl SecretKey {
                 let input = [
                     domain_sep::DOM_SEP_KEY_UPDATE.as_bytes(),
                     [self.get_ciphersuite()].as_ref(),
-                    &sk_digest[..],
+                    &extract,
                 ]
                 .concat();
                 let r = Fr::from_ro(input, (i - 1) as u8);
@@ -468,7 +494,7 @@ impl SecretKey {
         // assign new_sk to self, and return successful
         // here we rely on Rust's memory safety feature to ensure the old key is erased
         *self = new_sk;
-
+        self.rngseed = updated;
         Ok(())
     }
 
@@ -594,7 +620,7 @@ impl SecretKey {
     /// This function returns the storage requirement for this secret key. Recall that
     /// each sk is a blob:
     ///
-    /// `|ciphersuite id| number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    /// `|ciphersuite id| seed | number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
     ///
     /// where ...
     /// * ciphersuite is 1 byte
@@ -603,9 +629,9 @@ impl SecretKey {
     ///
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
     ///
-    /// So the output will be 2 + size of eash ssk.
+    /// So the output will be 34 + size of eash ssk.
     pub fn get_size(&self) -> usize {
-        let mut len = 2;
+        let mut len = 34;
         let ssk = self.get_ssk_vec();
         for e in ssk {
             len += e.get_size();
@@ -633,7 +659,7 @@ impl SecretKey {
 /// Input a seed, it uses hash_to_field function to generate a field element x.
 /// The public/secret key is then set to g2^x and h^x
 /// This function is private -- it should be used only as a subroutine to key gen function
-fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), String> {
+fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, [u8; 32]), String> {
     // make sure we have enough entropy
     if seed.len() < 32 {
         #[cfg(debug_assertions)]
@@ -662,14 +688,40 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1), Stri
         .concat(),
         0,
     );
-
+    let mut rngseed = [0u8; 32];
+    let hashinput = [domain_sep::DOM_SEP_SEED_INIT.as_ref(), seed].concat();
+    let mut hasher = sha2::Sha256::new();
+    hasher.input(hashinput);
+    rngseed.clone_from_slice(&hasher.result());
     // pk = g2^r
     // sk = h^r
     let mut pk = pp.get_g2();
     let mut sk = pp.get_h();
     pk.mul_assign(r);
     sk.mul_assign(r);
-    Ok((pk, sk))
+    Ok((pk, sk, rngseed))
+}
+
+/// Input a seed, this function extract and then update the seed as follows:
+///     rngseed_updated      =  sha256 (DOM_SEP_SEED_UPDATE|rngseed)
+///     rngseed_extracted    =  sha256 (DOM_SEP_SEED_EXTRACT|rngseed)
+/// The extracted seed is returned; the original seed is mutated to the updated one.
+fn rngseed_extract_and_update(rngseed: &[u8; 32]) -> ([u8; 32], [u8; 32]) {
+    let mut extracted = [0u8; 32];
+    let mut updated = [0u8; 32];
+    let hashinput = [domain_sep::DOM_SEP_SEED_EXTRACT.as_ref(), rngseed.as_ref()].concat();
+    let mut hasher = sha2::Sha256::new();
+    hasher.input(hashinput);
+    extracted.clone_from_slice(&hasher.result());
+
+    let hashinput = [domain_sep::DOM_SEP_SEED_UPDATE.as_ref(), rngseed.as_ref()].concat();
+    let mut hasher = sha2::Sha256::new();
+    hasher.input(hashinput);
+    updated.clone_from_slice(&hasher.result());
+    // println!("before {:?}", rngseed);
+    // *rngseed = updated.to_owned();
+    // println!("after {:?}", rngseed);
+    (extracted, updated)
 }
 
 /// This function tests if a public key and a master secret key has a same exponent.
@@ -712,7 +764,8 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
 /// convenient function to output a secret key object
 impl fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "================================\ntime:{:?}", self.time)?;
+        writeln!(f, "================================\ntime:{:?}", self.time)?;
+        writeln!(f, "seed: {:?}", self.rngseed)?;
         for i in 0..self.ssk.len() {
             write!(
                 f,
@@ -751,6 +804,6 @@ fn test_master_key() {
     let pp = PubParam::init_without_seed();
     let res = master_key_gen(b"this is a very very long seed for testing", &pp);
     assert!(res.is_ok(), "master key gen failed");
-    let (pk, sk) = res.unwrap();
+    let (pk, sk, _seed) = res.unwrap();
     assert!(validate_master_key(&pk, &sk, &pp), "master key is invalid")
 }

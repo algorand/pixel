@@ -170,7 +170,7 @@ impl SerDes for PublicKey {
 impl SerDes for SecretKey {
     /// Convert sk into a blob:
     ///
-    /// `|ciphersuite id| number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    /// `|ciphersuite id| number_of_ssk-s | seed | serial(first ssk) | serial(second ssk)| ...`,
     ///
     /// where ...
     /// * ciphersuite is 1 byte
@@ -191,6 +191,9 @@ impl SerDes for SecretKey {
 
         // next byte is the number of ssk-s
         buf.push(self.get_ssk_number() as u8);
+
+        // next 32 bytes is the seed for rng
+        buf.extend(self.get_rngseed().as_ref());
 
         // followed by serialization of the ssk-s
         for e in &self.get_ssk_vec() {
@@ -215,9 +218,11 @@ impl SerDes for SecretKey {
     ///
     /// Return an error if deserialization fails
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
-        // constants stores id and the number of ssk-s
+        // constants stores id, the number of ssk-s, and the seed
         let mut constants: [u8; 2] = [0u8; 2];
+        let mut rngseed: [u8; 32] = [0u8; 32];
         reader.read_exact(&mut constants)?;
+        reader.read_exact(&mut rngseed)?;
 
         // check the ciphersuite id in the blob
         if !VALID_CIPHERSUITE.contains(&constants[0]) {
@@ -240,6 +245,7 @@ impl SerDes for SecretKey {
             constants[0],
             ssk_vec[0].get_time(),
             ssk_vec,
+            rngseed,
         ))
     }
 }

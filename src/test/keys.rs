@@ -29,11 +29,27 @@ fn test_quick_key_update() {
         res.err()
     );
     let keypair = res.unwrap();
-    let sk = keypair.get_sk();
+    let mut sk = keypair.get_sk();
+    println!("{:?}", sk);
+    // update from 1 to j
+    for j in 2..16 {
+        let mut sk2 = sk.clone();
+        let res = sk2.update(&pp, j);
+        assert!(
+            res.is_ok(),
+            "update failed\n\
+             error message {:?}",
+            res.err()
+        );
+        // makes sure the seed is mutated in after the delegation
+        assert_ne!(sk.get_rngseed(), sk2.get_rngseed());
+        for ssk in sk2.get_ssk_vec() {
+            assert!(ssk.validate(&keypair.get_pk(), &pp), "validation failed");
+        }
+        println!("{:?}", sk);
+    }
 
-    // this double loop
-    // 1. performs key updates with all possible `start_time` and `finish_time`
-    // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
+    // update incrementally
     for j in 2..16 {
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
@@ -46,6 +62,8 @@ fn test_quick_key_update() {
         for ssk in sk2.get_ssk_vec() {
             assert!(ssk.validate(&keypair.get_pk(), &pp), "validation failed");
         }
+        sk = sk2;
+        println!("{:?}", sk);
     }
 }
 

@@ -17,3 +17,12 @@ pub const DOM_SEP_KEY_INIT: &str = "Pixel randomness for root key";
 
 // prefix of hash_to_group to generate public parameters
 pub const DOM_SEP_PARAM_GEN: &str = "Pixel public parameter generation";
+
+// prefix of sha256 to initiate a seed
+pub const DOM_SEP_SEED_INIT: &str = "Pixel prng seed initiate";
+
+// prefix of sha256 to update the seed
+pub const DOM_SEP_SEED_UPDATE: &str = "Pixel prng seed update";
+
+// prefix of sha256 to generate a new seed
+pub const DOM_SEP_SEED_EXTRACT: &str = "Pixel prng seed extraction";

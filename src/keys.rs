@@ -225,7 +225,10 @@ impl SecretKey {
 
     /// Serialize an sk into a blob and then use sha256
     /// to generate a digest of the blob.
-    /// * `digest = sha256(sk.serialize())`
+    /// * `digest = sha256(sk.serialize())`.
+    /// This function turns out to be a bit slow because
+    /// it converts all the group elements into
+    /// their affine coordinates before serialize them.
     //    #[cfg(feature = "use_det_rand")]
     pub fn digest(&self) -> Result<Vec<u8>, String> {
         let mut hashinput = vec![0u8; self.get_size()];

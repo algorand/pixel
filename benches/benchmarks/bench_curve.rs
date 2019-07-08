@@ -5,6 +5,7 @@ use super::rand::Rand;
 use criterion::Criterion;
 
 /// benchmark group multiplication
+#[allow(dead_code)]
 fn bench_group_multiplication(c: &mut Criterion) {
     const SAMPLES: usize = 100;
     let mut g1list: Vec<PixelG1> = vec![];
@@ -37,6 +38,7 @@ fn bench_group_multiplication(c: &mut Criterion) {
 }
 
 /// benchmark group multiplication
+#[allow(dead_code)]
 fn bench_membership_testing(c: &mut Criterion) {
     const SAMPLES: usize = 100;
     let mut g1list: Vec<PixelG1> = vec![];
@@ -67,6 +69,7 @@ fn bench_membership_testing(c: &mut Criterion) {
 }
 
 /// benchmark group multiplication
+#[allow(dead_code)]
 fn bench_pairing(c: &mut Criterion) {
     const SAMPLES: usize = 100;
     let mut g1list1: Vec<G1> = vec![];

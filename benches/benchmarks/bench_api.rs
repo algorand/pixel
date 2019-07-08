@@ -46,6 +46,7 @@ fn bench_keygen(c: &mut Criterion) {
 }
 
 /// benchmark key update: update to the next time stamp
+#[allow(dead_code)]
 fn bench_key_update_next(c: &mut Criterion) {
     const SAMPLES: usize = 1000;
 
@@ -174,6 +175,7 @@ fn bench_sign(c: &mut Criterion) {
 }
 
 /// benchmark sign at a random present time
+#[allow(dead_code)]
 fn bench_sign_present(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 
@@ -216,6 +218,7 @@ fn bench_sign_present(c: &mut Criterion) {
 }
 
 /// benchmark sign at a random present time then update to next time stamp
+#[allow(dead_code)]
 fn bench_sign_then_update(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 
@@ -260,6 +263,7 @@ fn bench_sign_then_update(c: &mut Criterion) {
 }
 
 /// benchmark verification at a random time
+#[allow(dead_code)]
 fn bench_verify(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 

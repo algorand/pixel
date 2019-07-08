@@ -127,13 +127,13 @@ pub use param::CONST_D;
 
 // expose the submodules of this crate for debug versions
 //#[cfg(debug_assertions)]
-pub use keys::{PublicKey, SecretKey};
+pub use keys::{PublicKey, SecretKey, SubSecretKey};
 //#[cfg(debug_assertions)]
 pub use param::PubParam;
 //#[cfg(debug_assertions)]
 pub use sig::Signature;
 //#[cfg(debug_assertions)]
-pub use time::TimeStamp;
+pub use time::{TimeStamp, TimeVec};
 
 // // hide the submodules of this crate for release versions
 // #[cfg(not(debug_assertions))]

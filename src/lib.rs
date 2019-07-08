@@ -82,9 +82,10 @@ pub const PK_LEN: usize = 49;
 #[cfg(feature = "pk_in_g2")]
 pub const PK_LEN: usize = 97;
 
-/// The Signature size is always 145. 1 byte for ciphersuite ID,
-/// 48+96 for two group elements.
-pub const SIG_LEN: usize = 145;
+/// The Signature size is always 149.
+/// 1 byte for ciphersuite ID, 4 bytes for time stamp,
+/// 48+96 bytes for two group elements.
+pub const SIG_LEN: usize = 149;
 
 /// The size of public param is ...
 /// * 1 byte for ciphersuite ID
@@ -222,16 +223,15 @@ pub trait PixelSignature {
         Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
     }
 
-    /// Input a public key, a time stamp, the public parameter, a message in the form of a byte string,
+    /// Input a public key, the public parameter, a message in the form of a byte string,
     /// and a signature, outputs true if signature is valid w.r.t. the inputs.
     fn verify<Blob: AsRef<[u8]>>(
         pk: &PublicKey,
-        tar_time: TimeStamp,
         pp: &PubParam,
         msg: Blob,
         sig: &Signature,
     ) -> bool {
-        sig.verify_bytes(pk, tar_time, &pp, msg.as_ref())
+        sig.verify_bytes(pk, &pp, msg.as_ref())
     }
 }
 

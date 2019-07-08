@@ -20,15 +20,17 @@ use PixelG2;
 /// As in the python code, sigma1 and sigma2 are switched --  not consistent with the paper.
 pub struct Signature {
     ciphersuite: u8,
+    time: TimeStamp,
     sigma1: PixelG2,
     sigma2: PixelG1,
 }
 
 impl Signature {
     /// Constructing a signature object.
-    pub fn construct(ciphersuite: u8, sigma1: PixelG2, sigma2: PixelG1) -> Self {
+    pub fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG2, sigma2: PixelG1) -> Self {
         Signature {
             ciphersuite,
+            time,
             sigma1,
             sigma2,
         }
@@ -37,6 +39,11 @@ impl Signature {
     /// Returns the ciphersuite of a signature.
     pub fn get_ciphersuite(&self) -> u8 {
         self.ciphersuite
+    }
+
+    /// Returns the time stamp of a signature.
+    pub fn get_time(&self) -> TimeStamp {
+        self.time
     }
 
     /// Returns the first component of the signature.
@@ -250,22 +257,17 @@ impl Signature {
 
         Ok(Signature {
             ciphersuite: pp.get_ciphersuite(),
+            time: tar_time,
             sigma1: sig1,
             sigma2: sig2,
         })
     }
 
-    /// This verification function takes in a public key, a target time, the public parameters
+    /// This verification function takes in a public key, the public parameters
     /// a message in the form of a byte array, and a signature.
     /// The signature may be malformed -- the elements are not in the right group.
     /// It returns true if the signature is valid.
-    pub fn verify_bytes(
-        &self,
-        pk: &PublicKey,
-        tar_time: TimeStamp,
-        pp: &PubParam,
-        msg: &[u8],
-    ) -> bool {
+    pub fn verify_bytes(&self, pk: &PublicKey, pp: &PubParam, msg: &[u8]) -> bool {
         // check that the ciphersuite identifier is correct
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
@@ -294,18 +296,21 @@ impl Signature {
         // hash the message into a field element
         let m = hash_msg_into_fr(msg, pp.get_ciphersuite());
 
-        Signature::verify_fr(&self, &pk, tar_time, &pp, m)
+        Signature::verify_fr(&self, &pk, &pp, m)
     }
 
-    /// This verification function takes in a public key, a target time, the public parameters
+    /// This verification function takes in a public key, the public parameters
     /// a message in the form of a field element, and a signature.
     /// It assumes that the signature is well formed (in the right subgroup) already.
     /// It returns true if the signature is valid.
-    pub fn verify_fr(&self, pk: &PublicKey, tar_time: TimeStamp, pp: &PubParam, msg: Fr) -> bool {
+    pub fn verify_fr(&self, pk: &PublicKey, pp: &PubParam, msg: Fr) -> bool {
         let depth = pp.get_d();
 
         // extract the group element in pk
         let pke = pk.get_pk();
+
+        // extract the target time
+        let tar_time = self.get_time();
 
         // hfx = h0 + h_i * t_i + h_d * m
         let list = pp.get_hlist();

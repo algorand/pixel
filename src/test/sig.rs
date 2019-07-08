@@ -21,7 +21,7 @@ fn test_quick_signature_tests() {
     let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
-    assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
+    assert!(sig.verify_bytes(&pk,  &pp, msg), "verification failed");
 
     for j in 2..16 {
         let mut sk2 = sk.clone();
@@ -36,7 +36,7 @@ fn test_quick_signature_tests() {
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
-            sig.verify_bytes(&pk, sk2.get_time(), &pp, msg),
+            sig.verify_bytes(&pk,  &pp, msg),
             "signature verification failed"
         );
     }
@@ -59,7 +59,7 @@ fn test_long_signature_tests() {
     let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
-    assert!(sig.verify_bytes(&pk, 1, &pp, msg), "verification failed");
+    assert!(sig.verify_bytes(&pk,  &pp, msg), "verification failed");
 
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`
@@ -86,7 +86,7 @@ fn test_long_signature_tests() {
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(
-                sig.verify_bytes(&pk, sk3.get_time(), &pp, msg),
+                sig.verify_bytes(&pk,  &pp, msg),
                 "signature verification failed"
             );
         }
@@ -100,7 +100,7 @@ fn test_long_signature_tests() {
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
-            sig.verify_bytes(&pk, sk2.get_time(), &pp, msg),
+            sig.verify_bytes(&pk, &pp, msg),
             "signature verification failed"
         );
     }

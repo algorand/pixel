@@ -21,7 +21,7 @@ fn test_det() {
     alpha.mul_assign(msk);
 
     let r = Fr::from_str("2").unwrap();
-    let sk = SecretKey::init_det(&pp, alpha, r, [0;32]);
+    let sk = SecretKey::init_det(&pp, alpha, r, [0; 32]);
 
     let msg = Fr::from_str("1").unwrap();
 
@@ -106,6 +106,6 @@ fn test_det() {
     );
 
     // make sure the signature can be verified
-    assert!(sig.verify_fr(&pk, 1, &pp, msg), "Verification failed");
+    assert!(sig.verify_fr(&pk, &pp, msg), "Verification failed");
     //    assert_eq!(1, 2)
 }

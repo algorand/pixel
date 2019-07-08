@@ -77,7 +77,7 @@ impl SerDes for PubParam {
 impl SerDes for Signature {
     /// Convert a signature into a blob:
     ///
-    /// `|ciphersuite id| sigma1 | sigma2 |` => bytes
+    /// `|ciphersuite id| time | sigma1 | sigma2 |` => bytes
     ///
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     /// Does not check if the signature is verified or not.
@@ -86,8 +86,23 @@ impl SerDes for Signature {
         if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
+
+        // the time stamp cannot exceed 2^30
+        let time = self.get_time();
+        if time > (1 << 32) {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_SERIAL));
+        }
+
         // first byte is the ciphersuite id
-        let mut buf: Vec<u8> = vec![self.get_ciphersuite()];
+        // the next 4 bytes stores the time stamp,
+
+        let mut buf: Vec<u8> = vec![
+            self.get_ciphersuite(),
+            (time & 0xFF) as u8,
+            (time >> 8 & 0xFF) as u8,
+            (time >> 16 & 0xFF) as u8,
+            (time >> 24 & 0xFF) as u8,
+        ];
 
         // serialize sigma1
         self.get_sigma1().serialize(&mut buf, compressed)?;
@@ -100,7 +115,7 @@ impl SerDes for Signature {
 
     /// Convert a blob into a signature:
     ///
-    /// bytes => `|ciphersuite id| sigma1 | sigma2 |`
+    /// bytes => `|ciphersuite id | time | sigma1 | sigma2 |`
     ///
     /// Returns an error if deserialization fails.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
@@ -108,6 +123,10 @@ impl SerDes for Signature {
         let mut constants: [u8; 1] = [0u8; 1];
 
         reader.read_exact(&mut constants)?;
+
+        let mut time: [u8; 4] = [0u8; 4];
+        reader.read_exact(&mut time)?;
+        let time = u32::from_le_bytes(time);
 
         // check the ciphersuite id in the blob
         if !VALID_CIPHERSUITE.contains(&constants[0]) {
@@ -121,7 +140,7 @@ impl SerDes for Signature {
         let sigma2 = PixelG1::deserialize(reader)?;
 
         // finished
-        Ok(Signature::construct(constants[0], sigma1, sigma2))
+        Ok(Signature::construct(constants[0], u64::from(time), sigma1, sigma2))
     }
 }
 

@@ -1,6 +1,6 @@
 use super::pixel::Pixel;
 use super::pixel::PixelSignature;
-use super::pixel::{PublicKey, SecretKey, Signature, TimeStamp};
+use super::pixel::{PublicKey, SecretKey, Signature};
 use super::rand::Rng;
 use criterion::Criterion;
 
@@ -277,7 +277,6 @@ fn bench_verify(c: &mut Criterion) {
     // get a list of public keys
     let mut pklist: Vec<PublicKey> = vec![];
     let mut siglist: Vec<Signature> = vec![];
-    let mut tartimelist: Vec<TimeStamp> = vec![];
     let msg = "the message to be signed in benchmarking";
     let max_time = (1 << param.get_d()) - 1;
 
@@ -295,20 +294,13 @@ fn bench_verify(c: &mut Criterion) {
         // pack the signature, time, and public key
         pklist.push(pk);
         siglist.push(res.unwrap());
-        tartimelist.push(time);
     }
 
     // benchmarking
     let mut counter = 0;
     c.bench_function("verification", move |b| {
         b.iter(|| {
-            let res = Pixel::verify(
-                &pklist[counter],
-                tartimelist[counter],
-                &param,
-                msg,
-                &siglist[counter],
-            );
+            let res = Pixel::verify(&pklist[counter], &param, msg, &siglist[counter]);
             assert!(res, "verification failed");
             counter = (counter + 1) % SAMPLES;
         })

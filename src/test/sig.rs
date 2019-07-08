@@ -1,4 +1,4 @@
-use keys::KeyPair;
+use keys::{KeyPair, PublicKey, SecretKey};
 use param::PubParam;
 use sig::Signature;
 
@@ -21,7 +21,7 @@ fn test_quick_signature_tests() {
     let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
-    assert!(sig.verify_bytes(&pk,  &pp, msg), "verification failed");
+    assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
 
     for j in 2..16 {
         let mut sk2 = sk.clone();
@@ -36,7 +36,7 @@ fn test_quick_signature_tests() {
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
-            sig.verify_bytes(&pk,  &pp, msg),
+            sig.verify_bytes(&pk, &pp, msg),
             "signature verification failed"
         );
     }
@@ -59,7 +59,7 @@ fn test_long_signature_tests() {
     let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
-    assert!(sig.verify_bytes(&pk,  &pp, msg), "verification failed");
+    assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
 
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`
@@ -86,7 +86,7 @@ fn test_long_signature_tests() {
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(
-                sig.verify_bytes(&pk,  &pp, msg),
+                sig.verify_bytes(&pk, &pp, msg),
                 "signature verification failed"
             );
         }
@@ -103,5 +103,76 @@ fn test_long_signature_tests() {
             sig.verify_bytes(&pk, &pp, msg),
             "signature verification failed"
         );
+    }
+}
+
+// A simple and quick tests on
+/// * key generation
+/// * key update
+/// * sign
+/// * aggregation
+/// * batch verification
+#[test]
+fn test_quick_aggregated_signature_tests() {
+    let pp = PubParam::init_without_seed();
+
+    let mut sklist: Vec<SecretKey> = vec![];
+    let mut pklist: Vec<PublicKey> = vec![];
+    let mut siglist: Vec<Signature> = vec![];
+    for i in 0..10 {
+        let key_gen_seed = format!("this is a very very long seed for testing #{}", i);
+
+        let res = KeyPair::keygen(key_gen_seed.as_ref(), &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let keypair = res.unwrap();
+        sklist.push(keypair.get_sk());
+        pklist.push(keypair.get_pk());
+    }
+
+    let seedr = b"this is also a very very long seed for testing";
+    let msg = b"message to sign";
+
+    // generate 10 signatures on a same message
+    for i in 0..10 {
+        let res = Signature::sign_bytes(&sklist[i], 1, &pp, msg, seedr);
+        assert!(res.is_ok(), "signing failed");
+        let sig = res.unwrap();
+        assert!(
+            sig.verify_bytes(&pklist[i], &pp, msg),
+            "verification failed"
+        );
+        siglist.push(sig);
+    }
+
+    // aggregate the siganture and then verify it
+    let sig_agg = Signature::aggregate_without_validate(&siglist).unwrap();
+    let res = sig_agg.verify_bytes_aggregated(&pklist, &pp, msg);
+
+    assert!(res, "verifying aggregates signature failed.");
+
+    for j in 2..16 {
+        let seedr = [
+            b"this is also a very very long seed for testing",
+            [j as u8].as_ref(),
+        ]
+        .concat();
+        let mut sklist2 = sklist.clone();
+        for i in 0..10 {
+            let res = sklist2[i].update(&pp, j);
+            assert!(res.is_ok(), "updating failed");
+
+            let res =
+                Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg, seedr.as_ref());
+            assert!(res.is_ok(), "signing failed");
+            let sig = res.unwrap();
+            assert!(
+                sig.verify_bytes(&pklist[i], &pp, msg),
+                "signature verification failed"
+            );
+        }
+        let sig_agg = Signature::aggregate_without_validate(&siglist).unwrap();
+        let res = sig_agg.verify_bytes_aggregated(&pklist, &pp, msg);
+
+        assert!(res, "verifying aggregates signature failed.");
     }
 }

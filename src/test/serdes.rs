@@ -205,7 +205,7 @@ fn test_signature_serialization() {
     let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
-    assert!(sig.verify_bytes(&pk,  &pp, msg), "verification failed");
+    assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
 
     // buffer space
     let mut buf: Vec<u8> = vec![];

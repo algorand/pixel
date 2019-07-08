@@ -18,6 +18,7 @@ use PixelG2;
 /// * `sigma2 = ssk.hpoly * hv[d]^m * (h0 * \prod h_i ^ t_i * h_d^m)^r` in `PixelG1`.
 ///
 /// As in the python code, sigma1 and sigma2 are switched --  not consistent with the paper.
+#[derive(Eq, Clone)]
 pub struct Signature {
     ciphersuite: u8,
     time: TimeStamp,
@@ -387,6 +388,52 @@ impl Signature {
         ))
         .unwrap();
         pairingproduct == Fq12::one()
+    }
+
+    /// This function aggregates the signatures without checking if a signature is valid or not.
+    /// It does check that all the signatures are for the same time stamp.
+    /// It returns an error if ciphersuite fails or time stamp is not consistent.
+    pub fn aggregate_without_validate(sig_list: &[Self]) -> Result<Self, String> {
+        let mut res = sig_list[0].clone();
+        // check the time and the ciphersuite match
+        for e in sig_list.iter().skip(1) {
+            if res.get_ciphersuite() != e.get_ciphersuite() {
+                return Err(ERR_CIPHERSUITE.to_owned());
+            }
+            if res.get_time() != e.get_time() {
+                return Err(ERR_TIME_STAMP.to_owned());
+            }
+        }
+
+        // aggregating the signatures
+        for e in sig_list.iter().skip(1) {
+            res.sigma1.add_assign(&e.sigma1);
+            res.sigma2.add_assign(&e.sigma2);
+        }
+        Ok(res)
+    }
+
+    /// Input an aggregated signature, a list of public keys, a public parameter, and a
+    /// message, output true if the signatures verifies.
+    pub fn verify_bytes_aggregated(
+        &self,
+        pk_list: &[PublicKey],
+        pp: &PubParam,
+        msg: &[u8],
+    ) -> bool {
+        // checks the ciphersuite ids match
+        let ciphersuite = pk_list[0].get_ciphersuite();
+        for e in pk_list.iter().skip(1) {
+            if ciphersuite != e.get_ciphersuite() {
+                return false;
+            }
+        }
+        let mut agg_pke = pk_list[0].get_pk();
+        for e in pk_list.iter().skip(1) {
+            agg_pke.add_assign(&e.get_pk());
+        }
+        let pk = PublicKey::construct(ciphersuite, agg_pke);
+        Signature::verify_bytes(&self, &pk, &pp, msg)
     }
 }
 

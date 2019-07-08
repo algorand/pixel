@@ -140,7 +140,12 @@ impl SerDes for Signature {
         let sigma2 = PixelG1::deserialize(reader)?;
 
         // finished
-        Ok(Signature::construct(constants[0], u64::from(time), sigma1, sigma2))
+        Ok(Signature::construct(
+            constants[0],
+            u64::from(time),
+            sigma1,
+            sigma2,
+        ))
     }
 }
 

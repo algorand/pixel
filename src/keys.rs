@@ -170,22 +170,30 @@ impl SecretKey {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
+        // originally: digest sk into a shorter blob, and use it for hash_to_field
         // r = hash_to_field(DOM_SEP_KEY_INIT|ciphersuite| serial(alpha), 0)
         // the ctr is always 0 since we require only one random field element.
         // TODO: decide what to do for non-determistic setting
-        #[cfg(not(feature = "pk_in_g2"))]
-        let mut alpha_array = vec![0; 96];
-        #[cfg(feature = "pk_in_g2")]
-        let mut alpha_array = vec![0; 48];
-        // serializae alpha into buffer
-        if alpha.serialize(&mut alpha_array, true).is_err() {
-            return Err(ERR_SERIAL.to_owned());
-        };
+        // #[cfg(not(feature = "pk_in_g2"))]
+        // let mut alpha_array = vec![0; 96];
+        // #[cfg(feature = "pk_in_g2")]
+        // let mut alpha_array = vec![0; 48];
+
+        // if alpha.serialize(&mut alpha_array, true).is_err() {
+        //     return Err(ERR_SERIAL.to_owned());
+        // };
+
+        // now: expand the rngseed into two parts, use 1st part for hash_to_field,
+        // update rngseed to the second part
+        // r = hash_to_field(DOM_SEP_KEY_INIT|ciphersuite| extract, 0)
+        let (extract, updated) = rngseed_extract_and_update(&rngseed);
+
         // set up the input to hash to field
         let input = [
             domain_sep::DOM_SEP_KEY_INIT.as_bytes(),
             [pp.get_ciphersuite()].as_ref(),
-            &alpha_array[..],
+            //            &alpha_array[..],
+            &extract,
         ]
         .concat();
         let r = Fr::from_ro(input, 0);
@@ -194,7 +202,7 @@ impl SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
-            rngseed,
+            rngseed: updated,
         })
     }
 
@@ -255,6 +263,8 @@ impl SecretKey {
     /// This function turns out to be a bit slow because
     /// it converts all the group elements into
     /// their affine coordinates before serialize them.
+    /// And because the size is big, so the hash function
+    /// will have quite a lot of iterations.
     pub fn digest(&self) -> Result<Vec<u8>, String> {
         let mut hashinput = vec![0u8; self.get_size()];
         // serializae a sk into buffer

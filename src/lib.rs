@@ -23,6 +23,7 @@
 
 extern crate bigint;
 extern crate bls_sigs_ref_rs;
+extern crate clear_on_drop;
 extern crate ff;
 extern crate pairing;
 extern crate sha2;

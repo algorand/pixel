@@ -21,7 +21,7 @@ fn test_det() {
     alpha.mul_assign(msk);
 
     let r = Fr::from_str("2").unwrap();
-    let sk = SecretKey::init_det(&pp, alpha, r, [0; 32]);
+    let sk = SecretKey::init_det(&pp, alpha, r, &[0; 32]);
 
     let msg = Fr::from_str("1").unwrap();
 

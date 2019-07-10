@@ -16,7 +16,7 @@ use PixelG2;
 /// * g1r: the randomization on G1
 /// * h0poly: h0^{alpha + f(x) r}
 /// * hlist: the randomization of the public parameter hlist
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct SubSecretKey {
     /// timestamp for the current subkey
     time: TimeStamp,

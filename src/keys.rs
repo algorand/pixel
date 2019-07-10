@@ -4,6 +4,7 @@
 //  * the secret key <- the sub secret keys are defined seperately in subkeys module
 
 use bls_sigs_ref_rs::FromRO;
+use clear_on_drop::ClearOnDrop;
 use domain_sep;
 use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
@@ -90,7 +91,7 @@ pub struct KeyPair {
 /// they are arranged in a chronological order.
 /// There are two extra fields, the ciphersuite id,
 /// and the time stamp.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SecretKey {
     /// ciphersuite id
     ciphersuite: u8,
@@ -104,27 +105,37 @@ pub struct SecretKey {
 
 impl KeyPair {
     /// Generate a pair of public keys and secret keys.
+    /// This function does NOT destroy the seed.
     /// Returns an error if
     /// * the seed is not long enough
     /// * the ciphersuite is not supported
     pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
         // update then extract the seed
         // make sure we have enough entropy
-        if seed.len() < 32 {
+        let seed_len = seed.len();
+        if seed_len < 32 {
             #[cfg(debug_assertions)]
             println!(
                 "the seed length {} is not long enough (required as least 32 bytes)",
-                seed.len()
+                seed_len
             );
             return Err(ERR_SEED_TOO_SHORT.to_owned());
         }
 
         // this may fail if the seed is too short or
         // the ciphersuite is not supported
-        let (pk, msk, rngseed) = master_key_gen(seed, &pp)?;
+        let (pk, msk, mut rngseed) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
-        let sk = SecretKey::init(&pp, msk, rngseed)?;
+        // it should also erase the msk
+        let sk = SecretKey::init(&pp, msk, &mut rngseed)?;
+        // makes sure the seed is distroyed
+        // the seed shold always be cleared
+        // so if not, we should panic rather than return errors
+        assert_eq!(
+            rngseed, [0u8; 32],
+            "seed not cleared after secret key initialization"
+        );
 
         // this may fail if the ciphersuite is not supported
         let pk = PublicKey::init(&pp, pk)?;
@@ -161,8 +172,14 @@ impl SecretKey {
 
     /// This function initializes the secret key at time stamp = 1.
     /// It takes the root secret `alpha` as the input.
+    /// It clears the rngseed by setting it to 0s, and
+    /// removes the root secret key alpha.
     /// It may returns an error if the ciphersuite is not supported.
-    pub fn init(pp: &PubParam, alpha: PixelG1, rngseed: [u8; 32]) -> Result<Self, String> {
+    pub fn init(
+        pp: &PubParam,
+        mut alpha: PixelG1,
+        mut rngseed: &mut [u8; 32],
+    ) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
@@ -186,18 +203,36 @@ impl SecretKey {
         // now: expand the rngseed into two parts, use 1st part for hash_to_field,
         // update rngseed to the second part
         // r = hash_to_field(DOM_SEP_KEY_INIT|ciphersuite| extract, 0)
-        let (extract, updated) = rngseed_extract_and_update(&rngseed);
+        // old rngseed should be zeroed.
+        let (extract, updated) = rngseed_extract_and_update(&mut rngseed);
+        assert_eq!(
+            rngseed, &[0u8; 32],
+            "rngseed not cleared during key initiation"
+        );
 
         // set up the input to hash to field
         let input = [
             domain_sep::DOM_SEP_KEY_INIT.as_bytes(),
             [pp.get_ciphersuite()].as_ref(),
-            //            &alpha_array[..],
             &extract,
         ]
         .concat();
         let r = Fr::from_ro(input, 0);
         let ssk = SubSecretKey::init(&pp, alpha, r);
+
+        // zero out the master secret alpha using ClearOnDrop
+        // this function sets the rng to 0s (and disable compiler optimization)
+        // once it is out of the scope
+        {
+            let _clear = ClearOnDrop::new(&mut alpha);
+        }
+        // panic if the alpha is not cleared
+        assert_eq!(
+            alpha,
+            PixelG1::zero(),
+            "alpha is not cleared during key initiation"
+        );
+
         Ok(SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
@@ -210,13 +245,13 @@ impl SecretKey {
     /// It takes the root secret `alpha` and a field element `r` as inputs.
     /// Currently this function is used by testing only.
     #[cfg(test)]
-    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr, rngseed: [u8; 32]) -> Self {
+    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr, rngseed: &[u8; 32]) -> Self {
         let ssk = SubSecretKey::init(&pp, alpha, r);
         SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
-            rngseed,
+            rngseed: *rngseed,
         }
     }
 
@@ -375,6 +410,19 @@ impl SecretKey {
         //
         // which is indeed sk_9
         while new_sk.ssk[0].get_time() != delegator_time {
+            // we use ClearOnDrop to safely remove the ssk[0]
+            {
+                let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);
+            }
+            // makes sure that the ssk[0] has been removed
+            // panic if this fails
+            assert_eq!(
+                new_sk.ssk[0],
+                SubSecretKey::default(),
+                "Subsecret key is not zeroed before removing"
+            );
+
+            // now we can safely remove the ssk
             new_sk.ssk.remove(0);
         }
 
@@ -394,7 +442,10 @@ impl SecretKey {
         //
         if delegator_time == tar_time {
             // assign new_sk to self, and return successful
-            // here we rely on Rust's memory safety feature to ensure the old key is erased
+            // we use ClearOnDrop to safely remove the old sk
+            // {
+            //     let _clear = ClearOnDrop::new(self);
+            // }
             *self = new_sk;
             return Ok(());
         }
@@ -433,7 +484,16 @@ impl SecretKey {
         // originally: digest sk into a shorter blob, and use it for hash_to_field
         // now: expand the rngseed into two parts, use 1st part for hash_to_field,
         // update rngseed to the second part
-        let (extract, updated) = rngseed_extract_and_update(&self.rngseed);
+        let (extract, updated) = rngseed_extract_and_update(&mut self.rngseed);
+
+        // makes sure the seed is distroyed
+        // the seed should always be cleared
+        // so if not, we should panic rather than returning errors
+        assert_eq!(
+            self.rngseed, [0u8; 32],
+            "seed not cleared within secret key update"
+        );
+
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
         'out: for (i, tmptime) in gamma_list.iter().enumerate() {
@@ -494,6 +554,20 @@ impl SecretKey {
 
         // step 5. remove the first ssk <- this was the ssk for delegator
         // and update the time stamp
+
+        // we use ClearOnDrop to safely remove the ssk[0]
+        {
+            let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);
+        }
+        // makes sure that the ssk[0] has been removed
+        // panic if this fails
+        assert_eq!(
+            new_sk.ssk[0],
+            SubSecretKey::default(),
+            "Subsecret key is not zeroed before removing"
+        );
+
+        // now we can safely remove the ssk
         new_sk.ssk.remove(0);
         new_sk.time = new_sk.ssk[0].get_time();
         // in example 1,
@@ -502,7 +576,6 @@ impl SecretKey {
         //
 
         // assign new_sk to self, and return successful
-        // here we rely on Rust's memory safety feature to ensure the old key is erased
         *self = new_sk;
         self.rngseed = updated;
         Ok(())
@@ -699,7 +772,12 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, [u8; 
         0,
     );
     let mut rngseed = [0u8; 32];
-    let hashinput = [domain_sep::DOM_SEP_SEED_INIT.as_ref(), seed].concat();
+    let hashinput = [
+        domain_sep::DOM_SEP_SEED_INIT.as_ref(),
+        [pp.get_ciphersuite()].as_ref(),
+        seed,
+    ]
+    .concat();
     let mut hasher = sha2::Sha256::new();
     hasher.input(hashinput);
     rngseed.clone_from_slice(&hasher.result());
@@ -716,21 +794,32 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, [u8; 
 ///     rngseed_updated      =  sha256 (DOM_SEP_SEED_UPDATE|rngseed)
 ///     rngseed_extracted    =  sha256 (DOM_SEP_SEED_EXTRACT|rngseed)
 /// The extracted seed is returned; the original seed is mutated to the updated one.
-fn rngseed_extract_and_update(rngseed: &[u8; 32]) -> ([u8; 32], [u8; 32]) {
+fn rngseed_extract_and_update(rngseed: &mut [u8; 32]) -> ([u8; 32], [u8; 32]) {
+    // the extracted seed
     let mut extracted = [0u8; 32];
+    // the updated seed
     let mut updated = [0u8; 32];
+
+    // extract =  (DOM_SEP_SEED_EXTRACT|rngseed)
     let hashinput = [domain_sep::DOM_SEP_SEED_EXTRACT.as_ref(), rngseed.as_ref()].concat();
     let mut hasher = sha2::Sha256::new();
     hasher.input(hashinput);
     extracted.clone_from_slice(&hasher.result());
 
+    // update =  (DOM_SEP_SEED_EXTRACT|rngseed)
     let hashinput = [domain_sep::DOM_SEP_SEED_UPDATE.as_ref(), rngseed.as_ref()].concat();
     let mut hasher = sha2::Sha256::new();
     hasher.input(hashinput);
     updated.clone_from_slice(&hasher.result());
-    // println!("before {:?}", rngseed);
-    // *rngseed = updated.to_owned();
-    // println!("after {:?}", rngseed);
+
+    // zero out the old seed using ClearOnDrop
+    // this function sets the rng to 0s (and disable compiler optimization)
+    // once it is out of the scope
+    {
+        let _clear = ClearOnDrop::new(rngseed);
+    }
+
+    // return the new seeds
     (extracted, updated)
 }
 

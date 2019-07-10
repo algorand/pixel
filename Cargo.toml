@@ -23,7 +23,9 @@ walkdir = "2.2.7"
 sha2 = "0.8"
 ff = { version = "0.4", features = ["derive"] }
 bigint = { version = "4", default-features = false }
-bls_sigs_ref-rs = {git= "https://github.com/kwantam/bls_sigs_ref"}
+bls_sigs_ref-rs = { git = "https://github.com/kwantam/bls_sigs_ref"}
+clear_on_drop = "0.2.3"
+
 
 [[bench]]
 name = "pixel_bench"

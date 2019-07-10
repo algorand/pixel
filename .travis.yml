@@ -21,9 +21,9 @@ env:
   - CARGO_FLAG=test --features=pk_in_g2,use_rand_generators --release -- --ignored
   - CARGO_FLAG=bench
 script:
-  - cargo clippy
+  #- cargo clippy
   # if you want the build job to fail when encountering warnings, use
-  - cargo clippy -- -D warnings
+  #- cargo clippy -- -D warnings
   # in order to also check tests and non-default crate features, use
   - cargo clippy --all-targets --all-features -- -D warnings
   # all sorts of tests with different compiling flags

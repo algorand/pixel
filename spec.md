@@ -469,7 +469,7 @@ Then, we generate d+3 generators as follows:
       * `info = "H2G" | I2OSP(i, 1)`
       * `t = HKDF-Expand(m, info, 32)`
       * `param[i] = hash_to_group(t, ciphersuite)`
-    
+
 
 <!--
 `DOM_SEP_PARAM_GEN | ciphersuite | seed | ctr`. The `ctr` is incremental for multiple group elements.
@@ -518,11 +518,13 @@ as follows:
   * Input: `rngseed` from the secret key
   * Output: a field element `r`
   * Steps:
-    * `m = HKDF-Extract(DOM_SEP_SIG, ciphersuite | rngseed | message | time stamp)`
+    * `m = HKDF-Extract(DOM_SEP_SIG | ciphersuite | message | time stamp, rngseed )`
     * `info = ""`
     * `t = HKDF-Expand(m, info, 32)`
     * `x = hash_to_field(t[0..31], 0)`
-    * the rngseed is not updated.
+
+The rngseed is not updated, so that for a same message and a same time stamp, we
+will always generate a same signature.
 
 
 <!-- from

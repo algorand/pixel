@@ -463,8 +463,8 @@ This section describes how randomness and seed are handled. A tentative definiti
 Then, the generators in the parameters are generated from `hash_to_group(input, ciphersuite)`
 function, where the input is
 `DOM_SEP_PARAM_GEN | ciphersuite | seed | ctr`. The `ctr` is incremental for multiple group elements.
-The `ctr` does not reset if when we generate generators for different groups. (It seemsa redundant to have a ciphersuite id in both `input` and `ciphersuite` fields. But this is only one byte and should not
-  affect the performance in most cases. It is also consistant with the rest of the inputs for `hash_to_field`.)
+The `ctr` does not reset if when we generate generators for different groups. (It seems redundant to have a ciphersuite id in both `input` and `ciphersuite` fields. But this is only one byte and should not
+  affect the performance in most cases. It is also consistent with the rest of the inputs for `hash_to_field`.)
 
 * The key generation function also takes a seed as one of the inputs. This seed is also provided by the caller. Same check on the seed is done as in parameter generation.
   * A master secret (`x`, or `alpha`, i.e., the exponent for the pk) is generated from

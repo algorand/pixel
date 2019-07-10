@@ -429,14 +429,14 @@ for some public key by checking         ` e(hpoly, g2) ?= e(h, pk) * e(h0*\prod 
     2. use the first SubSecretKey for signing `ssk = sk.get_first_ssk()`
     2. re-randomizing sigma1: `sig1 = ssk.g2r + g2^r`
     2. re-randomizing sigma2
-      1. `tmp = h0 * \prod h_i ^ t_i * h_d^m`
-      2. `sig2 = ssk.hpoly * hv[d]^m * tmp^r`
+        1. `tmp = h0 * \prod h_i ^ t_i * h_d^m`
+        2. `sig2 = ssk.hpoly * hv[d]^m * tmp^r`
     3. return `Signature{pp.ciphersuite(), tar_time, sig1, sig2}`
 
 
 * Verify (TODO)
 
-* Signture aggregation (TODO)
+* Signature aggregation (TODO)
 
 
 
@@ -453,3 +453,34 @@ for some public key by checking         ` e(hpoly, g2) ?= e(h, pk) * e(h0*\prod 
   * Input: a seed
   * Output: `rngseed_updated      =  sha256 (DOM_SEP_SEED_UPDATE|rngseed)`
   * Output: `rngseed_extracted    =  sha256 (DOM_SEP_SEED_EXTRACT|rngseed)`
+
+
+# Seed and rng
+
+This section describes how randomness and seed are handled.
+
+* The parameter generation function takes a seed as one of the inputs. This seed is provided by the caller (our go library). The rust code checks if the seed is longer than 32 bytes. It does not perform any extra operations over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc.
+Then, the generators in the parameters are generated from `hash_to_group(input, ciphersuite)`
+function, where the input is
+`DOM_SEP_PARAM_GEN | ciphersuite | seed | ctr`. The `ctr` is incremental for multiple group elements.
+The `ctr` does not reset if when we generate generators for different groups.
+
+* The key generation function also takes a seed as one of the inputs. This seed is also provided by the caller. Same check on the seed is done as in parameter generation.
+  * A master secret (`x`, or `alpha`, i.e., the exponent for the pk) is generated from
+  `hash_to_field(input, 0)`, where the input is `DOM_SEP_MASTER_KEY | ciphersuite | seed`.
+  * A rngseed is generated from `sha256(DOM_SEP_SEED_INIT|seed)`. This rngseed is part of the secret key, and will be used for deterministic updating and signing.
+  * During a (fast) key updating, the random field elements are generated from
+  `hash_to_field(input, ctr)`, where `input = DOM_SEP_KEY_UPDATE | ciphersuite | extracted_seed`, and
+  `ctr` is incremental in case multiple field elements are required.
+  Every time an extracted_seed is extracted during key updating, the rngseed will be updated.
+   The extraction (and seed updating) is done as follows:
+    * `extracted_seed = sha256(DOM_SEP_SEED_EXTRACT | rngseed)`
+    * `rngseed = sha256(DOM_SEP_SEED_UPDATE | rngseed)`   
+
+* During the signing procedure, the random field element is generated from
+`hash_to_field(input, ctr)`, where `input = DOM_SEP_SIG | ciphersuite | rngseed | message | time stamp`.
+The rngseed will __NOT__ be updated during signing, so that for the same message and time stamp, we
+will always generate a same signature.
+
+
+* Domain separators: see src/domain_sep.rs

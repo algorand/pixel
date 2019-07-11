@@ -333,8 +333,12 @@ impl SecretKey {
         self.rngseed
     }
 
-    /// Returns the first sub secret key on the list.
+    /// Clone the first sub secret key on the list.
     /// Returns an error if the list is empty.
+    /// Warning!!!
+    /// There will be two copies of the ssk[0] in the
+    /// memory once this function is called.
+    /// Make sure it is handled properly.
     pub fn get_first_ssk(&self) -> Result<SubSecretKey, String> {
         if self.ssk.is_empty() {
             #[cfg(debug_assertions)]
@@ -346,6 +350,10 @@ impl SecretKey {
     }
 
     /// Returns the whole list of the sub secret keys.
+    /// Warning!!!
+    /// There will be two copies of the ssk vector in the
+    /// memory once this function is called.
+    /// Make sure it is handled properly.
     pub fn get_ssk_vec(&self) -> Vec<SubSecretKey> {
         self.ssk.clone()
     }
@@ -365,7 +373,6 @@ impl SecretKey {
             return Err(ERR_SERIAL.to_owned());
         };
 
-        //        let hashinput = self.to_bytes();
         let mut hasher = sha2::Sha256::new();
         hasher.input(hashinput);
         Ok(hasher.result().to_vec())
@@ -732,16 +739,26 @@ impl SecretKey {
             Ok(p) => p,
         };
 
-        let ssk = self.get_ssk_vec();
+        let mut ssk = self.get_ssk_vec();
         for i in 0..ssk.len() {
             // checks that each ssk is valid
             if !ssk[i].validate(&pk, &pp) {
+                // clear ssk before exit
+                {
+                    let _clear = ClearOnDrop::new(&mut ssk);
+                }
+                assert_eq!(ssk, Vec::default(), "ssk not cleared");
                 #[cfg(debug_assertions)]
                 println!("Validation failed for {}th SubSecretKey", i);
                 return false;
             }
             // checks that the time for each ssk is valid w.r.t gamma list
             if ssk[i].get_time() != gamma_list[i].get_time() {
+                // clear ssk before exit
+                {
+                    let _clear = ClearOnDrop::new(&mut ssk);
+                }
+                assert_eq!(ssk, Vec::default(), "ssk not cleared");
                 #[cfg(debug_assertions)]
                 println!("Validation failed: time does not match the gamma_list");
                 #[cfg(feature = "verbose")]
@@ -755,6 +772,11 @@ impl SecretKey {
                 return false;
             }
         }
+        // clear ssk before exit
+        {
+            let _clear = ClearOnDrop::new(&mut ssk);
+        }
+        assert_eq!(ssk, Vec::default(), "ssk not cleared");
         true
     }
 

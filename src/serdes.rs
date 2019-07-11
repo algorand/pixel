@@ -1,4 +1,5 @@
 pub use bls_sigs_ref_rs::SerDes;
+use clear_on_drop::ClearOnDrop;
 use keys::{PublicKey, SecretKey, SubSecretKey};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
@@ -226,6 +227,13 @@ impl SerDes for SecretKey {
 
         // finished
         writer.write_all(&buf)?;
+
+        // clean the buf
+        {
+            let _clear = ClearOnDrop::new(&mut buf);
+        }
+        assert_eq!(buf, Vec::default());
+
         Ok(())
     }
 
@@ -311,6 +319,12 @@ impl SerDes for SubSecretKey {
             e.serialize(&mut buf, compressed)?;
         }
         writer.write_all(&buf)?;
+
+        // clean the buf
+        {
+            let _clear = ClearOnDrop::new(&mut buf);
+        }
+        assert_eq!(buf, Vec::default());
 
         Ok(())
     }

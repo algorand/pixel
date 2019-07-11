@@ -780,20 +780,20 @@ impl SecretKey {
         len
     }
 
-    /// TODO: description
-    pub fn to_bytes(&self) -> String {
-        let mut res = format!(
-            //        "ciphersuite {}, number of ssk {}, ",
-            "{}{}",
-            self.get_ciphersuite(),
-            self.get_ssk_number()
-        );
-        //        let ssk_list = self.get_ssk_vec();
-        for e in &self.ssk {
-            res.push_str(&e.to_bytes());
-        }
-        res
-    }
+    // /// TODO: description
+    // pub fn to_bytes(&self) -> String {
+    //     let mut res = format!(
+    //         //        "ciphersuite {}, number of ssk {}, ",
+    //         "{}{}",
+    //         self.get_ciphersuite(),
+    //         self.get_ssk_number()
+    //     );
+    //     //        let ssk_list = self.get_ssk_vec();
+    //     for e in &self.ssk {
+    //         res.push_str(&e.to_bytes());
+    //     }
+    //     res
+    // }
 }
 
 /// This function generates the master key pair from a seed.

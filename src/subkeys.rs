@@ -1,6 +1,7 @@
 // a module for sub secret keys and related functions
 // to decide: whether this should be packed into key.rs?
 
+use clear_on_drop::ClearOnDrop;
 use ff::Field;
 use keys::PublicKey;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
@@ -71,6 +72,12 @@ impl SubSecretKey {
         self.hvector.clone()
     }
 
+    /// Returns the length of the second element `(h0 \prod h_i^t_i )^r`
+    /// in a sub secret key.
+    pub fn get_hvector_len(&self) -> usize {
+        self.hvector.len()
+    }
+
     /// Returns the last coefficient of the h_vector;
     /// a short cut used by signing algorithm.
     pub fn get_last_hvector_coeff(&self) -> Result<PixelG1, String> {
@@ -131,22 +138,40 @@ impl SubSecretKey {
         let timevec = self.get_time_vec(depth)?;
         let tlen = timevec.get_vector_len();
         let tv = timevec.get_vector();
-        let mut tmp = hlist[0];
+        let mut tmp3 = hlist[0];
         for i in 0..tlen {
             let mut tmp2 = hlist[i + 1];
             tmp2.mul_assign(tv[i]);
-            tmp.add_assign(&tmp2);
+            tmp3.add_assign(&tmp2);
+            {
+                let _clear_tmp2 = ClearOnDrop::new(&mut tmp2);
+            }
+            assert_eq!(tmp2, PixelG1::default(), "tmp data is not cleared");
         }
 
         // radomize tmp and set hpoly *= tmp^r
-        tmp.mul_assign(r);
-        self.hpoly.add_assign(&tmp);
+        tmp3.mul_assign(r);
+        self.hpoly.add_assign(&tmp3);
+
+        // clean up the secret data that has been used
+        {
+            // remove the  tmp, tmp3
+            let _clear1 = ClearOnDrop::new(&mut tmp);
+            let _clear3 = ClearOnDrop::new(&mut tmp3);
+        }
+        assert_eq!(tmp, PixelG2::default(), "tmp data is not cleared");
+        assert_eq!(tmp3, PixelG1::default(), "tmp data is not cleared");
 
         // randmoize hlist
         for i in 0..self.hvector.len() {
             let mut tmp = hlist[tlen + i + 1];
             tmp.mul_assign(r);
             self.hvector[i].add_assign(&tmp);
+            // safely remove tmp after use
+            {
+                let _clear_tmp = ClearOnDrop::new(&mut tmp);
+            }
+            assert_eq!(tmp, PixelG1::default(), "tmp data is not cleared");
         }
         Ok(())
     }
@@ -187,11 +212,25 @@ impl SubSecretKey {
                 tmp.double();
             }
             self.hpoly.add_assign(&tmp);
+            // safely remove tmp after use
+            {
+                let _clear_tmp = ClearOnDrop::new(&mut tmp);
+            }
+            assert_eq!(tmp, PixelG1::default(), "tmp data is not cleared");
         }
 
         // remove the first `tar_vec_length - cur_vec_length` elements in h-vector
         for _ in 0..tar_vec_length - cur_vec_length {
             // h_i = 0
+            // safely remove the first element of hvector
+            {
+                let _clear_tmp = ClearOnDrop::new(&mut self.hvector[0]);
+            }
+            assert_eq!(
+                self.hvector[0],
+                PixelG1::default(),
+                "h vector is not cleared"
+            );
             self.hvector.remove(0);
         }
         // update the time to the new time stamp
@@ -301,27 +340,27 @@ impl SubSecretKey {
         // so switching group does not change the result
         len += 144;
         // hv length = |hv| * pixel g1 size
-        len += self.get_hvector().len() * pixel_g1_size;
+        len += self.get_hvector_len() * pixel_g1_size;
 
         len
     }
 
-    /// TODO: description
-    pub fn to_bytes(&self) -> String {
-        let hv = self.get_hvector();
-        let mut res = format!(
-            //"time: {}, h vector length {}, g2r {:?}, hploy {:?}, hvector ",
-            "{}{}{}{}",
-            self.get_time(),
-            hv.len(),
-            self.get_g2r().as_tuple().0,
-            self.get_hpoly().as_tuple().0
-        );
-        for e in hv {
-            res.push_str(&format!("{:?}", e.as_tuple().0));
-        }
-        res
-    }
+    // /// TODO: description
+    // pub fn to_bytes(&self) -> String {
+    //     let hv = self.get_hvector();
+    //     let mut res = format!(
+    //         //"time: {}, h vector length {}, g2r {:?}, hploy {:?}, hvector ",
+    //         "{}{}{}{}",
+    //         self.get_time(),
+    //         hv.len(),
+    //         self.get_g2r().as_tuple().0,
+    //         self.get_hpoly().as_tuple().0
+    //     );
+    //     for e in hv {
+    //         res.push_str(&format!("{:?}", e.as_tuple().0));
+    //     }
+    //     res
+    // }
 }
 
 impl fmt::Debug for SubSecretKey {

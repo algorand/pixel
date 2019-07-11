@@ -9,3 +9,4 @@ pub const ERR_SSK_EMPTY: &str = "The sub secret key list is empty";
 pub const ERR_TIME_DEPTH: &str = "Invalid Time Depth";
 pub const ERR_SERIAL: &str = "Fail to convert the element to a blob";
 pub const ERR_DESERIAL: &str = "Fail to convert a blob to the element";
+//pub const ERR_AGGREGATE_NUMBER_NOT_MATCH: &str = "Public key and signature numbers do not match during aggregation.";

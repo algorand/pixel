@@ -1,6 +1,6 @@
 use super::pixel::Pixel;
 use super::pixel::PixelSignature;
-use super::pixel::{PublicKey, SecretKey, Signature, ProofOfPossession};
+use super::pixel::{ProofOfPossession, PublicKey, SecretKey, Signature};
 use super::rand::Rng;
 use criterion::Criterion;
 
@@ -276,7 +276,7 @@ fn bench_verify(c: &mut Criterion) {
 
     // get a list of public keys
     let mut pklist: Vec<PublicKey> = vec![];
-    let mut poplist: Vec<ProofOfPossession>= vec![];
+    let mut poplist: Vec<ProofOfPossession> = vec![];
     let mut siglist: Vec<Signature> = vec![];
     let msg = "the message to be signed in benchmarking";
     let max_time = (1 << param.get_d()) - 1;

@@ -80,8 +80,8 @@ fn test_long_key_update() {
          error message {:?}",
         res.err()
     );
-    let (pk, sk, pop)= res.unwrap();
-assert!(pk.validate(&pop));
+    let (pk, sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
 
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`
@@ -125,7 +125,7 @@ fn test_sk_validation() {
         res.err()
     );
     let (pk, sk, pop) = res.unwrap();
-assert!(pk.validate(&pop));
+    assert!(pk.validate(&pop));
     assert!(sk.validate(&pk, &pp), "invalid sk");
     for j in 2..16 {
         let mut sk2 = sk.clone();
@@ -153,8 +153,8 @@ fn test_long_sk_validation() {
          error message {:?}",
         res.err()
     );
-    let (pk,sk, pop) = res.unwrap();
-assert!(pk.validate(&pop));
+    let (pk, sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
     assert!(sk.validate(&pk, &pp), "invalid sk");
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`

@@ -1,8 +1,9 @@
 // implements the signature structure, the signing and verification algorithms
 use bls_sigs_ref_rs::FromRO;
+use clear_on_drop::ClearOnDrop;
 use domain_sep::DOM_SEP_SIG;
 use ff::Field;
-use keys::{PublicKey, SecretKey};
+use keys::{PublicKey, SecretKey, SubSecretKey};
 use membership::MembershipTesting;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::{PubParam, VALID_CIPHERSUITE};
@@ -221,7 +222,7 @@ impl Signature {
         // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
         // we only use the first sub secret key to sign
-        let ssk = sk.get_first_ssk()?;
+        let mut ssk = sk.get_first_ssk()?;
 
         // get all neccessary variables
         let depth = pp.get_d();
@@ -237,24 +238,37 @@ impl Signature {
         tmp.mul_assign(r);
         sig1.add_assign(&tmp);
 
-        // tmp = h0 * \prod h_i ^ t_i * h_d^m
-        let mut tmp = hlist[0];
+        // tmp3 = h0 * \prod h_i ^ t_i * h_d^m
+        let mut tmp3 = hlist[0];
         for i in 0..tlen {
             let mut tmp2 = hlist[i + 1];
             tmp2.mul_assign(tv[i]);
-            tmp.add_assign(&tmp2);
+            tmp3.add_assign(&tmp2);
         }
         let mut tmp2 = hlist[depth];
         tmp2.mul_assign(msg);
-        tmp.add_assign(&tmp2);
+        tmp3.add_assign(&tmp2);
         // re-randomizing sigma2
         // sig2 = ssk.hpoly * hv[d]^m * tmp^r
-        tmp.mul_assign(r);
+        tmp3.mul_assign(r);
         let mut sig2 = ssk.get_hpoly();
         let mut hv_last = ssk.get_last_hvector_coeff()?;
         hv_last.mul_assign(msg);
         sig2.add_assign(&hv_last);
-        sig2.add_assign(&tmp);
+        sig2.add_assign(&tmp3);
+
+        // clean up the secret data that has been used
+        {
+            // remove the ssk, hv_last, tmp and tmp3
+            let _clear1 = ClearOnDrop::new(&mut ssk);
+            let _clear2 = ClearOnDrop::new(&mut hv_last);
+            let _clear3 = ClearOnDrop::new(&mut tmp);
+            let _clear4 = ClearOnDrop::new(&mut tmp3);
+        }
+        assert_eq!(ssk, SubSecretKey::default(), "subsecretkey is not cleared");
+        assert_eq!(hv_last, PixelG1::default(), "h vector is not cleared");
+        assert_eq!(tmp, PixelG2::default(), "tmp data is not cleared");
+        assert_eq!(tmp3, PixelG1::default(), "tmp data is not cleared");
 
         Ok(Signature {
             ciphersuite: pp.get_ciphersuite(),
@@ -398,9 +412,13 @@ impl Signature {
         // check the time and the ciphersuite match
         for e in sig_list.iter().skip(1) {
             if res.get_ciphersuite() != e.get_ciphersuite() {
+                #[cfg(debug_assertions)]
+                println!("ciphersuite do not match");
                 return Err(ERR_CIPHERSUITE.to_owned());
             }
             if res.get_time() != e.get_time() {
+                #[cfg(debug_assertions)]
+                println!("ciphersuite do not match");
                 return Err(ERR_TIME_STAMP.to_owned());
             }
         }
@@ -415,6 +433,9 @@ impl Signature {
 
     /// Input an aggregated signature, a list of public keys, a public parameter, and a
     /// message, output true if the signatures verifies.
+    /// Signatures verified through this way may be vulnerable to rogue key attacks,
+    /// unless a proof of possession of the public key is presented -- this should be
+    /// handled by the upper layer.
     pub fn verify_bytes_aggregated(
         &self,
         pk_list: &[PublicKey],
@@ -422,12 +443,20 @@ impl Signature {
         msg: &[u8],
     ) -> bool {
         // checks the ciphersuite ids match
-        let ciphersuite = pk_list[0].get_ciphersuite();
-        for e in pk_list.iter().skip(1) {
+        let ciphersuite = pp.get_ciphersuite();
+        for e in pk_list {
             if ciphersuite != e.get_ciphersuite() {
+                #[cfg(debug_assertions)]
+                println!("ciphersuite do not match");
                 return false;
             }
         }
+        if self.get_ciphersuite() != pp.get_ciphersuite() {
+            #[cfg(debug_assertions)]
+            println!("ciphersuite do not match");
+            return false;
+        }
+
         let mut agg_pke = pk_list[0].get_pk();
         for e in pk_list.iter().skip(1) {
             agg_pke.add_assign(&e.get_pk());
@@ -435,6 +464,49 @@ impl Signature {
         let pk = PublicKey::construct(ciphersuite, agg_pke);
         Signature::verify_bytes(&self, &pk, &pp, msg)
     }
+
+    // /// This function aggregtes the signature as follows:
+    // /// 1. assume all sigs are valid, aggregate without validate
+    // /// 2. verify aggregated signature -- if verified, return the siganture, and an empty list.
+    // /// 3. check the signature individually, update the sig_list and pk_list
+    // ///     with valid ones
+    // /// 4. return an aggregeted signature on valid ones, and a list of invalid ones
+    // pub fn aggregate_with_validate(
+    //     sig_list: &mut Vec<Self>,
+    //     pk_list: &mut Vec<PublicKey>,
+    //     pp: &PubParam,
+    //     msg: &[u8],
+    // ) -> Result<(Signature, Vec<(Signature, PublicKey)>), String> {
+    //     // check if the numbers match
+    //     if sig_list.len() != pk_list.len() {
+    //         return Err(ERR_AGGREGATE_NUMBER_NOT_MATCH.to_owned());
+    //     }
+    //     // generate an aggregated signature, and try to verify it
+    //     // also checks the ciphersuite ids match within those functions
+    //     let agg_sig = Signature::aggregate_without_validate(sig_list)?;
+    //     if agg_sig.verify_bytes_aggregated(pk_list, pp, msg) {
+    //         return Ok((agg_sig, vec![]));
+    //     }
+    //
+    //     // check individual ones
+    //     let mut invalid_list: Vec<(Signature, PublicKey)> = vec![];
+    //     for i in 0..sig_list.len() {
+    //         if !Signature::verify_bytes(&sig_list[i], &pk_list[i], &pp, msg) {
+    //             // push this pair to the invalid list
+    //             invalid_list.push((sig_list[i].clone(), pk_list[i].clone()));
+    //
+    //             sig_list[i] = Signature::default();
+    //             pk_list[i] = PublicKey::default();
+    //         }
+    //     }
+    //
+    //     // for i in 0..sig_list.len() {
+    //     //         if !sig_list[i].verify_bytes(&pk_list[i], pp, msg) {
+    //     //             let t = sig_list.remo
+    //     //         }
+    //     // }
+    //     Err("err".to_owned())
+    // }
 }
 
 /// This function hashes a message into a field element

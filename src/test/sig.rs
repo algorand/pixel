@@ -12,9 +12,8 @@ fn test_quick_signature_tests() {
     let pp = PubParam::init_without_seed();
     let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
     assert!(res.is_ok(), "key gen failed");
-    let keypair = res.unwrap();
-    let sk = keypair.get_sk();
-    let pk = keypair.get_pk();
+    let (pk, sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
     let seedr = b"this is also a very very long seed for testing";
 
     let msg = b"message to sign";
@@ -50,9 +49,8 @@ fn test_long_signature_tests() {
     let pp = PubParam::init_without_seed();
     let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
     assert!(res.is_ok(), "key gen failed");
-    let keypair = res.unwrap();
-    let sk = keypair.get_sk();
-    let pk = keypair.get_pk();
+    let (pk, sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
     let seedr = b"this is also a very very long seed for testing";
 
     let msg = b"message to sign";
@@ -124,9 +122,10 @@ fn test_quick_aggregated_signature_tests() {
 
         let res = KeyPair::keygen(key_gen_seed.as_ref(), &pp);
         assert!(res.is_ok(), "key gen failed");
-        let keypair = res.unwrap();
-        sklist.push(keypair.get_sk());
-        pklist.push(keypair.get_pk());
+        let (pk, sk, pop) = res.unwrap();
+        assert!(pk.validate(&pop));
+        sklist.push(sk);
+        pklist.push(pk);
     }
 
     let seedr = b"this is also a very very long seed for testing";

@@ -39,8 +39,8 @@ fn test_sk_to_bytes() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    let sk = keypair.get_sk();
+    let (pk, sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
 
     let s = sk.to_bytes();
     println!("first key: {}", s);
@@ -104,9 +104,8 @@ fn test_sk_serialization() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    let sk = keypair.get_sk();
-    let pk = keypair.get_pk();
+    let (pk, sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
 
     let bufsize = sk.get_size();
     // buffer space
@@ -157,8 +156,8 @@ fn test_pk_serialization() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    let pk = keypair.get_pk();
+    let (pk, _sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
 
     // buffer space
     let mut buf: Vec<u8> = vec![];
@@ -196,9 +195,8 @@ fn test_signature_serialization() {
     let pp = PubParam::init_without_seed();
     let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
     assert!(res.is_ok(), "key gen failed");
-    let keypair = res.unwrap();
-    let sk = keypair.get_sk();
-    let pk = keypair.get_pk();
+    let (pk, sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
 
     let seedr = b"this is also a very very long seed for testing";
     let msg = b"message to sign";

@@ -18,7 +18,7 @@ use PixelG2;
 /// * `sigma2 = ssk.hpoly * hv[d]^m * (h0 * \prod h_i ^ t_i * h_d^m)^r` in `PixelG1`.
 ///
 /// As in the python code, sigma1 and sigma2 are switched --  not consistent with the paper.
-#[derive(Eq, Clone)]
+#[derive(Eq, Clone, Default)]
 pub struct Signature {
     ciphersuite: u8,
     time: TimeStamp,

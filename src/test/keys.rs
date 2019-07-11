@@ -28,8 +28,8 @@ fn test_quick_key_update() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    let mut sk = keypair.get_sk();
+    let (pk, mut sk, pop) = res.unwrap();
+    assert!(pk.validate(&pop));
     println!("{:?}", sk);
     // update from 1 to j
     for j in 2..16 {
@@ -44,7 +44,7 @@ fn test_quick_key_update() {
         // makes sure the seed is mutated in after the delegation
         assert_ne!(sk.get_rngseed(), sk2.get_rngseed());
         for ssk in sk2.get_ssk_vec() {
-            assert!(ssk.validate(&keypair.get_pk(), &pp), "validation failed");
+            assert!(ssk.validate(&pk, &pp), "validation failed");
         }
         println!("{:?}", sk);
     }
@@ -60,7 +60,7 @@ fn test_quick_key_update() {
             res.err()
         );
         for ssk in sk2.get_ssk_vec() {
-            assert!(ssk.validate(&keypair.get_pk(), &pp), "validation failed");
+            assert!(ssk.validate(&pk, &pp), "validation failed");
         }
         sk = sk2;
         println!("{:?}", sk);
@@ -80,8 +80,8 @@ fn test_long_key_update() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    let sk = keypair.get_sk();
+    let (pk, sk, pop)= res.unwrap();
+assert!(pk.validate(&pop));
 
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`
@@ -105,11 +105,11 @@ fn test_long_key_update() {
                 res.err()
             );
             for ssk in sk3.get_ssk_vec() {
-                assert!(ssk.validate(&keypair.get_pk(), &pp), "validation failed");
+                assert!(ssk.validate(&pk, &pp), "validation failed");
             }
         }
         for ssk in sk2.get_ssk_vec() {
-            assert!(ssk.validate(&keypair.get_pk(), &pp), "validation failed");
+            assert!(ssk.validate(&pk, &pp), "validation failed");
         }
     }
 }
@@ -124,9 +124,8 @@ fn test_sk_validation() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    let sk = keypair.get_sk();
-    let pk = keypair.get_pk();
+    let (pk, sk, pop) = res.unwrap();
+assert!(pk.validate(&pop));
     assert!(sk.validate(&pk, &pp), "invalid sk");
     for j in 2..16 {
         let mut sk2 = sk.clone();
@@ -154,9 +153,8 @@ fn test_long_sk_validation() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    let pk = keypair.get_pk();
-    let sk = keypair.get_sk();
+    let (pk,sk, pop) = res.unwrap();
+assert!(pk.validate(&pop));
     assert!(sk.validate(&pk, &pp), "invalid sk");
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`

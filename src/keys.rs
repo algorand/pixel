@@ -3,7 +3,7 @@
 //  * the public key
 //  * the secret key <- the sub secret keys are defined seperately in subkeys module
 
-use bls_sigs_ref_rs::FromRO;
+use bls_sigs_ref_rs::{BLSSignature, FromRO};
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
 use pairing::{bls12_381::Fr, CurveProjective};
@@ -20,12 +20,22 @@ use PK_LEN;
 
 /// The public key structure is a wrapper of `PixelG2` group.
 /// The actual group that the public key lies in depends on `pk_in_g2` flag.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PublicKey {
     /// ciphersuite id
     ciphersuite: u8,
     /// the actual public key element
     pk: PixelG2,
+}
+
+/// The public key structure is a wrapper of `PixelG2` group.
+/// The actual group that the public key lies in depends on `pk_in_g2` flag.
+#[derive(Debug, Clone, Default)]
+pub struct ProofOfPossession {
+    /// ciphersuite id
+    ciphersuite: u8,
+    /// the actual public key element
+    pop: PixelG1,
 }
 
 impl PublicKey {
@@ -77,14 +87,37 @@ impl PublicKey {
     pub fn get_ciphersuite(&self) -> u8 {
         self.ciphersuite
     }
+
+    /// This function validates the public key against the
+    /// proof_of_possession using BLS verification algorithm.
+    pub fn validate(&self, pop: &ProofOfPossession) -> bool {
+        // check that the ciphersuite identifier is correct
+        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
+            #[cfg(debug_assertions)]
+            println!("Incorrect ciphersuite id: {}", self.get_ciphersuite());
+            return false;
+        }
+        // buf = DOM_SEP_POP | serial (PK)
+        let mut buf = domain_sep::DOM_SEP_POP.as_bytes().to_vec();
+        if self.get_pk().serialize(&mut buf, true).is_err() {
+            #[cfg(debug_assertions)]
+            println!("Serialization failure on public key");
+            return false;
+        };
+        // return the output of verification
+        BLSSignature::verify(self.get_pk(), pop.pop, buf, self.get_ciphersuite())
+    }
 }
 
-/// The keypair is a pair of public and secret keys.
-#[derive(Debug, Clone)]
-pub struct KeyPair {
-    sk: SecretKey,
-    pk: PublicKey,
-}
+/// The keypair is a pair of public and secret keys,
+/// and a proof of possesion of the public key.
+#[derive(Debug, Clone, Default)]
+pub struct KeyPair;
+// pub struct KeyPair {
+//     sk: SecretKey,
+//     pk: PublicKey,
+//     pop: ProofOfPossession,
+// }
 
 /// The secret key is a list of SubSecretKeys;
 /// the length of the list can be arbitrary;
@@ -104,12 +137,18 @@ pub struct SecretKey {
 }
 
 impl KeyPair {
-    /// Generate a pair of public keys and secret keys.
+    /// Generate a pair of public keys and secret keys,
+    /// and a proof of possession of the public key.
+    /// This function does NOT return the master secret
+    /// therefore this is the only method that generates POP.
     /// This function does NOT destroy the seed.
     /// Returns an error if
     /// * the seed is not long enough
     /// * the ciphersuite is not supported
-    pub fn keygen(seed: &[u8], pp: &PubParam) -> Result<Self, String> {
+    pub fn keygen(
+        seed: &[u8],
+        pp: &PubParam,
+    ) -> Result<(PublicKey, SecretKey, ProofOfPossession), String> {
         // update then extract the seed
         // make sure we have enough entropy
         let seed_len = seed.len();
@@ -124,33 +163,52 @@ impl KeyPair {
 
         // this may fail if the seed is too short or
         // the ciphersuite is not supported
-        let (pk, msk, mut rngseed) = master_key_gen(seed, &pp)?;
+        let (pk, msk, pop, mut rngseed) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
         // it should also erase the msk
         let sk = SecretKey::init(&pp, msk, &mut rngseed)?;
-        // makes sure the seed is distroyed
+        // makes sure the seed and msk are distroyed
         // the seed shold always be cleared
         // so if not, we should panic rather than return errors
         assert_eq!(
             rngseed, [0u8; 32],
             "seed not cleared after secret key initialization"
         );
+        // assert_eq!(
+        //     msk,
+        //     PixelG1::default(),
+        //     "msk not cleared after secret key initialization"
+        // );
 
         // this may fail if the ciphersuite is not supported
         let pk = PublicKey::init(&pp, pk)?;
-        Ok(Self { sk, pk })
+
+        // return the keys and the proof of possession
+        Ok((
+            pk,
+            sk,
+            ProofOfPossession {
+                ciphersuite: pp.get_ciphersuite(),
+                pop,
+            },
+        ))
     }
 
-    /// Returns the public key in a `KeyPair`
-    pub fn get_pk(&self) -> PublicKey {
-        self.pk.clone()
-    }
-
-    /// Returns the secret key in a `KeyPair`
-    pub fn get_sk(&self) -> SecretKey {
-        self.sk.clone()
-    }
+    // /// Returns the public key in a `KeyPair`
+    // pub fn get_pk(&self) -> PublicKey {
+    //     self.pk.clone()
+    // }
+    //
+    // /// Returns the secret key in a `KeyPair`
+    // pub fn get_sk(&self) -> SecretKey {
+    //     self.sk.clone()
+    // }
+    //
+    // /// Returns the secret key in a `KeyPair`
+    // pub fn get_pop(&self) -> ProofOfPossession {
+    //     self.pop.clone()
+    // }
 }
 
 impl SecretKey {
@@ -741,8 +799,12 @@ impl SecretKey {
 /// This function generates the master key pair from a seed.
 /// Input a seed, it uses hash_to_field function to generate a field element x.
 /// The public/secret key is then set to g2^x and h^x
+/// It also generate a proof of possesion which is a BLS signature on g2^x.
 /// This function is private -- it should be used only as a subroutine to key gen function
-fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, [u8; 32]), String> {
+fn master_key_gen(
+    seed: &[u8],
+    pp: &PubParam,
+) -> Result<(PixelG2, PixelG1, PixelG1, [u8; 32]), String> {
     // make sure we have enough entropy
     if seed.len() < 32 {
         #[cfg(debug_assertions)]
@@ -787,7 +849,23 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, [u8; 
     let mut sk = pp.get_h();
     pk.mul_assign(r);
     sk.mul_assign(r);
-    Ok((pk, sk, rngseed))
+    let pop = proof_of_possession(r, pk, pp.get_ciphersuite())?;
+    Ok((pk, sk, pop, rngseed))
+}
+
+/// This function generate a proof of possesion of the master secret.
+/// This function is a subroutine of the key generation function, and
+/// should not be called anywhere else -- the master secret key is
+/// destroyed after key generation.
+fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1, String> {
+    // buf = DOM_SEP_POP | serial (PK)
+    let mut buf = domain_sep::DOM_SEP_POP.as_bytes().to_vec();
+    if pk.serialize(&mut buf, true).is_err() {
+        return Err(ERR_SERIAL.to_owned());
+    };
+    // the pop is a signature on the buf
+    let sig = BLSSignature::sign(msk, buf, ciphersuite);
+    Ok(sig)
 }
 
 /// Input a seed, this function extract and then update the seed as follows:
@@ -903,6 +981,6 @@ fn test_master_key() {
     let pp = PubParam::init_without_seed();
     let res = master_key_gen(b"this is a very very long seed for testing", &pp);
     assert!(res.is_ok(), "master key gen failed");
-    let (pk, sk, _seed) = res.unwrap();
+    let (pk, sk, _pop, _seed) = res.unwrap();
     assert!(validate_master_key(&pk, &sk, &pp), "master key is invalid")
 }

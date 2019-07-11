@@ -26,3 +26,6 @@ pub const DOM_SEP_SEED_UPDATE: &str = "Pixel prng seed update";
 
 // prefix of sha256 to generate a new seed
 pub const DOM_SEP_SEED_EXTRACT: &str = "Pixel prng seed extraction";
+
+// prefix of public key proof of possesion
+pub const DOM_SEP_POP: &str = "Pixel public key POP";

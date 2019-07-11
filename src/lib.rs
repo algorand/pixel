@@ -125,6 +125,7 @@ pub const PP_LEN: usize = 626;
 pub const PP_LEN: usize = 386;
 
 // Expose this constant.
+use keys::ProofOfPossession;
 pub use param::CONST_D;
 
 // expose the submodules of this crate for debug versions
@@ -161,14 +162,22 @@ pub trait PixelSignature {
     /// Input a byte string as the seed, and the public parameters.
     /// The seed needs to be at least
     /// 32 bytes long. Output the key pair.
+    /// Generate a pair of public keys and secret keys,
+    /// and a proof of possession of the public key.
+    /// This function does NOT return the master secret
+    /// therefore this is the only method that generates POP.
     /// Returns an error is seed is not long enough.
     fn key_gen<Blob: AsRef<[u8]>>(
         seed: Blob,
         pp: &PubParam,
-    ) -> Result<(PublicKey, SecretKey), String> {
+    ) -> Result<(PublicKey, SecretKey, ProofOfPossession), String> {
         use keys::KeyPair;
         let kp = KeyPair::keygen(seed.as_ref(), &pp)?;
-        Ok((kp.get_pk(), kp.get_sk()))
+        // Rust does not allow to move out borrowed value
+        // So the `get_XX` function actually clones the data.
+        // Therefore we want to make sure the original kp
+        //
+        Ok(kp)
     }
 
     /// Input a secret key, the public parameter and a time stamp,

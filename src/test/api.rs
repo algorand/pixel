@@ -57,7 +57,7 @@ fn test_pixel_api() {
 
     let res = Pixel::key_gen("this is a very very long seed for key gen testing", &pp);
     assert!(res.is_ok(), "pixel key gen failed");
-    let (pk, mut sk) = res.unwrap();
+    let (pk, mut sk, _pop) = res.unwrap();
 
     let sk2 = sk.clone();
 

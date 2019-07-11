@@ -125,12 +125,11 @@ pub const PP_LEN: usize = 626;
 pub const PP_LEN: usize = 386;
 
 // Expose this constant.
-use keys::ProofOfPossession;
 pub use param::CONST_D;
 
 // expose the submodules of this crate for debug versions
 //#[cfg(debug_assertions)]
-pub use keys::{PublicKey, SecretKey, SubSecretKey};
+pub use keys::{ProofOfPossession, PublicKey, SecretKey, SubSecretKey};
 //#[cfg(debug_assertions)]
 pub use param::PubParam;
 //#[cfg(debug_assertions)]

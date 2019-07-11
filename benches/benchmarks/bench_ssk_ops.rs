@@ -25,7 +25,7 @@ fn bench_ssk_delegate(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk and store the first ssk
-        let (_, sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         ssklist.push(sk.get_first_ssk().unwrap());
     }
 
@@ -76,7 +76,7 @@ fn bench_ssk_leveled_randomization(c: &mut Criterion) {
         .take(32)
         .collect::<String>();
     // generate a sk and store the first ssk
-    let (_, sk) = Pixel::key_gen(&seed, &param).unwrap();
+    let (_, sk, _) = Pixel::key_gen(&seed, &param).unwrap();
     let mut ssk = sk.get_first_ssk().unwrap();
 
     // from root to the leaf we can delegate d - 1 times
@@ -118,7 +118,7 @@ fn bench_ssk_leaf_randomization(c: &mut Criterion) {
         .take(32)
         .collect::<String>();
     // generate a sk and store the first ssk
-    let (_, sk) = Pixel::key_gen(&seed, &param).unwrap();
+    let (_, sk, _) = Pixel::key_gen(&seed, &param).unwrap();
     let mut ssk = sk.get_first_ssk().unwrap();
     // update ssk to a leaf node
     let tar_time = param.get_d() as u64;

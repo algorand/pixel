@@ -1,6 +1,6 @@
 use super::pixel::Pixel;
 use super::pixel::PixelSignature;
-use super::pixel::{PublicKey, SecretKey, Signature};
+use super::pixel::{PublicKey, SecretKey, Signature, ProofOfPossession};
 use super::rand::Rng;
 use criterion::Criterion;
 
@@ -67,7 +67,7 @@ fn bench_key_update_next(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk
-        let (_, mut sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 1);
         assert!(Pixel::sk_update(&mut sk, time, &param).is_ok());
@@ -109,7 +109,7 @@ fn bench_key_update_random(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk
-        let (_, mut sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param).is_ok());
@@ -154,7 +154,7 @@ fn bench_sign(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk
-        let (_, mut sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param).is_ok());
@@ -197,7 +197,7 @@ fn bench_sign_present(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk
-        let (_, mut sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param).is_ok());
@@ -240,7 +240,7 @@ fn bench_sign_then_update(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk
-        let (_, mut sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param).is_ok());
@@ -276,6 +276,7 @@ fn bench_verify(c: &mut Criterion) {
 
     // get a list of public keys
     let mut pklist: Vec<PublicKey> = vec![];
+    let mut poplist: Vec<ProofOfPossession>= vec![];
     let mut siglist: Vec<Signature> = vec![];
     let msg = "the message to be signed in benchmarking";
     let max_time = (1 << param.get_d()) - 1;
@@ -286,7 +287,7 @@ fn bench_verify(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk
-        let (pk, mut sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (pk, mut sk, pop) = Pixel::key_gen(&seed, &param).unwrap();
         // sign at a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         let res = Pixel::sign(&mut sk, time, &param, msg);
@@ -294,11 +295,23 @@ fn bench_verify(c: &mut Criterion) {
         // pack the signature, time, and public key
         pklist.push(pk);
         siglist.push(res.unwrap());
+        poplist.push(pop);
     }
 
     // benchmarking
+    let pklist_clone = pklist.clone();
     let mut counter = 0;
-    c.bench_function("verification", move |b| {
+    c.bench_function("verifying POP", move |b| {
+        b.iter(|| {
+            let res = pklist_clone[counter].validate(&poplist[counter]);
+            assert!(res, "verification failed");
+            counter = (counter + 1) % SAMPLES;
+        })
+    });
+
+    // benchmarking
+    let mut counter = 0;
+    c.bench_function("verifying signature", move |b| {
         b.iter(|| {
             let res = Pixel::verify(&pklist[counter], &param, msg, &siglist[counter]);
             assert!(res, "verification failed");

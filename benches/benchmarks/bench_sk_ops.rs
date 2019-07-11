@@ -24,7 +24,7 @@ fn bench_sk_update_seq(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk
-        let (_, sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         sklist.push(sk);
     }
 
@@ -77,7 +77,7 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
             .take(32)
             .collect::<String>();
         // generate a sk and update to time 31
-        let (_, mut sk) = Pixel::key_gen(&seed, &param).unwrap();
+        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         let res = Pixel::sk_update(&mut sk, 31, &param);
         assert!(res.is_ok(), res.err());
         sklist.push(sk);

@@ -460,10 +460,10 @@ for some public key by checking         ` e(hpoly, g2) ?= e(h, pk) * e(h0*\prod 
 This section describes how randomness and seed are handled. A tentative definition of domain separators are available in src/domain_sep.rs. `|` is the concatenation of the byte strings.
 We will be using the following functions
 
-    * `HKDF-Extract(salt , seed) -> secret`
-    * `HKDF-Expand(secret, public_info, length_of_new_secret) -> new_secret`
-    * `hash_to_group(input, ciphersuite)`
-    * `hash_to_field(input, ctr = 0)`
+    * HKDF-Extract(salt , seed) -> secret
+    * HKDF-Expand(secret, public_info, length_of_new_secret) -> new_secret
+    * hash_to_group(input, ciphersuite) -> group element
+    * hash_to_field(input, ctr = 0) -> field element
 
 
 * The parameter generation function takes a seed as one of the inputs. This seed is provided by the caller (our go library). The rust code checks if the seed is longer than 32 bytes. It does not perform any extra operations over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc.
@@ -478,12 +478,12 @@ Then, we generate d+3 generators as follows:
         * `info = "H2G_h"`
         * `t = HKDF-Expand(m, info, 32)`
         * `h = hash_to_group(t, ciphersuite)`
-    4. generate `h_0 ... h_{d+1}` as follows:
+    4. generate `h_0 ... h_d` as follows:
         * `info = "H2G_h" | I2OSP(i)`
         * `t = HKDF-Expand(m, info, 32)`
         * `h = hash_to_group(t, ciphersuite)`
     5. output   
-    `[g2, h, hlist]`
+    `[g2, h, h_0 ... h_d]`
 
 
 <!--

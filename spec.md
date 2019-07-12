@@ -467,8 +467,7 @@ We will be using the following functions
 
 
 * The parameter generation function takes a seed as one of the inputs. This seed is provided by the caller (our go library). The rust code checks if the seed is longer than 32 bytes.
-We may use SHA256's IV as the seed.
-Rust code not perform any extra operations over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc.
+Rust code does not perform any extra checks over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc. We may use SHA256's IV as the seed.
 Then, we generate the generators as follows:
   * Input: `seed`
   * Output: `param = [g2, h, h0, ... hd]`

@@ -24,8 +24,8 @@ sha2 = "0.8"
 ff = { version = "0.4", features = ["derive"] }
 bls_sigs_ref-rs = { git = "https://github.com/kwantam/bls_sigs_ref"}
 clear_on_drop = "0.2.3"
-#pixel_param = {path = "../pixel_param2"}
-pixel_param = { git = "https://github.com/algorand/pixel_param"}
+pixel_param = {path = "../pixel_param2"}
+#pixel_param = { git = "https://github.com/algorand/pixel_param"}
 
 [[bench]]
 name = "pixel_bench"

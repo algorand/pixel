@@ -481,7 +481,7 @@ Then, we generate d+3 generators as follows:
     4. generate `h_0 ... h_d` as follows:
         * `info = "H2G_h" | I2OSP(i)`
         * `t = HKDF-Expand(m, info, 32)`
-        * `h = hash_to_group(t, ciphersuite)`
+        * `h_i = hash_to_group(t, ciphersuite)`
     5. output   
     `[g2, h, h_0 ... h_d]`
 

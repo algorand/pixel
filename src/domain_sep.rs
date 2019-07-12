@@ -15,8 +15,8 @@ pub const DOM_SEP_MASTER_KEY: &str = "Pixel master key";
 // prefix of hash_to_field to generate the root key: sk at time 1
 pub const DOM_SEP_KEY_INIT: &str = "Pixel randomness for root key";
 
-// prefix of hash_to_group to generate public parameters
-pub const DOM_SEP_PARAM_GEN: &str = "Pixel public parameter generation";
+// // prefix of hash_to_group to generate public parameters
+// pub const DOM_SEP_PARAM_GEN: &str = "Pixel public parameter generation";
 
 // prefix of sha256 to initiate a seed
 pub const DOM_SEP_SEED_INIT: &str = "Pixel prng seed initiate";

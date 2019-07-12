@@ -21,19 +21,20 @@
 //! * The current implementaion only supports ciphersuite id  = `0x00` and `0x01`. The exact
 //! mapping between ids and parameters is yet to be specified.
 
-extern crate bigint;
+// extern crate bigint;
 extern crate bls_sigs_ref_rs;
 extern crate clear_on_drop;
 extern crate ff;
 extern crate pairing;
 extern crate sha2;
+extern crate pixel_param as param;
 
 mod domain_sep;
 mod keys;
 
 /// this module defines memebership tests for Pixel Groups
 pub mod membership;
-mod param;
+// mod param;
 mod pixel_err;
 mod serdes;
 mod sig;
@@ -43,35 +44,35 @@ mod time;
 #[cfg(test)]
 mod test;
 
-// by default the groups are switched so that
-// the public key lies in G2
-// this yields smaller public keys
-// in the case where public key lies in G1,
-// we need to unswitch the groups
-// to enable this feature, set `features=pk_in_g2` flag
-
-//  additional comments for cargo doc
-/// The pixel G1 group is mapped to G1 over BLS12-381 curve.
-/// Note that `features=pk_in_g2` flag is set.
-#[cfg(feature = "pk_in_g2")]
-pub type PixelG1 = pairing::bls12_381::G1;
-//  additional comments for cargo doc
-/// The pixel G2 group is mapped to G2 over BLS12-381 curve.
-/// Note that `features=pk_in_g2` flag is set.
-#[cfg(feature = "pk_in_g2")]
-pub type PixelG2 = pairing::bls12_381::G2;
-//  additional comments for cargo doc
-/// By default the groups are switched so that
-/// the public key lies in G2.
-/// This means pixel G1 group is mapped to G2 over BLS12-381 curve.
-#[cfg(not(feature = "pk_in_g2"))]
-pub type PixelG1 = pairing::bls12_381::G2;
-//  additional comments for cargo doc
-/// By default the groups are switched so that
-/// the public key lies in G2.
-/// This means pixel G2 group is mapped to G1 over BLS12-381 curve.
-#[cfg(not(feature = "pk_in_g2"))]
-pub type PixelG2 = pairing::bls12_381::G1;
+// // by default the groups are switched so that
+// // the public key lies in G2
+// // this yields smaller public keys
+// // in the case where public key lies in G1,
+// // we need to unswitch the groups
+// // to enable this feature, set `features=pk_in_g2` flag
+//
+// //  additional comments for cargo doc
+// /// The pixel G1 group is mapped to G1 over BLS12-381 curve.
+// /// Note that `features=pk_in_g2` flag is set.
+// #[cfg(feature = "pk_in_g2")]
+// pub type PixelG1 = pairing::bls12_381::G1;
+// //  additional comments for cargo doc
+// /// The pixel G2 group is mapped to G2 over BLS12-381 curve.
+// /// Note that `features=pk_in_g2` flag is set.
+// #[cfg(feature = "pk_in_g2")]
+// pub type PixelG2 = pairing::bls12_381::G2;
+// //  additional comments for cargo doc
+// /// By default the groups are switched so that
+// /// the public key lies in G2.
+// /// This means pixel G1 group is mapped to G2 over BLS12-381 curve.
+// #[cfg(not(feature = "pk_in_g2"))]
+// pub type PixelG1 = pairing::bls12_381::G2;
+// //  additional comments for cargo doc
+// /// By default the groups are switched so that
+// /// the public key lies in G2.
+// /// This means pixel G2 group is mapped to G1 over BLS12-381 curve.
+// #[cfg(not(feature = "pk_in_g2"))]
+// pub type PixelG2 = pairing::bls12_381::G1;
 
 /// The size of pk is 49 when PK is in G1. 1 byte for ciphersuite ID
 /// and 48 byte for group element.
@@ -106,14 +107,14 @@ pub const PP_LEN: usize = 3314;
 #[cfg(feature = "pk_in_g2")]
 pub const PP_LEN: usize = 1730;
 
-/// The size of public param is  when PK is in G1...
-/// * 1 byte for ciphersuite ID
-/// * 1 byte for depth
-/// * 144 for g2 and h
-/// * |PIXELG2| *(d+1) for hlist
-#[cfg(debug_assertions)]
-#[cfg(not(feature = "pk_in_g2"))]
-pub const PP_LEN: usize = 626;
+// /// The size of public param is  when PK is in G1...
+// /// * 1 byte for ciphersuite ID
+// /// * 1 byte for depth
+// /// * 144 for g2 and h
+// /// * |PIXELG2| *(d+1) for hlist
+// #[cfg(debug_assertions)]
+// #[cfg(not(feature = "pk_in_g2"))]
+// pub const PP_LEN: usize = 626;
 
 /// The size of public param is  when PK is in G1...
 /// * 1 byte for ciphersuite ID
@@ -126,6 +127,8 @@ pub const PP_LEN: usize = 386;
 
 // Expose this constant.
 pub use param::CONST_D;
+pub use param::{PixelG1, PixelG2, VALID_CIPHERSUITE};
+
 
 // expose the submodules of this crate for debug versions
 //#[cfg(debug_assertions)]

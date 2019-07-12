@@ -171,23 +171,23 @@ fn test_pk_serialization() {
     assert_eq!(pk, pk_recover);
 }
 
-#[test]
-fn test_param_serialization() {
-    use PP_LEN;
-    let pp = PubParam::init_without_seed();
-
-    // buffer space
-    let mut buf: Vec<u8> = vec![];
-
-    // serializae a ssk into buffer
-    assert!(pp.serialize(&mut buf, true).is_ok());
-    assert_eq!(buf.len(), PP_LEN, "length of blob is incorrect");
-
-    // deserialize a buffer into ssk
-    let pp_recover = PubParam::deserialize(&mut buf[..].as_ref()).unwrap();
-    // makes sure that the keys match
-    assert_eq!(pp, pp_recover);
-}
+// #[test]
+// fn test_param_serialization() {
+//     use PP_LEN;
+//     let pp = PubParam::init_without_seed();
+//
+//     // buffer space
+//     let mut buf: Vec<u8> = vec![];
+//
+//     // serializae a ssk into buffer
+//     assert!(pp.serialize(&mut buf, true).is_ok());
+//     assert_eq!(buf.len(), PP_LEN, "length of blob is incorrect");
+//
+//     // deserialize a buffer into ssk
+//     let pp_recover = PubParam::deserialize(&mut buf[..].as_ref()).unwrap();
+//     // makes sure that the keys match
+//     assert_eq!(pp, pp_recover);
+// }
 
 #[test]
 fn test_signature_serialization() {

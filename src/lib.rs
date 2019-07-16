@@ -26,8 +26,8 @@ extern crate bls_sigs_ref_rs;
 extern crate clear_on_drop;
 extern crate ff;
 extern crate pairing;
-extern crate sha2;
 extern crate pixel_param as param;
+extern crate sha2;
 
 mod domain_sep;
 mod keys;
@@ -129,7 +129,6 @@ pub const PP_LEN: usize = 386;
 pub use param::CONST_D;
 pub use param::{PixelG1, PixelG2, VALID_CIPHERSUITE};
 
-
 // expose the submodules of this crate for debug versions
 //#[cfg(debug_assertions)]
 pub use keys::{ProofOfPossession, PublicKey, SecretKey, SubSecretKey};
@@ -161,6 +160,11 @@ pub trait PixelSignature {
         PubParam::init(seed.as_ref(), ciphersuite)
     }
 
+    /// Return the default, pre-computed parameter set.
+    fn param_default() -> PubParam {
+        PubParam::default()
+    }
+
     /// Input a byte string as the seed, and the public parameters.
     /// The seed needs to be at least
     /// 32 bytes long. Output the key pair.
@@ -175,10 +179,6 @@ pub trait PixelSignature {
     ) -> Result<(PublicKey, SecretKey, ProofOfPossession), String> {
         use keys::KeyPair;
         let kp = KeyPair::keygen(seed.as_ref(), &pp)?;
-        // Rust does not allow to move out borrowed value
-        // So the `get_XX` function actually clones the data.
-        // Therefore we want to make sure the original kp
-        //
         Ok(kp)
     }
 
@@ -244,6 +244,27 @@ pub trait PixelSignature {
         sig: &Signature,
     ) -> bool {
         sig.verify_bytes(pk, &pp, msg.as_ref())
+    }
+
+    /// This function aggregates the signatures without checking if a signature is valid or not.
+    /// It does check that all the signatures are for the same time stamp.
+    /// It returns an error if ciphersuite fails or time stamp is not consistent.
+    fn aggregate_without_validate(sig_list: &[Signature]) -> Result<Signature, String> {
+        Signature::aggregate_without_validate(sig_list)
+    }
+
+    /// Input an aggregated signature, a list of public keys, a public parameter, and a
+    /// message, output true if the signatures verifies.
+    /// Signatures verified through this way may be vulnerable to rogue key attacks,
+    /// unless a proof of possession of the public key is presented -- this should be
+    /// handled by the upper layer.
+    fn verify_aggregated<Blob: AsRef<[u8]>>(
+        pk_list: &[PublicKey],
+        pp: &PubParam,
+        msg: Blob,
+        sig: &Signature,
+    ) -> bool {
+        sig.verify_bytes_aggregated(pk_list, pp, msg.as_ref())
     }
 }
 

@@ -199,12 +199,18 @@ impl Signature {
             seed,
         ]
         .concat();
-        let r = Fr::from_ro(ro_input, 0);
+        let mut sec_r = Fr::from_ro(ro_input, 0);
 
         // hash the message into a field element
         let m = hash_msg_into_fr(msg, pp.get_ciphersuite());
         // calls the sign_fr subroutine
-        Signature::sign_fr(&sk, tar_time, &pp, m, r)
+        let sig = Signature::sign_fr(&sk, tar_time, &pp, m, sec_r);
+        // clear the secret data
+        {
+            let _clear = ClearOnDrop::new(&mut sec_r);
+        }
+        assert_eq!(sec_r, Fr::zero(), "randomness not cleared!");
+        sig
     }
 
     /// This function generates a signature for a message in the form of a field element.
@@ -222,53 +228,55 @@ impl Signature {
         // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
         // we only use the first sub secret key to sign
-        let mut ssk = sk.get_first_ssk()?;
+        let mut ssk_sec = sk.get_first_ssk()?;
 
         // get all neccessary variables
         let depth = pp.get_d();
         let hlist = pp.get_hlist();
-        let timevec = ssk.get_time_vec(depth)?;
+        let timevec = ssk_sec.get_time_vec(depth)?;
         let tlen = timevec.get_vector_len();
         let tv = timevec.get_vector();
 
         // re-randomizing sigma1
         // sig1 = ssk.g2r + g2^r
-        let mut sig1 = ssk.get_g2r();
-        let mut tmp = pp.get_g2();
-        tmp.mul_assign(r);
-        sig1.add_assign(&tmp);
+        // sig1 is returned to the caller, so it does not need to be cleared
+        let mut sig1 = ssk_sec.get_g2r();
+        let mut tmp_sec = pp.get_g2();
+        tmp_sec.mul_assign(r);
+        sig1.add_assign(&tmp_sec);
 
         // tmp3 = h0 * \prod h_i ^ t_i * h_d^m
-        let mut tmp3 = hlist[0];
+        let mut tmp3_sec = hlist[0];
         for i in 0..tlen {
             let mut tmp2 = hlist[i + 1];
             tmp2.mul_assign(tv[i]);
-            tmp3.add_assign(&tmp2);
+            tmp3_sec.add_assign(&tmp2);
         }
+        // tmp2 does not handle secret data
         let mut tmp2 = hlist[depth];
         tmp2.mul_assign(msg);
-        tmp3.add_assign(&tmp2);
+        tmp3_sec.add_assign(&tmp2);
         // re-randomizing sigma2
         // sig2 = ssk.hpoly * hv[d]^m * tmp^r
-        tmp3.mul_assign(r);
-        let mut sig2 = ssk.get_hpoly();
-        let mut hv_last = ssk.get_last_hvector_coeff()?;
-        hv_last.mul_assign(msg);
-        sig2.add_assign(&hv_last);
-        sig2.add_assign(&tmp3);
+        tmp3_sec.mul_assign(r);
+        let mut sig2 = ssk_sec.get_hpoly();
+        let mut hv_last_sec = ssk_sec.get_last_hvector_coeff()?;
+        hv_last_sec.mul_assign(msg);
+        sig2.add_assign(&hv_last_sec);
+        sig2.add_assign(&tmp3_sec);
 
         // clean up the secret data that has been used
         {
             // remove the ssk, hv_last, tmp and tmp3
-            let _clear1 = ClearOnDrop::new(&mut ssk);
-            let _clear2 = ClearOnDrop::new(&mut hv_last);
-            let _clear3 = ClearOnDrop::new(&mut tmp);
-            let _clear4 = ClearOnDrop::new(&mut tmp3);
+            let _clear1 = ClearOnDrop::new(&mut ssk_sec);
+            let _clear2 = ClearOnDrop::new(&mut hv_last_sec);
+            let _clear3 = ClearOnDrop::new(&mut tmp_sec);
+            let _clear4 = ClearOnDrop::new(&mut tmp3_sec);
         }
-        assert_eq!(ssk, SubSecretKey::default(), "subsecretkey is not cleared");
-        assert_eq!(hv_last, PixelG1::default(), "h vector is not cleared");
-        assert_eq!(tmp, PixelG2::default(), "tmp data is not cleared");
-        assert_eq!(tmp3, PixelG1::default(), "tmp data is not cleared");
+        assert_eq!(ssk_sec, SubSecretKey::default(), "subsecretkey is not cleared");
+        assert_eq!(hv_last_sec, PixelG1::default(), "h vector is not cleared");
+        assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
+        assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
 
         Ok(Signature {
             ciphersuite: pp.get_ciphersuite(),

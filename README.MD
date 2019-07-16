@@ -39,6 +39,12 @@ Following the guidelines from [Facebooks source code](https://developers.libra.o
 * `cargo fuzz` for [fuzzing](https://rust-fuzz.github.io/book/introduction.html) (TODO)
 * `cargo doc` for documentation.
 
+## Handling secret data
+* Variables that storing secret data are named with a suffix `_sec`; always ensure this data get cleaned with `ClearOnDrop` crate;
+or get passed to the caller.
+* Avoiding using `clone()` function on secret data as possible - this will create two copies of the data. If `clone()`
+is used, always clean it after use.
+
 ## Interfaces
 * Run `cargo doc --open`
 * See `target/doc/pixel/index.html`

@@ -68,6 +68,8 @@ impl SubSecretKey {
 
     /// Returns the second element `(h0 \prod h_i^t_i )^r`
     /// in a sub secret key.
+    /// The hvector is cloned - there will be two copies in the memory.
+    /// Remember to clear the local copy after use.
     pub fn get_hvector(&self) -> Vec<PixelG1> {
         self.hvector.clone()
     }
@@ -92,6 +94,9 @@ impl SubSecretKey {
     //  It produces a same key as init_from_randomization if
     //  same randomness are used. see `test_key_gen()`.
     pub fn init(pp: &PubParam, alpha: PixelG1, r: Fr) -> Self {
+        // this fuction's local private variables are all to be passed to the caller
+        // so no clearence is required
+
         let mut hlist = pp.get_hlist();
         let depth = pp.get_d();
 
@@ -129,49 +134,47 @@ impl SubSecretKey {
         let depth = pp.get_d();
 
         // randomize g2r
-        let mut tmp = pp.get_g2();
-        tmp.mul_assign(r);
-        self.g2r.add_assign(&tmp);
+        let mut tmp_sec = pp.get_g2();
+        tmp_sec.mul_assign(r);
+        self.g2r.add_assign(&tmp_sec);
 
         // compute tmp = hv[0] * prod_i h[i]^time_vec[i]
         let hlist = pp.get_hlist();
         let timevec = self.get_time_vec(depth)?;
         let tlen = timevec.get_vector_len();
         let tv = timevec.get_vector();
-        let mut tmp3 = hlist[0];
+        let mut tmp3_sec = hlist[0];
         for i in 0..tlen {
+            // tmp2 stores with public infomation only
             let mut tmp2 = hlist[i + 1];
+            // todo: optimize this part with double()
             tmp2.mul_assign(tv[i]);
-            tmp3.add_assign(&tmp2);
-            {
-                let _clear_tmp2 = ClearOnDrop::new(&mut tmp2);
-            }
-            assert_eq!(tmp2, PixelG1::default(), "tmp data is not cleared");
+            tmp3_sec.add_assign(&tmp2);
         }
 
         // radomize tmp and set hpoly *= tmp^r
-        tmp3.mul_assign(r);
-        self.hpoly.add_assign(&tmp3);
+        tmp3_sec.mul_assign(r);
+        self.hpoly.add_assign(&tmp3_sec);
 
         // clean up the secret data that has been used
         {
             // remove the  tmp, tmp3
-            let _clear1 = ClearOnDrop::new(&mut tmp);
-            let _clear3 = ClearOnDrop::new(&mut tmp3);
+            let _clear1 = ClearOnDrop::new(&mut tmp_sec);
+            let _clear3 = ClearOnDrop::new(&mut tmp3_sec);
         }
-        assert_eq!(tmp, PixelG2::default(), "tmp data is not cleared");
-        assert_eq!(tmp3, PixelG1::default(), "tmp data is not cleared");
+        assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
+        assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
 
         // randmoize hlist
         for i in 0..self.hvector.len() {
-            let mut tmp = hlist[tlen + i + 1];
-            tmp.mul_assign(r);
-            self.hvector[i].add_assign(&tmp);
+            let mut tmp_sec = hlist[tlen + i + 1];
+            tmp_sec.mul_assign(r);
+            self.hvector[i].add_assign(&tmp_sec);
             // safely remove tmp after use
             {
-                let _clear_tmp = ClearOnDrop::new(&mut tmp);
+                let _clear = ClearOnDrop::new(&mut tmp_sec);
             }
-            assert_eq!(tmp, PixelG1::default(), "tmp data is not cleared");
+            assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
         }
         Ok(())
     }
@@ -207,16 +210,16 @@ impl SubSecretKey {
             //  hpoly *= tmp
             // if tv[2] == 2
             //  hpoly *= tmp^2
-            let mut tmp = self.hvector[i];
+            let mut tmp_sec = self.hvector[i];
             if tv[i + cur_vec_length] == 2 {
-                tmp.double();
+                tmp_sec.double();
             }
-            self.hpoly.add_assign(&tmp);
+            self.hpoly.add_assign(&tmp_sec);
             // safely remove tmp after use
             {
-                let _clear_tmp = ClearOnDrop::new(&mut tmp);
+                let _clear_tmp = ClearOnDrop::new(&mut tmp_sec);
             }
-            assert_eq!(tmp, PixelG1::default(), "tmp data is not cleared");
+            assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
         }
 
         // remove the first `tar_vec_length - cur_vec_length` elements in h-vector

@@ -6,6 +6,7 @@
 use bls_sigs_ref_rs::{BLSSignature, FromRO};
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
+use ff::Field;
 use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
@@ -163,23 +164,35 @@ impl KeyPair {
 
         // this may fail if the seed is too short or
         // the ciphersuite is not supported
-        let (pk, msk, pop, mut rngseed) = master_key_gen(seed, &pp)?;
+
+        // inside master_key_gen:
+        // extract the a secret from the seed using the HKDF-SHA512-Extract
+        //  m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)
+        // then expand the secret with HKDF-SHA512-Expand
+        //  t = HKDF-Expand(m, info, 64)
+        // with info = "key initialization"
+        // use the first 32 bytes as the input to hash_to_field
+        // use the last 32 bytes as the rngseed
+        let (pk, mut sec_msk, pop, mut sec_rngseed) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
         // it should also erase the msk
-        let sk = SecretKey::init(&pp, msk, &mut rngseed)?;
+        let sec_sk = SecretKey::init(&pp, sec_msk, &mut sec_rngseed)?;
         // makes sure the seed and msk are distroyed
         // the seed shold always be cleared
         // so if not, we should panic rather than return errors
         assert_eq!(
-            rngseed, [0u8; 32],
+            sec_rngseed, [0u8; 32],
             "seed not cleared after secret key initialization"
         );
-        // assert_eq!(
-        //     msk,
-        //     PixelG1::default(),
-        //     "msk not cleared after secret key initialization"
-        // );
+        {
+            let _clear = ClearOnDrop::new(&mut sec_msk);
+        }
+        assert_eq!(
+            sec_msk,
+            PixelG1::default(),
+            "msk not cleared after secret key initialization"
+        );
 
         // this may fail if the ciphersuite is not supported
         let pk = PublicKey::init(&pp, pk)?;
@@ -187,7 +200,8 @@ impl KeyPair {
         // return the keys and the proof of possession
         Ok((
             pk,
-            sk,
+            // momery for sec_sk is not cleared -- it is passed to the called
+            sec_sk,
             ProofOfPossession {
                 ciphersuite: pp.get_ciphersuite(),
                 pop,
@@ -235,7 +249,7 @@ impl SecretKey {
     /// It may returns an error if the ciphersuite is not supported.
     pub fn init(
         pp: &PubParam,
-        mut alpha: PixelG1,
+        mut sec_alpha: PixelG1,
         mut rngseed: &mut [u8; 32],
     ) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
@@ -245,23 +259,13 @@ impl SecretKey {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
-        // originally: digest sk into a shorter blob, and use it for hash_to_field
-        // r = hash_to_field(DOM_SEP_KEY_INIT|ciphersuite| serial(alpha), 0)
-        // the ctr is always 0 since we require only one random field element.
-        // TODO: decide what to do for non-determistic setting
-        // #[cfg(not(feature = "pk_in_g2"))]
-        // let mut alpha_array = vec![0; 96];
-        // #[cfg(feature = "pk_in_g2")]
-        // let mut alpha_array = vec![0; 48];
-
-        // if alpha.serialize(&mut alpha_array, true).is_err() {
-        //     return Err(ERR_SERIAL.to_owned());
-        // };
-
-        // now: expand the rngseed into two parts, use 1st part for hash_to_field,
-        // update rngseed to the second part
-        // r = hash_to_field(DOM_SEP_KEY_INIT|ciphersuite| extract, 0)
-        // old rngseed should be zeroed.
+        // now: extract the a secret from the seed using the HKDF-SHA512-Extract
+        //  m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)
+        // then expand the secret with HKDF-SHA512-Expand
+        //  t = HKDF-Expand(m, info, 64)
+        // with info = "key initialization"
+        // use the first 32 bytes as the input to hash_to_field
+        // use the last 32 bytes as the rngseed
         let (extract, updated) = rngseed_extract_and_update(&mut rngseed);
         assert_eq!(
             rngseed, &[0u8; 32],
@@ -275,19 +279,26 @@ impl SecretKey {
             &extract,
         ]
         .concat();
-        let r = Fr::from_ro(input, 0);
-        let ssk = SubSecretKey::init(&pp, alpha, r);
+        let mut sec_r = Fr::from_ro(input, 0);
+        let ssk = SubSecretKey::init(&pp, sec_alpha, sec_r);
 
         // zero out the master secret alpha using ClearOnDrop
         // this function sets the rng to 0s (and disable compiler optimization)
         // once it is out of the scope
         {
-            let _clear = ClearOnDrop::new(&mut alpha);
+            let _clear1 = ClearOnDrop::new(&mut sec_alpha);
+            let _clear2 = ClearOnDrop::new(&mut sec_r);
         }
+        // panic if the alpha or r is not cleared
+        assert_eq!(
+            sec_alpha,
+            PixelG1::zero(),
+            "alpha is not cleared during key initiation"
+        );
         // panic if the alpha is not cleared
         assert_eq!(
-            alpha,
-            PixelG1::zero(),
+            sec_r,
+            Fr::zero(),
             "alpha is not cleared during key initiation"
         );
 
@@ -373,7 +384,7 @@ impl SecretKey {
             return Err(ERR_SERIAL.to_owned());
         };
 
-        let mut hasher = sha2::Sha256::new();
+        let mut hasher = sha2::Sha512::new();
         hasher.input(hashinput);
         Ok(hasher.result().to_vec())
     }
@@ -819,7 +830,14 @@ impl SecretKey {
 }
 
 /// This function generates the master key pair from a seed.
-/// Input a seed, it uses hash_to_field function to generate a field element x.
+/// Input a seed,
+/// extract the a secret from the seed using the HKDF-SHA512-Extract
+///  `m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)`
+/// then expand the secret with HKDF-SHA512-Expand
+///  `t = HKDF-Expand(m, info, 64)`
+/// with info = "key initialization"
+/// Use the first 32 bytes as the input to hash_to_field.
+/// Use the last 32 bytes as the rngseed.
 /// The public/secret key is then set to g2^x and h^x
 /// It also generate a proof of possesion which is a BLS signature on g2^x.
 /// This function is private -- it should be used only as a subroutine to key gen function
@@ -846,7 +864,7 @@ fn master_key_gen(
 
     // use hash_to_field function to generate a random field element
     // the counter will always be 0 because we only generate one field element
-    let r = Fr::from_ro(
+    let mut sec_r = Fr::from_ro(
         [
             domain_sep::DOM_SEP_MASTER_KEY.as_bytes(),
             [pp.get_ciphersuite()].as_ref(),
@@ -869,9 +887,16 @@ fn master_key_gen(
     // sk = h^r
     let mut pk = pp.get_g2();
     let mut sk = pp.get_h();
-    pk.mul_assign(r);
-    sk.mul_assign(r);
-    let pop = proof_of_possession(r, pk, pp.get_ciphersuite())?;
+    pk.mul_assign(sec_r);
+    sk.mul_assign(sec_r);
+    let pop = proof_of_possession(sec_r, pk, pp.get_ciphersuite())?;
+
+    // clear temporary data
+    {
+        let _clear = ClearOnDrop::new(&mut sec_r);
+    }
+    assert_eq!(sec_r, Fr::zero(), "Random r is not cleared!");
+
     Ok((pk, sk, pop, rngseed))
 }
 
@@ -890,6 +915,7 @@ fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1,
     Ok(sig)
 }
 
+/// TODO: replace with HKDF
 /// Input a seed, this function extract and then update the seed as follows:
 ///     rngseed_updated      =  sha256 (DOM_SEP_SEED_UPDATE|rngseed)
 ///     rngseed_extracted    =  sha256 (DOM_SEP_SEED_EXTRACT|rngseed)
@@ -927,7 +953,6 @@ fn rngseed_extract_and_update(rngseed: &mut [u8; 32]) -> ([u8; 32], [u8; 32]) {
 /// This function is private, and test only, since by default no one shall have the master secret key.
 #[cfg(test)]
 fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
-    use ff::Field;
     use pairing::{bls12_381::*, CurveAffine, Engine};
 
     let mut g2 = pp.get_g2();

@@ -3,6 +3,10 @@ rust:
   - stable
 #  - beta
 #  - nightly
+
+before_install:
+- echo -e "machine github.com\n  login ci-user\n  password $CI_USER_TOKEN" > ~/.netrc
+
 before_script:
   - rustup component add clippy
 

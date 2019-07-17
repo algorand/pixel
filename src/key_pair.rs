@@ -1,5 +1,5 @@
-use crate::ProofOfPossession;
-use bls_sigs_ref_rs::{BLSSignature, FromRO};
+use ProofOfPossession;
+use bls_sigs_ref_rs::BLSSignature;
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
 use ff::Field;
@@ -7,13 +7,9 @@ use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng::PRNG;
-use public_key::PublicKey;
-use secret_key::SecretKey;
+use PublicKey;
+use SecretKey;
 use serdes::SerDes;
-use sha2::Digest;
-use std::fmt;
-pub use subkeys::SubSecretKey;
-use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
 
@@ -59,7 +55,7 @@ impl KeyPair {
         // use the first 64 bytes as the input to hash_to_field
         // use the last 64 bytes as the prngseed
         // msk_sec is a local variable and will need to be cleared
-        let (pk, mut msk_sec, pop, mut prng) = master_key_gen(seed, &pp)?;
+        let (pk, mut msk_sec, pop, prng) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
         // it should also erase the msk

@@ -552,7 +552,7 @@ impl Signature {
 fn hash_msg_into_fr(msg: &[u8], ciphersuite: u8) -> Fr {
     use domain_sep::DOM_SEP_HASH_TO_MSG;
     // TODO: review this part.
-    // output hash(DOM_SEP_HASH_TO_MSG| ciphersuite |msg, 0)
+    // output hash_to_field(DOM_SEP_HASH_TO_MSG | ciphersuite | msg, 0)
     //  DOM_SEP_HASH_TO_MSG:    domain seperator
     //  msg:                    input message
     //  0:                      counter, 0 since we use the first field element

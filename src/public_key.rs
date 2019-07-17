@@ -1,17 +1,9 @@
-use crate::ProofOfPossession;
-use bls_sigs_ref_rs::{BLSSignature, FromRO};
-use clear_on_drop::ClearOnDrop;
+use ProofOfPossession;
+use bls_sigs_ref_rs::BLSSignature;
 use domain_sep;
-use ff::Field;
-use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use serdes::SerDes;
-use sha2::Digest;
-use std::fmt;
-pub use subkeys::SubSecretKey;
-use time::{TimeStamp, TimeVec};
-use PixelG1;
 use PixelG2;
 use PK_LEN;
 

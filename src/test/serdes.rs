@@ -1,10 +1,12 @@
 use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
-use keys::{KeyPair, PublicKey, SecretKey};
+use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};
 use param::PubParam;
 use sig::Signature;
 use subkeys::SubSecretKey;
+use PublicKey;
+use SecretKey;
 
 // #[test]
 // fn test_ssk_to_bytes() {
@@ -198,9 +200,9 @@ fn test_signature_serialization() {
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
 
-    let seedr = b"this is also a very very long seed for testing";
+    //    let seedr = b"this is also a very very long seed for testing";
     let msg = b"message to sign";
-    let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
+    let res = Signature::sign_bytes(&sk, 1, &pp, msg);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");

@@ -7,9 +7,9 @@ use prng::PRNG;
 use serdes::SerDes;
 use sha2::Digest;
 use std::fmt;
-use SubSecretKey;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
+use SubSecretKey;
 
 use crate::PublicKey;
 /// The secret key is a list of SubSecretKeys;
@@ -83,13 +83,13 @@ impl SecretKey {
     /// It takes the root secret `alpha` and a field element `r` as inputs.
     /// Currently this function is used by testing only.
     #[cfg(test)]
-    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr, rngseed: &[u8; 32]) -> Self {
+    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr, rngseed: &[u8; 64]) -> Self {
         let ssk = SubSecretKey::init(&pp, alpha, r);
         SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
-            rngseed: *rngseed,
+            prng: PRNG::construct(*rngseed),
         }
     }
 

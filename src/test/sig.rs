@@ -1,6 +1,8 @@
-use keys::{KeyPair, PublicKey, SecretKey};
+use key_pair::KeyPair;
 use param::PubParam;
 use sig::Signature;
+use PublicKey;
+use SecretKey;
 
 /// A simple and quick tests on
 /// * key generation
@@ -14,10 +16,9 @@ fn test_quick_signature_tests() {
     assert!(res.is_ok(), "key gen failed");
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
-    let seedr = b"this is also a very very long seed for testing";
 
     let msg = b"message to sign";
-    let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
+    let res = Signature::sign_bytes(&sk, 1, &pp, msg);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
@@ -26,12 +27,7 @@ fn test_quick_signature_tests() {
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
         assert!(res.is_ok(), "updating failed");
-        let seedr = [
-            b"this is also a very very long seed for testing",
-            [j as u8].as_ref(),
-        ]
-        .concat();
-        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, seedr.as_ref());
+        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg);
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
@@ -51,10 +47,9 @@ fn test_long_signature_tests() {
     assert!(res.is_ok(), "key gen failed");
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
-    let seedr = b"this is also a very very long seed for testing";
 
     let msg = b"message to sign";
-    let res = Signature::sign_bytes(&sk, 1, &pp, msg, seedr);
+    let res = Signature::sign_bytes(&sk, 1, &pp, msg);
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
@@ -74,13 +69,8 @@ fn test_long_signature_tests() {
             let res = sk3.update(&pp, i);
             assert!(res.is_ok(), "updating failed");
             assert!(sk3.validate(&pk, &pp), "validation failed");
-            let seedr = [
-                b"this is also a very very long seed for testing",
-                [(i * 16 + j) as u8].as_ref(),
-            ]
-            .concat();
 
-            let res = Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg, seedr.as_ref());
+            let res = Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg);
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(
@@ -88,13 +78,7 @@ fn test_long_signature_tests() {
                 "signature verification failed"
             );
         }
-
-        let seedr = [
-            b"this is also a very very long seed for testing",
-            [255u8].as_ref(),
-        ]
-        .concat();
-        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg, seedr.as_ref());
+        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg);
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
@@ -128,12 +112,11 @@ fn test_quick_aggregated_signature_tests() {
         pklist.push(pk);
     }
 
-    let seedr = b"this is also a very very long seed for testing";
     let msg = b"message to sign";
 
     // generate 10 signatures on a same message
     for i in 0..10 {
-        let res = Signature::sign_bytes(&sklist[i], 1, &pp, msg, seedr);
+        let res = Signature::sign_bytes(&sklist[i], 1, &pp, msg);
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
@@ -150,18 +133,12 @@ fn test_quick_aggregated_signature_tests() {
     assert!(res, "verifying aggregates signature failed.");
 
     for j in 2..16 {
-        let seedr = [
-            b"this is also a very very long seed for testing",
-            [j as u8].as_ref(),
-        ]
-        .concat();
         let mut sklist2 = sklist.clone();
         for i in 0..10 {
             let res = sklist2[i].update(&pp, j);
             assert!(res.is_ok(), "updating failed");
 
-            let res =
-                Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg, seedr.as_ref());
+            let res = Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg);
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(

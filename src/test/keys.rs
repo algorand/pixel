@@ -1,9 +1,11 @@
 use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
-use keys::{KeyPair, PublicKey};
+use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};
 use param::PubParam;
 use subkeys::SubSecretKey;
+use PublicKey;
+
 #[test]
 fn test_keypair() {
     let pp = PubParam::init_without_seed();
@@ -42,7 +44,7 @@ fn test_quick_key_update() {
             res.err()
         );
         // makes sure the seed is mutated in after the delegation
-        assert_ne!(sk.get_rngseed(), sk2.get_rngseed());
+        assert_ne!(sk.get_prng(), sk2.get_prng());
         for ssk in sk2.get_ssk_vec() {
             assert!(ssk.validate(&pk, &pp), "validation failed");
         }

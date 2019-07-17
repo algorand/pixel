@@ -1,10 +1,10 @@
-use ProofOfPossession;
 use bls_sigs_ref_rs::BLSSignature;
 use domain_sep;
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use serdes::SerDes;
 use PixelG2;
+use ProofOfPossession;
 use PK_LEN;
 
 /// The public key structure is a wrapper of `PixelG2` group.

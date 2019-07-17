@@ -1,4 +1,3 @@
-use ProofOfPossession;
 use bls_sigs_ref_rs::BLSSignature;
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
@@ -7,11 +6,12 @@ use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng::PRNG;
-use PublicKey;
-use SecretKey;
 use serdes::SerDes;
 use PixelG1;
 use PixelG2;
+use ProofOfPossession;
+use PublicKey;
+use SecretKey;
 
 /// The keypair is  a pair of public and secret keys,
 /// and a proof of possesion of the public key.
@@ -54,37 +54,52 @@ impl KeyPair {
         // with info = "key initialization"
         // use the first 64 bytes as the input to hash_to_field
         // use the last 64 bytes as the prngseed
-        // msk_sec is a local variable and will need to be cleared
-        let (pk, mut msk_sec, pop, prng) = master_key_gen(seed, &pp)?;
+        // msk_sec and prng are local variable and will need to be cleared
+        let (pk, mut msk_sec, pop, mut prng_sec) = master_key_gen(seed, &pp)?;
+
+        // this may fail if the ciphersuite is not supported
+        let pk = PublicKey::init(&pp, pk)?;
 
         // this may fail if the ciphersuite is not supported
         // it should also erase the msk
-        let sk_sec = SecretKey::init(&pp, msk_sec, prng)?;
-        // makes sure the seed and msk are distroyed
-        // the seed shold always be cleared
+        let sk = match SecretKey::init(&pp, msk_sec, prng_sec) {
+            Err(e) => {
+                // if failed, clear the buffer before exit
+                {
+                    let _clear2 = ClearOnDrop::new(&mut msk_sec);
+                    let _clear2 = ClearOnDrop::new(&mut prng_sec);
+                }
+                assert_eq!(msk_sec, PixelG1::default(), "msk buffer not cleared");
+                assert_eq!(prng_sec, PRNG::default(), "prng buffer not cleared");
+                return Err(e);
+            }
+            Ok(p) => p,
+        };
+
+        // clean up the memory
+        // makes sure the seed, msk are distroyed
         // so if not, we should panic rather than return errors
+        {
+            let _clear1 = ClearOnDrop::new(&mut prng_sec);
+            let _clear2 = ClearOnDrop::new(&mut msk_sec);
+        }
+
         assert_eq!(
-            prng,
+            prng_sec,
             PRNG::default(),
             "seed not cleared after secret key initialization"
         );
-        {
-            let _clear = ClearOnDrop::new(&mut msk_sec);
-        }
         assert_eq!(
             msk_sec,
             PixelG1::default(),
             "msk not cleared after secret key initialization"
         );
 
-        // this may fail if the ciphersuite is not supported
-        let pk = PublicKey::init(&pp, pk)?;
 
         // return the keys and the proof of possession
         Ok((
             pk,
-            // momery for sk_sec is not cleared -- it is passed to the caller
-            sk_sec,
+            sk,
             ProofOfPossession::construct(pp.get_ciphersuite(), pop),
         ))
     }

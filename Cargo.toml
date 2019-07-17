@@ -17,38 +17,24 @@ description = "Pixel: Algorand's consensus signature over curve BLS12-381"
 rand = "0.4"
 #pairing = "0.14"
 #pairing = {git = "https://github.com/zkcrypto/pairing"}
-#pairing = { version = "0.14.3", path = "../pairing", features = [ "transmutable" ] }
-pairing = { version = "0.14.3", git = "https://github.com/algorand/pairing-fork-transmute", features = [ "transmutable" ] }
+pairing = { version = "0.14.3", path = "../pairing-fork-transmute", features = [ "transmutable" ] }
+#pairing = { version = "0.14.3", git = "https://github.com/algorand/pairing-fork-transmute", features = [ "transmutable" ] }
+#pairing = { version = "0.14.3", git = "https://github.com/zhenfeizhang/pairing", features = [ "transmutable" ] }
 criterion = "0.2.11"
 walkdir = "2.2.7"
+hkdf = "0.7"
 sha2 = "0.8"
 ff = { version = "0.4", features = ["derive"] }
-bls_sigs_ref-rs = { git = "https://github.com/algorand/bls_sigs_ref-fork"}
-#bls_sigs_ref-rs = { path = "../bls_sigs_ref/rust-impl"}
+#bls_sigs_ref-rs = { git = "https://github.com/zhenfeizhang/bls_sigs_ref"}
+#bls_sigs_ref-rs = { git = "https://github.com/algorand/bls_sigs_ref-fork"}
+bls_sigs_ref-rs = { path = "../bls_sigs_ref-fork/rust-impl"}
 clear_on_drop = "0.2.3"
-#pixel_param = {path = "../pixel_param"}
-pixel_param = { git = "https://github.com/algorand/pixel_param"}
+pixel_param = {path = "../pixel_param"}
+generic-array = ""
+#pixel_param = { git = "https://github.com/algorand/pixel_param"}
 
 [[bench]]
 name = "pixel_bench"
 harness = false
 
 [features]
-# this flag indicates that the public key lies in group G1 by default
-# if we choose to set public key in G1 (a.k.a, switch the groups)
-# use `cargo build --features = pk_in_g2`
-pk_in_g2 = []
-
-# this flag indicates that we want to use randomized group generators
-# as opposite to default group generators
-# to enable, use `cargo build --features = use_rand_generators`
-use_rand_generators = []
-
-# enable this flag will generate more output during debugging
-verbose = []
-
-# enable this flag will use deterministic randomness during sk updating
-# to enable, use `cargo build --features = use_det_rand`
-# currently the deterministic randomness is set by default
-# no-det is not supported
-# use_det_rand = []

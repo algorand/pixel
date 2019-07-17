@@ -3,13 +3,13 @@ use clear_on_drop::ClearOnDrop;
 use param::VALID_CIPHERSUITE;
 use pixel_err::*;
 use prng::PRNG;
-use PublicKey;
-use SecretKey;
-use Signature;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use subkeys::SubSecretKey;
 use PixelG1;
 use PixelG2;
+use PublicKey;
+use SecretKey;
+use Signature;
 
 impl SerDes for Signature {
     /// Convert a signature into a blob:

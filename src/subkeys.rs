@@ -3,10 +3,10 @@
 
 use clear_on_drop::ClearOnDrop;
 use ff::Field;
-use keys::PublicKey;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::PubParam;
 use pixel_err::*;
+use public_key::PublicKey;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
 use PixelG1;

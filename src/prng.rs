@@ -31,7 +31,7 @@ impl Default for PRNG {
 
 /// implement the Debug trait for PRNG
 impl std::fmt::Debug for PRNG {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for i in 0..8 {
             for j in 0..8 {
                 write!(f, "0x{:02x}, ", self.0[i * 8 + j])?;
@@ -58,6 +58,11 @@ impl PRNG {
     /// Expose the seed.
     pub fn get_seed(&self) -> &[u8; 64] {
         &self.0
+    }
+
+    /// Build a prng from an rngseed.
+    pub fn construct(rngseed: [u8; 64]) -> Self {
+        Self(rngseed)
     }
 
     /// This function takes in a seed, and a salt,

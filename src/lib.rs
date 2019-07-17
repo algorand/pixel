@@ -25,25 +25,30 @@
 extern crate bls_sigs_ref_rs;
 extern crate clear_on_drop;
 extern crate ff;
+extern crate generic_array;
+extern crate hkdf;
 extern crate pairing;
 extern crate pixel_param as param;
 extern crate sha2;
 
 mod domain_sep;
-mod keys;
 
 /// this module defines memebership tests for Pixel Groups
 pub mod membership;
 // mod param;
 mod pixel_err;
+mod prng;
 mod serdes;
 mod sig;
 mod subkeys;
-mod time;
-
 #[cfg(test)]
 mod test;
+mod time;
 
+mod key_pair;
+mod pop;
+mod public_key;
+mod secret_key;
 // // by default the groups are switched so that
 // // the public key lies in G2
 // // this yields smaller public keys
@@ -126,14 +131,17 @@ pub const PP_LEN: usize = 1730;
 pub const PP_LEN: usize = 386;
 
 // Expose this constant.
-pub use param::CONST_D;
-pub use param::{PixelG1, PixelG2, VALID_CIPHERSUITE};
-
-// expose the submodules of this crate for debug versions
-//#[cfg(debug_assertions)]
-pub use keys::{ProofOfPossession, PublicKey, SecretKey, SubSecretKey};
-//#[cfg(debug_assertions)]
-pub use param::PubParam;
+pub use param::{PixelG1, PixelG2, PubParam, CONST_D, VALID_CIPHERSUITE};
+pub use pop::ProofOfPossession;
+pub use public_key::PublicKey;
+pub use secret_key::SecretKey;
+pub use subkeys::SubSecretKey;
+//
+// // expose the submodules of this crate for debug versions
+// //#[cfg(debug_assertions)]
+// pub use keys::{ProofOfPossession, PublicKey, SecretKey, SubSecretKey};
+// //#[cfg(debug_assertions)]
+// pub use param::PubParam;
 //#[cfg(debug_assertions)]
 pub use sig::Signature;
 //#[cfg(debug_assertions)]
@@ -177,7 +185,7 @@ pub trait PixelSignature {
         seed: Blob,
         pp: &PubParam,
     ) -> Result<(PublicKey, SecretKey, ProofOfPossession), String> {
-        use keys::KeyPair;
+        use key_pair::KeyPair;
         let kp = KeyPair::keygen(seed.as_ref(), &pp)?;
         Ok(kp)
     }

@@ -3,12 +3,14 @@ use bls_sigs_ref_rs::FromRO;
 use clear_on_drop::ClearOnDrop;
 use domain_sep::DOM_SEP_SIG;
 use ff::Field;
-use keys::{PublicKey, SecretKey, SubSecretKey};
 use membership::MembershipTesting;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
+use public_key::PublicKey;
+use secret_key::SecretKey;
 use std::fmt;
+use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
@@ -273,7 +275,11 @@ impl Signature {
             let _clear3 = ClearOnDrop::new(&mut tmp_sec);
             let _clear4 = ClearOnDrop::new(&mut tmp3_sec);
         }
-        assert_eq!(ssk_sec, SubSecretKey::default(), "subsecretkey is not cleared");
+        assert_eq!(
+            ssk_sec,
+            SubSecretKey::default(),
+            "subsecretkey is not cleared"
+        );
         assert_eq!(hv_last_sec, PixelG1::default(), "h vector is not cleared");
         assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
         assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");

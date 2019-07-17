@@ -1,79 +1,15 @@
 pub use bls_sigs_ref_rs::SerDes;
 use clear_on_drop::ClearOnDrop;
-use keys::{PublicKey, SecretKey, SubSecretKey};
 use param::VALID_CIPHERSUITE;
 use pixel_err::*;
+use public_key::PublicKey;
+use secret_key::SecretKey;
 use sig::Signature;
 use std::io::{Error, ErrorKind, Read, Result, Write};
+use subkeys::SubSecretKey;
 use PixelG1;
 use PixelG2;
-
-// impl SerDes for PubParam {
-//     /// Convert a public parameter into a blob:
-//     ///
-//     /// `|ciphersuite id| depth | g2 | h | hlist |` => bytes
-//     ///
-//     /// Returns an error if ciphersuite id is invalid or serialization fails.
-//     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
-//         // check the cipher suite id
-//         if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
-//             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
-//         }
-//         // first byte is the ciphersuite id
-//         let mut buf: Vec<u8> = vec![self.get_ciphersuite()];
-//
-//         // Second byte is the time depth
-//         buf.push(self.get_d() as u8);
-//
-//         // serialize g2
-//         self.get_g2().serialize(&mut buf, compressed)?;
-//
-//         // serialize h
-//         self.get_h().serialize(&mut buf, compressed)?;
-//
-//         // serialize hlist
-//         for e in self.get_hlist().iter() {
-//             e.serialize(&mut buf, compressed)?;
-//         }
-//         // format the output
-//         writer.write_all(&buf)?;
-//         Ok(())
-//     }
-//
-//     /// Convert a blob into a public parameter:
-//     ///
-//     /// bytes => `|ciphersuite id| depth | g2 | h | hlist |`
-//     ///
-//     /// Returns an error if deserialization fails.
-//     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
-//         // constants stores id and the depth
-//         let mut constants: [u8; 2] = [0u8; 2];
-//
-//         reader.read_exact(&mut constants)?;
-//         let depth = constants[1] as usize;
-//
-//         // check the ciphersuite id in the blob
-//         if !VALID_CIPHERSUITE.contains(&constants[0]) {
-//             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
-//         }
-//
-//         // read into g2
-//         let g2 = PixelG2::deserialize(reader)?;
-//
-//         // read into h
-//         let h = PixelG1::deserialize(reader)?;
-//
-//         // read into hlist
-//         let mut hlist: Vec<PixelG1> = vec![];
-//         // constants[1] stores depth d
-//         for _i in 0..=depth {
-//             hlist.push(PixelG1::deserialize(reader)?);
-//         }
-//
-//         // finished
-//         Ok(PubParam::construct(depth, constants[0], g2, h, hlist))
-//     }
-// }
+use prng::PRNG;
 
 impl SerDes for Signature {
     /// Convert a signature into a blob:
@@ -217,8 +153,8 @@ impl SerDes for SecretKey {
         // next byte is the number of ssk-s
         buf.push(self.get_ssk_number() as u8);
 
-        // next 32 bytes is the seed for rng
-        buf.extend(self.get_rngseed().as_ref());
+        // next 64 bytes is the seed for rng
+        buf.extend(self.get_prng().get_seed().as_ref());
 
         // followed by serialization of the ssk-s
         for e in &self.get_ssk_vec() {
@@ -252,7 +188,7 @@ impl SerDes for SecretKey {
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // constants stores id, the number of ssk-s, and the seed
         let mut constants: [u8; 2] = [0u8; 2];
-        let mut rngseed: [u8; 32] = [0u8; 32];
+        let mut rngseed: [u8; 64] = [0u8; 64];
         reader.read_exact(&mut constants)?;
         reader.read_exact(&mut rngseed)?;
 
@@ -277,7 +213,7 @@ impl SerDes for SecretKey {
             constants[0],
             ssk_vec[0].get_time(),
             ssk_vec,
-            rngseed,
+            PRNG::construct(rngseed),
         ))
     }
 }

@@ -1,8 +1,3 @@
-// functions for
-//  * the key pair
-//  * the public key
-//  * the secret key <- the sub secret keys are defined seperately in subkeys module
-
 use bls_sigs_ref_rs::{BLSSignature, FromRO};
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
@@ -10,6 +5,7 @@ use ff::Field;
 use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
+use prng::PRNG;
 use serdes::SerDes;
 use sha2::Digest;
 use std::fmt;
@@ -17,109 +13,8 @@ pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
-use PK_LEN;
 
-/// The public key structure is a wrapper of `PixelG2` group.
-/// The actual group that the public key lies in depends on `pk_in_g2` flag.
-#[derive(Debug, Clone, Default)]
-pub struct PublicKey {
-    /// ciphersuite id
-    ciphersuite: u8,
-    /// the actual public key element
-    pk: PixelG2,
-}
-
-/// The public key structure is a wrapper of `PixelG2` group.
-/// The actual group that the public key lies in depends on `pk_in_g2` flag.
-#[derive(Debug, Clone, Default)]
-pub struct ProofOfPossession {
-    /// ciphersuite id
-    ciphersuite: u8,
-    /// the actual public key element
-    pop: PixelG1,
-}
-
-impl PublicKey {
-    /// Initialize the PublicKey with a given pk.
-    /// Returns an error if the ciphersuite id (in parameter) is not valid
-    pub fn init(pp: &PubParam, pk: PixelG2) -> Result<Self, String> {
-        // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
-            #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-            return Err(ERR_CIPHERSUITE.to_owned());
-        }
-        Ok(PublicKey {
-            ciphersuite: pp.get_ciphersuite(),
-            pk,
-        })
-    }
-
-    /// Constructing a PublicKey object.
-    pub fn construct(ciphersuite: u8, pk: PixelG2) -> Self {
-        PublicKey { ciphersuite, pk }
-    }
-
-    /// This function returns the storage requirement for this Public Key
-    pub fn get_size(&self) -> usize {
-        PK_LEN
-    }
-
-    // /// Set self to the new public key.
-    // /// Returns an error if the ciphersuite is not supported.
-    // pub fn set_pk(&mut self, pp: &PubParam, pk: PixelG2) -> Result<(), String> {
-    //     // check that the ciphersuite identifier is correct
-    //     if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
-    //         #[cfg(debug_assertions)]
-    //         println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-    //         return Err(ERR_CIPHERSUITE.to_owned());
-    //     }
-    //     self.ciphersuite = pp.get_ciphersuite();
-    //     self.pk = pk;
-    //     Ok(())
-    // }
-
-    /// Returns the public key element this structure contains.
-    pub fn get_pk(&self) -> PixelG2 {
-        self.pk
-    }
-
-    /// Returns the public key element this structure contains.
-    pub fn get_ciphersuite(&self) -> u8 {
-        self.ciphersuite
-    }
-
-    /// This function validates the public key against the
-    /// proof_of_possession using BLS verification algorithm.
-    pub fn validate(&self, pop: &ProofOfPossession) -> bool {
-        // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
-            #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", self.get_ciphersuite());
-            return false;
-        }
-        // buf = DOM_SEP_POP | serial (PK)
-        let mut buf = domain_sep::DOM_SEP_POP.as_bytes().to_vec();
-        if self.get_pk().serialize(&mut buf, true).is_err() {
-            #[cfg(debug_assertions)]
-            println!("Serialization failure on public key");
-            return false;
-        };
-        // return the output of verification
-        BLSSignature::verify(self.get_pk(), pop.pop, buf, self.get_ciphersuite())
-    }
-}
-
-/// The keypair is a pair of public and secret keys,
-/// and a proof of possesion of the public key.
-#[derive(Debug, Clone, Default)]
-pub struct KeyPair;
-// pub struct KeyPair {
-//     sk: SecretKey,
-//     pk: PublicKey,
-//     pop: ProofOfPossession,
-// }
-
+use crate::PublicKey;
 /// The secret key is a list of SubSecretKeys;
 /// the length of the list can be arbitrary;
 /// they are arranged in a chronological order.
@@ -134,111 +29,18 @@ pub struct SecretKey {
     /// the list of the subkeys
     ssk: Vec<SubSecretKey>,
     /// a seed that is used to generate the randomness during key updating
-    rngseed: [u8; 32],
-}
-
-impl KeyPair {
-    /// Generate a pair of public keys and secret keys,
-    /// and a proof of possession of the public key.
-    /// This function does NOT return the master secret
-    /// therefore this is the only method that generates POP.
-    /// This function does NOT destroy the seed.
-    /// Returns an error if
-    /// * the seed is not long enough
-    /// * the ciphersuite is not supported
-    pub fn keygen(
-        seed: &[u8],
-        pp: &PubParam,
-    ) -> Result<(PublicKey, SecretKey, ProofOfPossession), String> {
-        // update then extract the seed
-        // make sure we have enough entropy
-        let seed_len = seed.len();
-        if seed_len < 32 {
-            #[cfg(debug_assertions)]
-            println!(
-                "the seed length {} is not long enough (required as least 32 bytes)",
-                seed_len
-            );
-            return Err(ERR_SEED_TOO_SHORT.to_owned());
-        }
-
-        // this may fail if the seed is too short or
-        // the ciphersuite is not supported
-
-        // inside master_key_gen:
-        // extract the a secret from the seed using the HKDF-SHA512-Extract
-        //  m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)
-        // then expand the secret with HKDF-SHA512-Expand
-        //  t = HKDF-Expand(m, info, 64)
-        // with info = "key initialization"
-        // use the first 32 bytes as the input to hash_to_field
-        // use the last 32 bytes as the rngseed
-        let (pk, mut sec_msk, pop, mut sec_rngseed) = master_key_gen(seed, &pp)?;
-
-        // this may fail if the ciphersuite is not supported
-        // it should also erase the msk
-        let sec_sk = SecretKey::init(&pp, sec_msk, &mut sec_rngseed)?;
-        // makes sure the seed and msk are distroyed
-        // the seed shold always be cleared
-        // so if not, we should panic rather than return errors
-        assert_eq!(
-            sec_rngseed, [0u8; 32],
-            "seed not cleared after secret key initialization"
-        );
-        {
-            let _clear = ClearOnDrop::new(&mut sec_msk);
-        }
-        assert_eq!(
-            sec_msk,
-            PixelG1::default(),
-            "msk not cleared after secret key initialization"
-        );
-
-        // this may fail if the ciphersuite is not supported
-        let pk = PublicKey::init(&pp, pk)?;
-
-        // return the keys and the proof of possession
-        Ok((
-            pk,
-            // momery for sec_sk is not cleared -- it is passed to the called
-            sec_sk,
-            ProofOfPossession {
-                ciphersuite: pp.get_ciphersuite(),
-                pop,
-            },
-        ))
-    }
-
-    // /// Returns the public key in a `KeyPair`
-    // pub fn get_pk(&self) -> PublicKey {
-    //     self.pk.clone()
-    // }
-    //
-    // /// Returns the secret key in a `KeyPair`
-    // pub fn get_sk(&self) -> SecretKey {
-    //     self.sk.clone()
-    // }
-    //
-    // /// Returns the secret key in a `KeyPair`
-    // pub fn get_pop(&self) -> ProofOfPossession {
-    //     self.pop.clone()
-    // }
+    prng: PRNG,
 }
 
 impl SecretKey {
     /// Build a secret key from the given inputs. Does not check
     /// if the validity of the key.
-    pub fn construct(
-        ciphersuite: u8,
-        time: TimeStamp,
-        ssk: Vec<SubSecretKey>,
-        rngseed: [u8; 32],
-    ) -> Self {
+    pub fn construct(ciphersuite: u8, time: TimeStamp, ssk: Vec<SubSecretKey>, prng: PRNG) -> Self {
         SecretKey {
             ciphersuite,
             time,
             ssk,
-            rngseed,
+            prng,
         }
     }
 
@@ -247,11 +49,7 @@ impl SecretKey {
     /// It clears the rngseed by setting it to 0s, and
     /// removes the root secret key alpha.
     /// It may returns an error if the ciphersuite is not supported.
-    pub fn init(
-        pp: &PubParam,
-        mut sec_alpha: PixelG1,
-        mut rngseed: &mut [u8; 32],
-    ) -> Result<Self, String> {
+    pub fn init(pp: &PubParam, mut alpha_sec: PixelG1, mut prng: PRNG) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
@@ -259,45 +57,28 @@ impl SecretKey {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
-        // now: extract the a secret from the seed using the HKDF-SHA512-Extract
-        //  m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)
-        // then expand the secret with HKDF-SHA512-Expand
-        //  t = HKDF-Expand(m, info, 64)
-        // with info = "key initialization"
-        // use the first 32 bytes as the input to hash_to_field
-        // use the last 32 bytes as the rngseed
-        let (extract, updated) = rngseed_extract_and_update(&mut rngseed);
-        assert_eq!(
-            rngseed, &[0u8; 32],
-            "rngseed not cleared during key initiation"
-        );
+        let info = "key initialization";
+        let mut r_sec = prng.sample_then_update(info, pp.get_ciphersuite());
 
-        // set up the input to hash to field
-        let input = [
-            domain_sep::DOM_SEP_KEY_INIT.as_bytes(),
-            [pp.get_ciphersuite()].as_ref(),
-            &extract,
-        ]
-        .concat();
-        let mut sec_r = Fr::from_ro(input, 0);
-        let ssk = SubSecretKey::init(&pp, sec_alpha, sec_r);
+        // let (extract, updated) = SeedType::update(rngseed, info);
+        // assert_eq!(
+        //     rngseed,
+        //     SeedType::default(),
+        //     "rngseed not cleared during key initiation"
+        // );
+        //
+        // // r_sec = hash_to_field(extract, 0) where 0 is the counter
+        // let mut r_sec = Fr::from_ro(extract.get_seed(), 0);
+        let ssk = SubSecretKey::init(&pp, alpha_sec, r_sec);
 
-        // zero out the master secret alpha using ClearOnDrop
-        // this function sets the rng to 0s (and disable compiler optimization)
-        // once it is out of the scope
+        // zero out the temporary r_sec using ClearOnDrop
         {
-            let _clear1 = ClearOnDrop::new(&mut sec_alpha);
-            let _clear2 = ClearOnDrop::new(&mut sec_r);
+            let _clear = ClearOnDrop::new(&mut r_sec);
         }
-        // panic if the alpha or r is not cleared
-        assert_eq!(
-            sec_alpha,
-            PixelG1::zero(),
-            "alpha is not cleared during key initiation"
-        );
+
         // panic if the alpha is not cleared
         assert_eq!(
-            sec_r,
+            r_sec,
             Fr::zero(),
             "alpha is not cleared during key initiation"
         );
@@ -306,7 +87,7 @@ impl SecretKey {
             ciphersuite: pp.get_ciphersuite(),
             time: 1,
             ssk: vec![ssk],
-            rngseed: updated,
+            prng,
         })
     }
 
@@ -340,8 +121,8 @@ impl SecretKey {
     }
 
     /// Returns the prng seed.
-    pub fn get_rngseed(&self) -> [u8; 32] {
-        self.rngseed
+    pub fn get_prng(&self) -> &PRNG {
+        &self.prng
     }
 
     /// Clone the first sub secret key on the list.
@@ -519,9 +300,14 @@ impl SecretKey {
         if delegator_time == tar_time {
             // assign new_sk to self, and return successful
             // we use ClearOnDrop to safely remove the old sk
-            // {
-            //     let _clear = ClearOnDrop::new(self);
-            // }
+            {
+                let _clear = ClearOnDrop::new(&mut (*self));
+            }
+            assert_eq!(
+                *self,
+                SecretKey::default(),
+                "failed to clear old secret key"
+            );
             *self = new_sk;
             return Ok(());
         }
@@ -560,15 +346,17 @@ impl SecretKey {
         // originally: digest sk into a shorter blob, and use it for hash_to_field
         // now: expand the rngseed into two parts, use 1st part for hash_to_field,
         // update rngseed to the second part
-        let (extract, updated) = rngseed_extract_and_update(&mut self.rngseed);
+        // let info = "key updating";
+        //     let r = self.prng.sample_then_update(info, ciphersuite);
 
-        // makes sure the seed is distroyed
-        // the seed should always be cleared
-        // so if not, we should panic rather than returning errors
-        assert_eq!(
-            self.rngseed, [0u8; 32],
-            "seed not cleared within secret key update"
-        );
+        // // makes sure the seed is distroyed
+        // // the seed should always be cleared
+        // // so if not, we should panic rather than returning errors
+        // assert_eq!(
+        //     self.rngseed,
+        //     SeedType::default(),
+        //     "seed not cleared within secret key update"
+        // );
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
@@ -606,14 +394,9 @@ impl SecretKey {
             // for the first one we reuse the randomness from the delegator
             if i != 0 {
                 // the following code generates r from sk deterministicly
-                // r = hash_to_field(DOM_SEP_KEY_UPDATE|ciphersuite| sk_digest, ctr)
-                let input = [
-                    domain_sep::DOM_SEP_KEY_UPDATE.as_bytes(),
-                    [self.get_ciphersuite()].as_ref(),
-                    &extract,
-                ]
-                .concat();
-                let r = Fr::from_ro(input, (i - 1) as u8);
+                // r = hash_to_field(extract, ctr)
+                let info = "key updating";
+                let r = new_sk.prng.sample_then_update(info, new_sk.ciphersuite);
 
                 // TODO: decide what about non-deterministic version?
 
@@ -653,7 +436,7 @@ impl SecretKey {
 
         // assign new_sk to self, and return successful
         *self = new_sk;
-        self.rngseed = updated;
+        //        self.rngseed = updated;
         Ok(())
     }
 
@@ -829,167 +612,11 @@ impl SecretKey {
     // }
 }
 
-/// This function generates the master key pair from a seed.
-/// Input a seed,
-/// extract the a secret from the seed using the HKDF-SHA512-Extract
-///  `m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)`
-/// then expand the secret with HKDF-SHA512-Expand
-///  `t = HKDF-Expand(m, info, 64)`
-/// with info = "key initialization"
-/// Use the first 32 bytes as the input to hash_to_field.
-/// Use the last 32 bytes as the rngseed.
-/// The public/secret key is then set to g2^x and h^x
-/// It also generate a proof of possesion which is a BLS signature on g2^x.
-/// This function is private -- it should be used only as a subroutine to key gen function
-fn master_key_gen(
-    seed: &[u8],
-    pp: &PubParam,
-) -> Result<(PixelG2, PixelG1, PixelG1, [u8; 32]), String> {
-    // make sure we have enough entropy
-    if seed.len() < 32 {
-        #[cfg(debug_assertions)]
-        println!(
-            "the seed length {} is not long enough (required as least 32 bytes)",
-            seed.len()
-        );
-        return Err(ERR_SEED_TOO_SHORT.to_owned());
-    }
-
-    // check that the ciphersuite identifier is correct
-    if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
-        #[cfg(debug_assertions)]
-        println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
-        return Err(ERR_CIPHERSUITE.to_owned());
-    }
-
-    // use hash_to_field function to generate a random field element
-    // the counter will always be 0 because we only generate one field element
-    let mut sec_r = Fr::from_ro(
-        [
-            domain_sep::DOM_SEP_MASTER_KEY.as_bytes(),
-            [pp.get_ciphersuite()].as_ref(),
-            seed,
-        ]
-        .concat(),
-        0,
-    );
-    let mut rngseed = [0u8; 32];
-    let hashinput = [
-        domain_sep::DOM_SEP_SEED_INIT.as_ref(),
-        [pp.get_ciphersuite()].as_ref(),
-        seed,
-    ]
-    .concat();
-    let mut hasher = sha2::Sha256::new();
-    hasher.input(hashinput);
-    rngseed.clone_from_slice(&hasher.result());
-    // pk = g2^r
-    // sk = h^r
-    let mut pk = pp.get_g2();
-    let mut sk = pp.get_h();
-    pk.mul_assign(sec_r);
-    sk.mul_assign(sec_r);
-    let pop = proof_of_possession(sec_r, pk, pp.get_ciphersuite())?;
-
-    // clear temporary data
-    {
-        let _clear = ClearOnDrop::new(&mut sec_r);
-    }
-    assert_eq!(sec_r, Fr::zero(), "Random r is not cleared!");
-
-    Ok((pk, sk, pop, rngseed))
-}
-
-/// This function generate a proof of possesion of the master secret.
-/// This function is a subroutine of the key generation function, and
-/// should not be called anywhere else -- the master secret key is
-/// destroyed after key generation.
-fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1, String> {
-    // buf = DOM_SEP_POP | serial (PK)
-    let mut buf = domain_sep::DOM_SEP_POP.as_bytes().to_vec();
-    if pk.serialize(&mut buf, true).is_err() {
-        return Err(ERR_SERIAL.to_owned());
-    };
-    // the pop is a signature on the buf
-    let sig = BLSSignature::sign(msk, buf, ciphersuite);
-    Ok(sig)
-}
-
-/// TODO: replace with HKDF
-/// Input a seed, this function extract and then update the seed as follows:
-///     rngseed_updated      =  sha256 (DOM_SEP_SEED_UPDATE|rngseed)
-///     rngseed_extracted    =  sha256 (DOM_SEP_SEED_EXTRACT|rngseed)
-/// The extracted seed is returned; the original seed is mutated to the updated one.
-fn rngseed_extract_and_update(rngseed: &mut [u8; 32]) -> ([u8; 32], [u8; 32]) {
-    // the extracted seed
-    let mut extracted = [0u8; 32];
-    // the updated seed
-    let mut updated = [0u8; 32];
-
-    // extract =  (DOM_SEP_SEED_EXTRACT|rngseed)
-    let hashinput = [domain_sep::DOM_SEP_SEED_EXTRACT.as_ref(), rngseed.as_ref()].concat();
-    let mut hasher = sha2::Sha256::new();
-    hasher.input(hashinput);
-    extracted.clone_from_slice(&hasher.result());
-
-    // update =  (DOM_SEP_SEED_EXTRACT|rngseed)
-    let hashinput = [domain_sep::DOM_SEP_SEED_UPDATE.as_ref(), rngseed.as_ref()].concat();
-    let mut hasher = sha2::Sha256::new();
-    hasher.input(hashinput);
-    updated.clone_from_slice(&hasher.result());
-
-    // zero out the old seed using ClearOnDrop
-    // this function sets the rng to 0s (and disable compiler optimization)
-    // once it is out of the scope
-    {
-        let _clear = ClearOnDrop::new(rngseed);
-    }
-
-    // return the new seeds
-    (extracted, updated)
-}
-
-/// This function tests if a public key and a master secret key has a same exponent.
-/// This function is private, and test only, since by default no one shall have the master secret key.
-#[cfg(test)]
-fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
-    use pairing::{bls12_381::*, CurveAffine, Engine};
-
-    let mut g2 = pp.get_g2();
-    g2.negate();
-    let h = pp.get_h();
-
-    // check e(pk, h) ?= e(g2, sk)
-    // which is e(pk,h) * e(-g2,sk) == 1
-    #[cfg(feature = "pk_in_g2")]
-    let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-        [
-            (&(sk.into_affine().prepare()), &(g2.into_affine().prepare())),
-            (&(h.into_affine().prepare()), &(pk.into_affine().prepare())),
-        ]
-        .iter(),
-    ))
-    .unwrap();
-    #[cfg(not(feature = "pk_in_g2"))]
-    let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-        [
-            (&(g2.into_affine().prepare()), &(sk.into_affine().prepare())),
-            (&(pk.into_affine().prepare()), &(h.into_affine().prepare())),
-        ]
-        .iter(),
-    ))
-    .unwrap();
-
-    // verification is successful if
-    //   pairingproduct == 1
-    pairingproduct == Fq12::one()
-}
-
 /// convenient function to output a secret key object
 impl fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "================================\ntime:{:?}", self.time)?;
-        writeln!(f, "seed: {:?}", self.rngseed)?;
+        writeln!(f, "seed: {:?}", self.prng)?;
         for i in 0..self.ssk.len() {
             write!(
                 f,
@@ -1012,22 +639,8 @@ impl std::cmp::PartialEq for SecretKey {
                 return false;
             }
         }
-        self.get_ciphersuite() == other.get_ciphersuite() && self.get_time() == other.get_time()
+        self.get_ciphersuite() == other.get_ciphersuite()
+            && self.get_time() == other.get_time()
+            && self.prng == other.prng
     }
-}
-
-impl std::cmp::PartialEq for PublicKey {
-    /// Convenient function to compare secret key objects
-    fn eq(&self, other: &Self) -> bool {
-        self.ciphersuite == other.ciphersuite && self.pk == other.pk
-    }
-}
-
-#[test]
-fn test_master_key() {
-    let pp = PubParam::init_without_seed();
-    let res = master_key_gen(b"this is a very very long seed for testing", &pp);
-    assert!(res.is_ok(), "master key gen failed");
-    let (pk, sk, _pop, _seed) = res.unwrap();
-    assert!(validate_master_key(&pk, &sk, &pp), "master key is invalid")
 }

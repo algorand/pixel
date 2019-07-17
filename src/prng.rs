@@ -1,16 +1,17 @@
-use bls_sigs_ref_rs::FromRO;
-use clear_on_drop::ClearOnDrop;
-use generic_array::GenericArray;
 /// This file implements the functions that we will be using to, initiate, maintain and update
 /// the seeds of random number generators.
 // use clear on drop to zero out buffer
 // use clear_on_drop::ClearOnDrop;
 
+// zero out the memory
+use clear_on_drop::ClearOnDrop;
+use generic_array::GenericArray;
 // use hkdf-sha512 to extract and expand a seed
 use hkdf::Hkdf;
-use pairing::bls12_381::Fr;
 use sha2::Sha512;
-use std::fmt;
+// hash to Fr
+use bls_sigs_ref_rs::FromRO;
+use pairing::bls12_381::Fr;
 
 /// A PRNG in Pixel is a wrapper of 32 byte array.
 /// This array is initiated during key generation,
@@ -20,7 +21,8 @@ use std::fmt;
 #[derive(Clone, Copy)]
 pub struct PRNG([u8; 64]);
 
-/// implement the Default trait for ClearOnDrop
+/// implement the Default trait for PRNG
+/// a trait bound for ClearOnDrop
 impl Default for PRNG {
     fn default() -> Self {
         PRNG([0u8; 64])
@@ -28,7 +30,7 @@ impl Default for PRNG {
 }
 
 /// implement the Debug trait for PRNG
-impl fmt::Debug for PRNG {
+impl std::fmt::Debug for PRNG {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for i in 0..8 {
             for j in 0..8 {
@@ -52,18 +54,6 @@ impl std::cmp::PartialEq for PRNG {
     }
 }
 
-#[test]
-fn test_prng() {
-    let mut prng = PRNG::init("seed", "salt");
-    let _r = prng.sample_then_update("info", 0);
-    let r1 = prng.sample("info", 0);
-    let r2 = prng.sample("info", 0);
-    assert_eq!(r1, r2);
-    // TODO: more test cases
-    prng.destroy();
-    assert_eq!(prng, PRNG::default(), "fail to destroy the PRNG");
-}
-
 impl PRNG {
     /// Expose the seed.
     pub fn get_seed(&self) -> &[u8; 64] {
@@ -78,11 +68,11 @@ impl PRNG {
         let mut hk_sec = Hkdf::<Sha512>::extract(Some(salt.as_ref()), seed.as_ref());
         let mut rng_seed = [0u8; 64];
         rng_seed.copy_from_slice(&hk_sec.prk[0..64]);
-        // clear the buffer and hk
+        // clear the hk
         {
             let _clear2 = ClearOnDrop::new(&mut hk_sec.prk);
         }
-        // make sure the memory is cleared
+        // make sure the HKDF memory is cleared
         assert_eq!(
             hk_sec.prk.to_vec(),
             vec![0u8; 64],
@@ -152,7 +142,7 @@ impl PRNG {
             "hkdf expand failed"
         );
 
-        // hash the first 32 bytes of the output to a field element
+        // hash the first 64 bytes of the output to a field element
         let r = Fr::from_ro(&output_sec[0..64], ciphersuite);
 
         // clear the buffer and hk
@@ -180,4 +170,17 @@ impl PRNG {
         }
         assert_eq!(*self, PRNG::default(), "old seed not cleared");
     }
+}
+
+// TODO: more test cases
+// and move the tests to a separate file
+#[test]
+fn test_prng() {
+    let mut prng = PRNG::init("seed", "salt");
+    let _r = prng.sample_then_update("info", 0);
+    let r1 = prng.sample("info", 0);
+    let r2 = prng.sample("info", 0);
+    assert_eq!(r1, r2);
+    prng.destroy();
+    assert_eq!(prng, PRNG::default(), "fail to destroy the PRNG");
 }

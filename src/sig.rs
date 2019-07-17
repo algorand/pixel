@@ -74,7 +74,6 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
-        seed: &[u8],
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
@@ -94,7 +93,7 @@ impl Signature {
             sk.update(&pp, tar_time)?
         }
 
-        Signature::sign_bytes(&sk, tar_time, &pp, msg, seed)
+        Signature::sign_bytes(&sk, tar_time, &pp, msg)
     }
 
     /// This function signs a message for current time stamp. It requires the
@@ -106,7 +105,6 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
-        seed: &[u8],
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
@@ -122,7 +120,7 @@ impl Signature {
             return Err(ERR_TIME_STAMP.to_owned());
         }
 
-        Signature::sign_bytes(&sk, tar_time, &pp, msg, seed)
+        Signature::sign_bytes(&sk, tar_time, &pp, msg)
     }
 
     /// This function signs a message for current time stamp. It requires the
@@ -134,7 +132,6 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
-        seed: &[u8],
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
@@ -150,7 +147,7 @@ impl Signature {
             return Err(ERR_TIME_STAMP.to_owned());
         }
 
-        match Signature::sign_bytes(&sk, tar_time, &pp, msg, seed) {
+        match Signature::sign_bytes(&sk, tar_time, &pp, msg) {
             // if the signing is successful,
             // update the key before returning the signature
             Err(e) => Err(e),
@@ -168,12 +165,21 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
-        seed: &[u8],
     ) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+        let ciphersuite = pp.get_ciphersuite();
+        if !VALID_CIPHERSUITE.contains(&ciphersuite) {
             #[cfg(debug_assertions)]
             println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            return Err(ERR_CIPHERSUITE.to_owned());
+        }
+        if sk.get_ciphersuite() != ciphersuite {
+            #[cfg(debug_assertions)]
+            println!(
+                "Inconsistant ciphersuite ids. pp: {} sk: {}",
+                ciphersuite,
+                sk.get_ciphersuite()
+            );
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
@@ -183,35 +189,22 @@ impl Signature {
         // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
 
-        // make sure we have enough entropy
-        if seed.len() < 32 {
-            return Err(ERR_SEED_TOO_SHORT.to_owned());
-        }
-
-        // We generate a random field element from the seed.
-        // output hash(DOM_SEP_SIG|ciphersuite|seed, 0)
-        //  DOM_SEP_SIG:    domain seperator
-        //  ciphersuite:    0 (may change)
-        //  seed:           input seed
-        //  0:              counter, 0 since we use the first field element
-        // TODO: review this part.
-        let ro_input = [
-            DOM_SEP_SIG.as_bytes(),
-            [pp.get_ciphersuite()].as_ref(),
-            seed,
-        ]
-        .concat();
-        let mut sec_r = Fr::from_ro(ro_input, 0);
+        // We generate a random field element from the prng; the prng is not updated.
+        // Within sample():
+        //  m = HKDF-Expand(prng_seed, info, 64)
+        //  r = hash_to_field(m, ciphersuite)
+        let info = [DOM_SEP_SIG.as_bytes(), msg].concat();
+        let mut r_sec = sk.get_prng().sample(info, ciphersuite);
 
         // hash the message into a field element
         let m = hash_msg_into_fr(msg, pp.get_ciphersuite());
         // calls the sign_fr subroutine
-        let sig = Signature::sign_fr(&sk, tar_time, &pp, m, sec_r);
+        let sig = Signature::sign_fr(&sk, tar_time, &pp, m, r_sec);
         // clear the secret data
         {
-            let _clear = ClearOnDrop::new(&mut sec_r);
+            let _clear = ClearOnDrop::new(&mut r_sec);
         }
-        assert_eq!(sec_r, Fr::zero(), "randomness not cleared!");
+        assert_eq!(r_sec, Fr::zero(), "randomness not cleared!");
         sig
     }
 
@@ -230,12 +223,23 @@ impl Signature {
         // recovering from the error
         assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
         // we only use the first sub secret key to sign
+        // this creates a copy of ssk and therefore needs to be destroyed
         let mut ssk_sec = sk.get_first_ssk()?;
 
         // get all neccessary variables
         let depth = pp.get_d();
         let hlist = pp.get_hlist();
-        let timevec = ssk_sec.get_time_vec(depth)?;
+        let timevec = match ssk_sec.get_time_vec(depth) {
+            // clear ssk_sec before returing the error
+            Err(e) => {
+                {
+                    let _clear = ClearOnDrop::new(&mut ssk_sec);
+                }
+                assert_eq!(ssk_sec, SubSecretKey::default(), "memory not cleared");
+                return Err(e);
+            }
+            Ok(p) => p,
+        };
         let tlen = timevec.get_vector_len();
         let tv = timevec.get_vector();
 
@@ -246,6 +250,11 @@ impl Signature {
         let mut tmp_sec = pp.get_g2();
         tmp_sec.mul_assign(r);
         sig1.add_assign(&tmp_sec);
+        {
+            let _clear = ClearOnDrop::new(&mut tmp_sec);
+        }
+
+        assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
 
         // tmp3 = h0 * \prod h_i ^ t_i * h_d^m
         let mut tmp3_sec = hlist[0];
@@ -262,18 +271,34 @@ impl Signature {
         // sig2 = ssk.hpoly * hv[d]^m * tmp^r
         tmp3_sec.mul_assign(r);
         let mut sig2 = ssk_sec.get_hpoly();
-        let mut hv_last_sec = ssk_sec.get_last_hvector_coeff()?;
+        let mut hv_last_sec = match ssk_sec.get_last_hvector_coeff() {
+            // clear buffer before returing the error
+            Err(e) => {
+                {
+                    // remove the ssk and tmp3
+                    let _clear1 = ClearOnDrop::new(&mut ssk_sec);
+                    let _clear2 = ClearOnDrop::new(&mut tmp3_sec);
+                }
+                assert_eq!(
+                    ssk_sec,
+                    SubSecretKey::default(),
+                    "subsecretkey is not cleared"
+                );
+                assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
+                return Err(e);
+            }
+            Ok(p) => p,
+        };
         hv_last_sec.mul_assign(msg);
         sig2.add_assign(&hv_last_sec);
         sig2.add_assign(&tmp3_sec);
 
         // clean up the secret data that has been used
         {
-            // remove the ssk, hv_last, tmp and tmp3
+            // remove the ssk, hv_last and tmp3
             let _clear1 = ClearOnDrop::new(&mut ssk_sec);
             let _clear2 = ClearOnDrop::new(&mut hv_last_sec);
-            let _clear3 = ClearOnDrop::new(&mut tmp_sec);
-            let _clear4 = ClearOnDrop::new(&mut tmp3_sec);
+            let _clear3 = ClearOnDrop::new(&mut tmp3_sec);
         }
         assert_eq!(
             ssk_sec,
@@ -281,7 +306,6 @@ impl Signature {
             "subsecretkey is not cleared"
         );
         assert_eq!(hv_last_sec, PixelG1::default(), "h vector is not cleared");
-        assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
         assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
 
         Ok(Signature {

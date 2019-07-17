@@ -86,9 +86,9 @@ impl PRNG {
         Self(rng_seed)
     }
 
-    /// This function takes in a PRNG, some public info, and a ciphersuite
+    /// This function takes in a PRNG, some public info, and a counter
     /// and sample a field element; the PRNG is updated.
-    pub fn sample_then_update<Blob: AsRef<[u8]>>(&mut self, info: Blob, ciphersuite: u8) -> Fr {
+    pub fn sample_then_update<Blob: AsRef<[u8]>>(&mut self, info: Blob, ctr: u8) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
         let mut hk_sec = Hkdf::<Sha512> {
             prk: GenericArray::clone_from_slice(self.get_seed()),
@@ -102,7 +102,7 @@ impl PRNG {
         );
 
         // hash the first 32 bytes of the output to a field element
-        let r = Fr::from_ro(&output_sec[0..64], ciphersuite);
+        let r = Fr::from_ro(&output_sec[0..64], ctr);
 
         // clear the old seed
         {
@@ -132,9 +132,9 @@ impl PRNG {
         r
     }
 
-    /// This function takes in a PRNG, some public info, and a ciphersuite
+    /// This function takes in a PRNG, some public info, and a counter
     /// and sample a field element; the PRNG is NOT updated.
-    pub fn sample<Blob: AsRef<[u8]>>(&mut self, info: Blob, ciphersuite: u8) -> Fr {
+    pub fn sample<Blob: AsRef<[u8]>>(&mut self, info: Blob, counter: u8) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
         let mut hk_sec = Hkdf::<Sha512> {
             prk: GenericArray::clone_from_slice(self.get_seed()),
@@ -148,7 +148,7 @@ impl PRNG {
         );
 
         // hash the first 64 bytes of the output to a field element
-        let r = Fr::from_ro(&output_sec[0..64], ciphersuite);
+        let r = Fr::from_ro(&output_sec[0..64], counter);
 
         // clear the buffer and hk
         {

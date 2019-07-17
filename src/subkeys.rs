@@ -33,7 +33,7 @@ pub struct SubSecretKey {
 
 impl SubSecretKey {
     /// Build a sub secret key from the given inputs. Does not check
-    /// if the validity of the key.
+    /// the validity of the key.
     pub fn construct(time: TimeStamp, g2r: PixelG2, hpoly: PixelG1, hvector: Vec<PixelG1>) -> Self {
         SubSecretKey {
             time,
@@ -217,7 +217,7 @@ impl SubSecretKey {
             self.hpoly.add_assign(&tmp_sec);
             // safely remove tmp after use
             {
-                let _clear_tmp = ClearOnDrop::new(&mut tmp_sec);
+                let _clear = ClearOnDrop::new(&mut tmp_sec);
             }
             assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
         }
@@ -227,7 +227,7 @@ impl SubSecretKey {
             // h_i = 0
             // safely remove the first element of hvector
             {
-                let _clear_tmp = ClearOnDrop::new(&mut self.hvector[0]);
+                let _clear = ClearOnDrop::new(&mut self.hvector[0]);
             }
             assert_eq!(
                 self.hvector[0],
@@ -244,6 +244,8 @@ impl SubSecretKey {
     /// This function is used to verify if a subsecretkey is valid
     /// for some public key.
     pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
+        // local variables are all public infomation
+
         let pke = pk.get_pk();
         let depth = pp.get_d();
         let list = pp.get_hlist();
@@ -274,30 +276,6 @@ impl SubSecretKey {
         g2.negate();
 
         // and then use sim-pairing for faster computation
-
-        // due to the api changes in asymmetric pairing,
-        // we need two pieces of codes, depending on which group PK is in
-        #[cfg(feature = "pk_in_g2")]
-        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-            [
-                (
-                    &(self.hpoly.into_affine().prepare()),
-                    &(g2.into_affine().prepare()),
-                ),
-                (
-                    &(h2fx.into_affine().prepare()),
-                    &(self.g2r.into_affine().prepare()),
-                ),
-                (
-                    &(pp.get_h().into_affine().prepare()),
-                    &(pke.into_affine().prepare()),
-                ),
-            ]
-            .iter(),
-        ))
-        .unwrap();
-
-        #[cfg(not(feature = "pk_in_g2"))]
         let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
             [
                 (
@@ -322,7 +300,7 @@ impl SubSecretKey {
         pairingproduct == Fq12::one()
     }
 
-    /// This function returns the storage requirement for this secret key. Recall that
+    /// This function returns the storage requirement for this sub secret key. Recall that
     /// each ssk is a blob:
     ///
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
@@ -332,11 +310,7 @@ impl SubSecretKey {
     pub fn get_size(&self) -> usize {
         let mut len = 5;
 
-        #[cfg(not(feature = "pk_in_g2"))]
         let pixel_g1_size = 96;
-
-        #[cfg(feature = "pk_in_g2")]
-        let pixel_g1_size = 48;
 
         // g2r and hpoly length is 144
         // this will be a G1 and a G2
@@ -347,23 +321,6 @@ impl SubSecretKey {
 
         len
     }
-
-    // /// TODO: description
-    // pub fn to_bytes(&self) -> String {
-    //     let hv = self.get_hvector();
-    //     let mut res = format!(
-    //         //"time: {}, h vector length {}, g2r {:?}, hploy {:?}, hvector ",
-    //         "{}{}{}{}",
-    //         self.get_time(),
-    //         hv.len(),
-    //         self.get_g2r().as_tuple().0,
-    //         self.get_hpoly().as_tuple().0
-    //     );
-    //     for e in hv {
-    //         res.push_str(&format!("{:?}", e.as_tuple().0));
-    //     }
-    //     res
-    // }
 }
 
 impl fmt::Debug for SubSecretKey {

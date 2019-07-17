@@ -206,9 +206,7 @@ pub trait PixelSignature {
         pp: &PubParam,
         msg: Blob,
     ) -> Result<Signature, String> {
-        // TODO: change this
-        let seed = "this is a very long seed for testing.";
-        Signature::sign(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
+        Signature::sign(sk, tar_time, &pp, msg.as_ref())
     }
 
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
@@ -221,9 +219,7 @@ pub trait PixelSignature {
         pp: &PubParam,
         msg: Blob,
     ) -> Result<Signature, String> {
-        // TODO: change this
-        let seed = "this is a very long seed for testing.";
-        Signature::sign_present(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
+        Signature::sign_present(sk, tar_time, &pp, msg.as_ref())
     }
 
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
@@ -238,9 +234,7 @@ pub trait PixelSignature {
         pp: &PubParam,
         msg: Blob,
     ) -> Result<Signature, String> {
-        // TODO: change this
-        let seed = "this is a very long seed for testing.";
-        Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
+        Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref())
     }
 
     /// Input a public key, the public parameter, a message in the form of a byte string,

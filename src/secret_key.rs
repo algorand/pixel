@@ -46,10 +46,8 @@ impl SecretKey {
 
     /// This function initializes the secret key at time stamp = 1.
     /// It takes the root secret `alpha` as the input.
-    /// It clears the rngseed by setting it to 0s, and
-    /// removes the root secret key alpha.
     /// It may returns an error if the ciphersuite is not supported.
-    pub fn init(pp: &PubParam, mut alpha_sec: PixelG1, mut prng: PRNG) -> Result<Self, String> {
+    pub fn init(pp: &PubParam, alpha: PixelG1, mut prng: PRNG) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
         if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
             #[cfg(debug_assertions)]
@@ -58,18 +56,11 @@ impl SecretKey {
         }
 
         let info = "key initialization";
+        // r is a local secret, and need to be cleared after use
         let mut r_sec = prng.sample_then_update(info, pp.get_ciphersuite());
 
-        // let (extract, updated) = SeedType::update(rngseed, info);
-        // assert_eq!(
-        //     rngseed,
-        //     SeedType::default(),
-        //     "rngseed not cleared during key initiation"
-        // );
-        //
-        // // r_sec = hash_to_field(extract, 0) where 0 is the counter
-        // let mut r_sec = Fr::from_ro(extract.get_seed(), 0);
-        let ssk = SubSecretKey::init(&pp, alpha_sec, r_sec);
+        // ssk is passed to the caller
+        let ssk = SubSecretKey::init(&pp, alpha, r_sec);
 
         // zero out the temporary r_sec using ClearOnDrop
         {
@@ -121,8 +112,8 @@ impl SecretKey {
     }
 
     /// Returns the prng seed.
-    pub fn get_prng(&self) -> &PRNG {
-        &self.prng
+    pub fn get_prng(&self) -> PRNG {
+        self.prng
     }
 
     /// Clone the first sub secret key on the list.
@@ -181,10 +172,6 @@ impl SecretKey {
     /// current time or larger than maximum time stamp)
     ///  * serialization error
     pub fn update<'a>(&'a mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String> {
-        // make a clone of self, in case an error is raised, we do not want to mutate the key
-        // the new_sk has a same life time as the old key
-        let mut new_sk = self.clone();
-
         // check the ciphersuites match
         if self.get_ciphersuite() != pp.get_ciphersuite() {
             return Err(ERR_CIPHERSUITE.to_owned());
@@ -193,7 +180,7 @@ impl SecretKey {
         // max time = 2^d - 1
         let depth = pp.get_d();
         let max_time = (1u64 << depth) - 1;
-        let cur_time = new_sk.get_time();
+        let cur_time = self.get_time();
         if cur_time >= tar_time || tar_time > max_time {
             #[cfg(debug_assertions)]
             println!("the input time {} is invalid", tar_time);
@@ -244,7 +231,15 @@ impl SecretKey {
         // ### new_sk = {9, [ssk_for_t_9]}   // time vector = [2] ###
         //
         // as follows
-        let delegator_time = new_sk.find_ancestor(tar_time)?;
+        let delegator_time = self.find_ancestor(tar_time)?;
+
+        // make a clone of self, in case an error is raised, we do not want to mutate the key
+        // the new_sk has a same life time as the old key
+        // note: since we will replace self with new_sk by the end of this function,
+        // we will need to clear either `self` or new_sk
+        // to ensure only one copy lives in the memory
+        let mut new_sk = self.clone();
+
         // step 1.1 update new_sk's time stamp
         // the current sk is ### new_sk = {9, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} ###
         new_sk.time = delegator_time;
@@ -283,10 +278,19 @@ impl SecretKey {
             new_sk.ssk.remove(0);
         }
 
-        // there should always be at least one key left\
+        // there should always be at least one key left
         if new_sk.ssk.is_empty() {
             #[cfg(debug_assertions)]
             println!("Error in key unpdating: {:?}", ERR_SSK_EMPTY);
+            // clear the new_sk before exiting
+            {
+                let _clear = ClearOnDrop::new(&mut new_sk);
+            }
+            assert_eq!(
+                new_sk,
+                SecretKey::default(),
+                "failed to clear old secret key"
+            );
             return Err(ERR_SSK_EMPTY.to_owned());
         }
 
@@ -340,23 +344,26 @@ impl SecretKey {
         //  [1] -> [1,1,2]  with new randomness
         //  [1] -> [1,2]    with new randomness
         // the ssk for [2] already exists in current sk; it remains unchanged
-        let target_time_vec = TimeVec::init(tar_time, depth)?;
-        let gamma_list = target_time_vec.gamma_list(depth)?;
-
-        // originally: digest sk into a shorter blob, and use it for hash_to_field
-        // now: expand the rngseed into two parts, use 1st part for hash_to_field,
-        // update rngseed to the second part
-        // let info = "key updating";
-        //     let r = self.prng.sample_then_update(info, ciphersuite);
-
-        // // makes sure the seed is distroyed
-        // // the seed should always be cleared
-        // // so if not, we should panic rather than returning errors
-        // assert_eq!(
-        //     self.rngseed,
-        //     SeedType::default(),
-        //     "seed not cleared within secret key update"
-        // );
+        let target_time_vec = match TimeVec::init(tar_time, depth) {
+            Err(e) => {
+                {
+                    let _clear = ClearOnDrop::new(&mut new_sk);
+                }
+                assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                return Err(e);
+            }
+            Ok(p) => p,
+        };
+        let gamma_list = match target_time_vec.gamma_list(depth) {
+            Err(e) => {
+                {
+                    let _clear = ClearOnDrop::new(&mut new_sk);
+                }
+                assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                return Err(e);
+            }
+            Ok(p) => p,
+        };
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
@@ -371,7 +378,16 @@ impl SecretKey {
             // and if we have found a duplicate, it means we have already finished
             // delegation, so we can break the loop
             for j in i + 1..new_sk.ssk.len() {
-                let tmp_time_vec = new_sk.ssk[j].get_time_vec(depth)?;
+                let tmp_time_vec = match new_sk.ssk[j].get_time_vec(depth) {
+                    Err(e) => {
+                        {
+                            let _clear = ClearOnDrop::new(&mut new_sk);
+                        }
+                        assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                        return Err(e);
+                    }
+                    Ok(p) => p,
+                };
                 if tmptime == &tmp_time_vec {
                     // this happens for time vec  = [2]
                     // no further delegation will happen
@@ -387,20 +403,51 @@ impl SecretKey {
             //  i = 0, new_ssk = ssk_for_t_12
             //  i = 1, new_ssk = ssk_for_t_13
             let mut new_ssk = new_sk.ssk[0].clone();
-            new_ssk.delegate(tmptime.get_time(), depth)?;
+            match new_ssk.delegate(tmptime.get_time(), depth) {
+                Err(e) => {
+                    {
+                        let _clear1 = ClearOnDrop::new(&mut new_sk);
+                        let _clear2 = ClearOnDrop::new(&mut new_ssk);
+                    }
+                    assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                    assert_eq!(new_ssk, SubSecretKey::default(), "new ssk is not cleared");
+                    return Err(e);
+                }
+                Ok(p) => p,
+            };
 
             // re-randomization
             // randomize the new ssk unless it is the first one
             // for the first one we reuse the randomness from the delegator
             if i != 0 {
                 // the following code generates r from sk deterministicly
-                // r = hash_to_field(extract, ctr)
+                //  m = HKDF-expand(prngseed, info, 128)
+                //  r = hash_to_field(m[0..64], ctr)
+                //  prngseed = m[64..128]
                 let info = "key updating";
-                let r = new_sk.prng.sample_then_update(info, new_sk.ciphersuite);
+                let mut r_sec = new_sk.prng.sample_then_update(info, (i - 1) as u8);
+
+                assert_ne!(new_sk.prng, self.prng, "prng not updated");
 
                 // TODO: decide what about non-deterministic version?
 
-                new_ssk.randomization(&pp, r)?;
+                match new_ssk.randomization(&pp, r_sec) {
+                    Err(e) => {
+                        {
+                            let _clear1 = ClearOnDrop::new(&mut new_sk);
+                            let _clear2 = ClearOnDrop::new(&mut new_ssk);
+                        }
+                        assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                        assert_eq!(new_ssk, SubSecretKey::default(), "new ssk is not cleared");
+                        return Err(e);
+                    }
+                    Ok(p) => p,
+                };
+                // clear r after use
+                {
+                    let _clear = ClearOnDrop::new(&mut r_sec);
+                }
+                assert_eq!(r_sec, Fr::default(), "r is not cleared");
             }
 
             // insert the key to the right place so that
@@ -435,8 +482,16 @@ impl SecretKey {
         //
 
         // assign new_sk to self, and return successful
+        // we use ClearOnDrop to safely remove the old sk
+        {
+            let _clear = ClearOnDrop::new(&mut (*self));
+        }
+        assert_eq!(
+            *self,
+            SecretKey::default(),
+            "failed to clear old secret key"
+        );
         *self = new_sk;
-        //        self.rngseed = updated;
         Ok(())
     }
 
@@ -577,39 +632,25 @@ impl SecretKey {
     /// This function returns the storage requirement for this secret key. Recall that
     /// each sk is a blob:
     ///
-    /// `|ciphersuite id| seed | number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    /// `|ciphersuite id| prng_seed | number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
     ///
     /// where ...
     /// * ciphersuite is 1 byte
+    /// * prng_seed is 64 bytes
     /// * number of ssk-s is 1 byte - there cannot be more than const_d number of ssk-s
     /// * each ssk is
     ///
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
     ///
-    /// So the output will be 34 + size of eash ssk.
+    /// So the output will be 66 + size of eash ssk.
     pub fn get_size(&self) -> usize {
-        let mut len = 34;
+        let mut len = 66;
         let ssk = self.get_ssk_vec();
         for e in ssk {
             len += e.get_size();
         }
         len
     }
-
-    // /// TODO: description
-    // pub fn to_bytes(&self) -> String {
-    //     let mut res = format!(
-    //         //        "ciphersuite {}, number of ssk {}, ",
-    //         "{}{}",
-    //         self.get_ciphersuite(),
-    //         self.get_ssk_number()
-    //     );
-    //     //        let ssk_list = self.get_ssk_vec();
-    //     for e in &self.ssk {
-    //         res.push_str(&e.to_bytes());
-    //     }
-    //     res
-    // }
 }
 
 /// convenient function to output a secret key object

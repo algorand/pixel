@@ -2,6 +2,7 @@ pub use bls_sigs_ref_rs::SerDes;
 use clear_on_drop::ClearOnDrop;
 use param::VALID_CIPHERSUITE;
 use pixel_err::*;
+use prng::PRNG;
 use public_key::PublicKey;
 use secret_key::SecretKey;
 use sig::Signature;
@@ -9,7 +10,6 @@ use std::io::{Error, ErrorKind, Read, Result, Write};
 use subkeys::SubSecretKey;
 use PixelG1;
 use PixelG2;
-use prng::PRNG;
 
 impl SerDes for Signature {
     /// Convert a signature into a blob:

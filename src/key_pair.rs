@@ -1,3 +1,4 @@
+use crate::ProofOfPossession;
 use bls_sigs_ref_rs::{BLSSignature, FromRO};
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
@@ -15,7 +16,6 @@ pub use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
-use crate::ProofOfPossession;
 
 /// The keypair is  a pair of public and secret keys,
 /// and a proof of possesion of the public key.
@@ -54,10 +54,11 @@ impl KeyPair {
         // extract the a secret from the seed using the HKDF-SHA512-Extract
         //  m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)
         // then expand the secret with HKDF-SHA512-Expand
-        //  t = HKDF-Expand(m, info, 64)
+        //  t = HKDF-Expand(m, info, 128)
         // with info = "key initialization"
-        // use the first 32 bytes as the input to hash_to_field
-        // use the last 32 bytes as the rngseed
+        // use the first 64 bytes as the input to hash_to_field
+        // use the last 64 bytes as the prngseed
+        // msk_sec is a local variable and will need to be cleared
         let (pk, mut msk_sec, pop, mut prng) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
@@ -88,10 +89,7 @@ impl KeyPair {
             pk,
             // momery for sec_sk is not cleared -- it is passed to the called
             sk_sec,
-            ProofOfPossession::construct(
-                pp.get_ciphersuite(),
-                pop,
-            )
+            ProofOfPossession::construct(pp.get_ciphersuite(), pop),
         ))
     }
 }
@@ -108,10 +106,7 @@ impl KeyPair {
 /// The public/secret key is then set to g2^x and h^x
 /// It also generate a proof of possesion which is a BLS signature on g2^x.
 /// This function is private -- it should be used only as a subroutine to key gen function
-fn master_key_gen(
-    seed: &[u8],
-    pp: &PubParam,
-) -> Result<(PixelG2, PixelG1, PixelG1,PRNG), String> {
+fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, PixelG1, PRNG), String> {
     // make sure we have enough entropy
     if seed.len() < 32 {
         #[cfg(debug_assertions)]
@@ -123,24 +118,29 @@ fn master_key_gen(
     }
 
     // check that the ciphersuite identifier is correct
-    if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+    let ciphersuite = pp.get_ciphersuite();
+    if !VALID_CIPHERSUITE.contains(&ciphersuite) {
         #[cfg(debug_assertions)]
-        println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+        println!("Incorrect ciphersuite id: {}", ciphersuite);
         return Err(ERR_CIPHERSUITE.to_owned());
     }
 
-    // instantiate the prng with the seed
-    // TODO: double check the inputs to PRNG
+    // Instantiate the prng with the seed and a salt
+    //  salt = DOM_SEP_MASTER_KEY | ciphersuite
     let salt = [
         domain_sep::DOM_SEP_MASTER_KEY.as_ref(),
-        [pp.get_ciphersuite()].as_ref(),
+        [ciphersuite].as_ref(),
     ]
     .concat();
+    // prng is passed to the caller - so we do not clear it.
     let mut prng = PRNG::init(seed, &salt);
 
     // get a field element
     let info = b"key initialization";
-    let mut x_sec = prng.sample_then_update(info, pp.get_ciphersuite());
+    // this is a local secret - need to clear after use
+    //  x = hkdf-expand(prng, info, ctr)
+    //  ctr is set to 0
+    let mut x_sec = prng.sample_then_update(info, 0);
 
     // pk = g2^x
     // sk = h^x
@@ -151,7 +151,6 @@ fn master_key_gen(
     let pop = proof_of_possession(x_sec, pk, pp.get_ciphersuite())?;
 
     // clear temporary data
-    // TODO: clear x_seed_sec and hkdf_output_sec
     {
         let _clear1 = ClearOnDrop::new(&mut x_sec);
     }

@@ -489,7 +489,7 @@ impl Signature {
                 return false;
             }
         }
-        if self.get_ciphersuite() != pp.get_ciphersuite() {
+        if self.get_ciphersuite() != ciphersuite {
             #[cfg(debug_assertions)]
             println!("ciphersuite do not match");
             return false;

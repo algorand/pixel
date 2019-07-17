@@ -115,6 +115,24 @@ impl PRNG {
         new_seed.clone_from_slice(&output_sec[64..128]);
         *self = Self(new_seed);
 
+        // Here is something tricky.
+        // When new_seed is wraped into the `Self` structure,
+        // there are two copies in the memory, one in `new_seed`
+        // and the other in *self.
+        // Therefore, we also need to clear new_seed.
+        // But new_seed is a [u8;64] type - Default trait is
+        // not defined for this type - and we cannot implement
+        // default trait either, since neither [u8;64] nor Default
+        // are local to this crate. This means we cannot use
+        // ClearOnDrop (which sets the memory to the default value)
+        // to clear the memory.
+        // So we manually clear out this array by writing
+        // travial data to it.
+        for i in 0..64 {
+            new_seed[i] = i as u8;
+        }
+
+
         // clear the buffer and hk
         {
             let _clear2 = ClearOnDrop::new(&mut output_sec);

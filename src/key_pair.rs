@@ -95,7 +95,6 @@ impl KeyPair {
             "msk not cleared after secret key initialization"
         );
 
-
         // return the keys and the proof of possession
         Ok((
             pk,

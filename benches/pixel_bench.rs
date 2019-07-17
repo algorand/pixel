@@ -7,12 +7,13 @@ extern crate walkdir;
 mod benchmarks;
 
 criterion_main!(
-    benchmarks::bench_sk_ops::sk_ops,
+    benchmarks::bench_api::aggregation,
+    //    benchmarks::bench_sk_ops::sk_ops,
     //    benchmarks::bench_sk_ops::sk_ops_slow,
-    benchmarks::bench_ssk_ops::ssk_ops,
+    //    benchmarks::bench_ssk_ops::ssk_ops,
     //    benchmarks::bench_ssk_ops::ssk_ops_slow,
-    benchmarks::bench_curve::group_ops,
+    //    benchmarks::bench_curve::group_ops,
     benchmarks::bench_api::api,
     //    benchmarks::bench_api::api_slow,
-    benchmarks::bench_time::time,
+    //    benchmarks::bench_time::time,
 );

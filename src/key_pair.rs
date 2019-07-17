@@ -87,7 +87,7 @@ impl KeyPair {
         // return the keys and the proof of possession
         Ok((
             pk,
-            // momery for sec_sk is not cleared -- it is passed to the called
+            // momery for sk_sec is not cleared -- it is passed to the caller
             sk_sec,
             ProofOfPossession::construct(pp.get_ciphersuite(), pop),
         ))

@@ -57,7 +57,7 @@ impl SecretKey {
 
         let info = "key initialization";
         // r is a local secret, and need to be cleared after use
-        let mut r_sec = prng.sample_then_update(info, pp.get_ciphersuite());
+        let mut r_sec = prng.sample_then_update(info, 0);
 
         // ssk is passed to the caller
         let ssk = SubSecretKey::init(&pp, alpha, r_sec);
@@ -163,9 +163,7 @@ impl SecretKey {
 
     /// Updates the secret key into the corresponding time stamp.
     /// This function mutate the existing secret keys to the time stamp.
-    /// The randomness is generated via
-    ///  * `digest = sha256(sk.serialize())`
-    ///  * `hash_to_field(DOM_SEP_KEY_UPDATE|ciphersuite|digest, ctr)`
+    /// The randomness is generated via sample_then_update function.
     ///
     /// It propogates an error if
     ///  * the new time stamp is invalid (either smaller than
@@ -434,9 +432,11 @@ impl SecretKey {
                 match new_ssk.randomization(&pp, r_sec) {
                     Err(e) => {
                         {
-                            let _clear1 = ClearOnDrop::new(&mut new_sk);
-                            let _clear2 = ClearOnDrop::new(&mut new_ssk);
+                            let _clear1 = ClearOnDrop::new(&mut r_sec);
+                            let _clear2 = ClearOnDrop::new(&mut new_sk);
+                            let _clear3 = ClearOnDrop::new(&mut new_ssk);
                         }
+                        assert_eq!(r_sec, Fr::default(), "r is not cleared");
                         assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
                         assert_eq!(new_ssk, SubSecretKey::default(), "new ssk is not cleared");
                         return Err(e);

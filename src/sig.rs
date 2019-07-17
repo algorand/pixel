@@ -192,9 +192,9 @@ impl Signature {
         // We generate a random field element from the prng; the prng is not updated.
         // Within sample():
         //  m = HKDF-Expand(prng_seed, info, 64)
-        //  r = hash_to_field(m, ciphersuite)
+        //  r = hash_to_field(m, ctr)
         let info = [DOM_SEP_SIG.as_bytes(), msg].concat();
-        let mut r_sec = sk.get_prng().sample(info, ciphersuite);
+        let mut r_sec = sk.get_prng().sample(info, 0);
 
         // hash the message into a field element
         let m = hash_msg_into_fr(msg, pp.get_ciphersuite());

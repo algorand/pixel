@@ -10,6 +10,55 @@ use PixelG2;
 use PublicKey;
 use SecretKey;
 use Signature;
+use ProofOfPossession;
+
+impl SerDes for ProofOfPossession  {
+    /// Convert a pop into a blob:
+    ///
+    /// `|ciphersuite id| pop |` => bytes
+    ///
+    /// Returns an error if ciphersuite id is invalid or serialization fails.
+    /// Does not check if the pop is verified or not.
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+        // check the cipher suite id
+        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
+        }
+        let mut buf: Vec<u8> = vec![            self.get_ciphersuite()];
+        self.get_pop().serialize(&mut buf, compressed)?;
+
+        // format the output
+        writer.write_all(&buf)?;
+        Ok(())
+    }
+
+    /// Convert a blob into a PoP:
+    ///
+    /// bytes => `|ciphersuite id | pop |`
+    ///
+    /// Returns an error if deserialization fails.
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+        // constants stores id and the number of ssk-s
+        let mut constants: [u8; 1] = [0u8; 1];
+
+        reader.read_exact(&mut constants)?;
+
+        // check the ciphersuite id in the blob
+        if !VALID_CIPHERSUITE.contains(&constants[0]) {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
+        }
+
+        // read into pop
+        let pop = PixelG1::deserialize(reader)?;
+
+        // finished
+        Ok(ProofOfPossession::construct(
+            constants[0],
+            pop
+        ))
+    }
+}
+
 
 impl SerDes for Signature {
     /// Convert a signature into a blob:

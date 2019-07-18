@@ -5,10 +5,9 @@
 
 // zero out the memory
 use clear_on_drop::ClearOnDrop;
-use generic_array::GenericArray;
 // use hkdf-sha512 to extract and expand a seed
 use hkdf::Hkdf;
-use sha2::Sha512;
+use sha2::{Sha512, digest::generic_array};
 // hash to Fr
 use bls_sigs_ref_rs::FromRO;
 use pairing::bls12_381::Fr;
@@ -91,7 +90,7 @@ impl PRNG {
     pub fn sample_then_update<Blob: AsRef<[u8]>>(&mut self, info: Blob, ctr: u8) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
         let mut hk_sec = Hkdf::<Sha512> {
-            prk: GenericArray::clone_from_slice(self.get_seed()),
+            prk: generic_array::GenericArray::clone_from_slice(self.get_seed()),
         };
 
         // hkdf-expand(seed, info)
@@ -155,7 +154,7 @@ impl PRNG {
     pub fn sample<Blob: AsRef<[u8]>>(&mut self, info: Blob, counter: u8) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
         let mut hk_sec = Hkdf::<Sha512> {
-            prk: GenericArray::clone_from_slice(self.get_seed()),
+            prk: generic_array::GenericArray::clone_from_slice(self.get_seed()),
         };
 
         // hkdf-expand(seed, info)

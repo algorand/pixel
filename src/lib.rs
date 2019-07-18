@@ -136,6 +136,8 @@ pub use pop::ProofOfPossession;
 pub use public_key::PublicKey;
 pub use secret_key::SecretKey;
 pub use subkeys::SubSecretKey;
+pub use serdes::SerDes;
+
 //
 // // expose the submodules of this crate for debug versions
 // //#[cfg(debug_assertions)]

@@ -654,7 +654,7 @@ impl SecretKey {
 impl fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "================================\ntime:{:?}", self.time)?;
-        writeln!(f, "seed: {:?}", self.prng)?;
+        writeln!(f, "seed: \n{:?}", self.prng)?;
         for i in 0..self.ssk.len() {
             write!(
                 f,

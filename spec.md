@@ -43,7 +43,7 @@ The default parameter set was generated with a seed = SHA512's initial vector.
 The parameter set can be accessed via
 
   ```rust
-    PubParam::default();  // access the fault parameter set
+  PubParam::default();  // access the fault parameter set
   ```
 
 ## Time
@@ -109,8 +109,8 @@ The parameter set can be accessed via
   * Output: update self's state
   * Steps:
     1. `tmp = HKDF-SHA512-expand(prng, info, 128)`
-    2. `prng = tmp[64:128]`
-    3. return `hash_to_field(tmp[0:64], ctr)`
+    2. `prng = PRNG(tmp[64:128])`
+    3.  return `hash_to_field(tmp[0:64], ctr)`
 
 * Sample (without update)
   ``` rust
@@ -141,8 +141,9 @@ The parameter set can be accessed via
     1. check seed length and ciphersuite id, return an error if seed is too short or ciphersuite id is not supported.
     2. `salt = DOM_SEP_MASTER_KEY| ciphersuite`
     3. `prng = PRNG::init(seed, salt)`
-    3. `x = prng.sample_then_update()`
-    3. `pk = pp.get_g2() ^ x`
+    3. `info = "key initialization"`
+    3. `x = prng.sample_then_update(info, 0)`
+    3. `pk = pp.get_g2() ^ x`
     4. `sk = pp.get_h() ^ x`
     5. `pop = proof_of_possession(x, pk, pp.ciphersuite)`
     5. return `(pk, sk, pop, prng)`
@@ -153,7 +154,7 @@ The parameter set can be accessed via
   ``` rust
   struct ProofOfPossession {
       ciphersuite: u8,  /// ciphersuite id
-      pop: PixelG1,    /// the actual public key element
+      pop: PixelG1,     /// the actual public key element
   }
   ```
 
@@ -235,7 +236,7 @@ The parameter set can be accessed via
   * Output: true if pop is a proof of possession for pk
   * Error: ERR_SERIAL, ERR_CIPHERSUITE
   * Steps:
-    1. return false if ciphersuites doe't match
+    1. return false if ciphersuites of pop and pk don't match
     1. `msg = DOM_SEP_POP | pk.serial()`  
     2. `sig = pop.get_pop()`
     3. return `BLSSignature::verify(pk, sig, msg, pk.get_ciphersuite())`
@@ -268,6 +269,8 @@ The parameter set can be accessed via
   fn get_prng(&self) -> PRNG;                               // the seed
   ```
 * Serialization:  
+  * Each SecretKey is a blob of `|ciphersuite id| number_of_ssk-s | prng | serial(first ssk) | serial(second ssk)| ...`
+
   ``` rust
   fn get_size(&self) -> usize;                              // get the storage requirement
   fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
@@ -277,7 +280,6 @@ The parameter set can be accessed via
   to have allocated sufficient memory, or an error will be returned.
 
 * Initialization:
-  * Each SecretKey is a blob of `|ciphersuite id| number_of_ssk-s | seed | serial(first ssk) | serial(second ssk)| ...`
 
   ``` Rust
   fn init(pp: &PubParam, alpha: PixelG1, prng: PRNG) -> Result<SecretKey, String>
@@ -298,7 +300,7 @@ The parameter set can be accessed via
   ``` Rust
   fn update(&mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String>
   ```
-  * Input: self: a secret key
+  * Input: self, a secret key
   * Input: public parameter
   * Input: target time
   * Output: mutate self to an sk for target time
@@ -317,7 +319,7 @@ The parameter set can be accessed via
               * info = "key updating"
               * `r = sk.sample_then_update(info, i-1)`
               * re-randomize the ssk via `new_ssk.randomization(pp, r)`
-            * `sk.ssk.insert(i+ 1, new_ssk)` so that ssk remains sorted
+            * `sk.ssk.insert(i + 1, new_ssk)` so that ssk remains sorted
     6. Remove the delegator's ssk via `sk.ssk.remove(0)`
     7. Update sk's time stamp `sk.time = sk.ssk[0].time`
     6. Return success
@@ -395,8 +397,8 @@ The parameter set can be accessed via
   fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
   fn deserialize<R: Read>(reader: &mut R) -> Result<SecretKey>;
   ```
-The compressed flag will always be `true`. The `reader` and `writer` is assumed
-to have allocated sufficient memory, or an error will be returned.
+  The compressed flag will always be `true`. The `reader` and `writer` is assumed
+  to have allocated sufficient memory, or an error will be returned.
 
 * Initialization:
   ``` rust
@@ -488,7 +490,7 @@ This function does NOT handle re-randomizations.
     1. sample `r = sk.prng.sample(info, 0)`
     2. set `m = hash_msg_into_fr(msg, ciphersuite)`
     2. use the first SubSecretKey for signing `ssk = sk.get_first_ssk()`
-    2. re-randomizing sigma1: `sig1 = ssk.g2r + g2^r`
+    2. re-randomizing sigma1: `sig1 = ssk.g2r * g2^r`
     2. re-randomizing sigma2
         1. `tmp = h0 * \prod h_i ^ t_i * h_d^m`
         2. `sig2 = ssk.hpoly * hv[d]^m * tmp^r`
@@ -506,7 +508,7 @@ This function does NOT handle re-randomizations.
     2. returns an error if either sig1 or sig2 is not in the right prime subgroup
     3. set `m = hash_msg_into_fr(msg, ciphersuite)`
     4. set `t = self.tar_time`
-    5. compute `hfx = h0 + h_i * t_i + h_d * m`
+    5. compute `hfx = h0 * h_i ^ t_i * h_d ^ m`
     6. return `e(1/g2, sigma2) * e( sigma1, hfx) * e(pk, h) == 1`
 
 * hash message to a field element
@@ -531,8 +533,8 @@ This function does NOT handle re-randomizations.
     2. if the time stamps are not consistent, return error
     3. sig = sig_list[0]
     4. for i in 1..sig_list.len()
-      * sig.sigma1 *= sig_list[i].sigma1
-      * sig.sigma2 *= sig_list[i].sigma2
+        * `sig.sigma1 *= sig_list[i].sigma1`
+        * `sig.sigma2 *= sig_list[i].sigma2`
     5. return sig
 
 * Verify aggregated signature
@@ -552,7 +554,7 @@ This function does NOT handle re-randomizations.
     1. return error if signature's ciphersuite does not match the public keys' or the public parameters
     2. `agg_pk = pk_list[0]`
     3. for for i in 1..pk_list.len()
-      * `agg_pk.pk = pk_list[i].pk`
+        * `agg_pk.pk *= pk_list[i].pk`
     4. return `verify(sig, pk, pp, msg)`
 
 

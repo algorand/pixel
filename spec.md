@@ -336,7 +336,7 @@ The parameter set can be accessed via
   * there is no ssk in the secret key
   * the target time stamp is invalid for the current time stamp
 
-  Example: suppose we have `sk =  {time: 2, ssks: {omited}}`, and `depth = 4` then
+  Example: suppose we have `sk =  {time: 2, ssks: {omitted}}`, and `depth = 4` then
   `sk.find_ancestor(12) = 9`.
   This is an ancestor node for the target time.
 
@@ -349,7 +349,7 @@ The parameter set can be accessed via
   * Output: a secret key digest
   * Error: ERR_SERIAL
   * Steps:
-    1. `sk.serilaize(buf, true)`; returns an error if serialization fails
+    1. `sk.serialize(buf, true)`; returns an error if serialization fails
     2. returns `sha512(buf)`
 
   ``` Rust
@@ -545,7 +545,7 @@ This function does NOT handle re-randomizations.
         msg: &[u8],
     ) -> bool
   ```  
-  * Input: an aggregated signature
+  * Input: self, an aggregated signature
   * Input: a list of public keys
   * Input: public parameters
   * Input: a message

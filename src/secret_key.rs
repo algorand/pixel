@@ -140,7 +140,7 @@ impl SecretKey {
 
     /// Serialize an sk into a blob and then use sha256
     /// to generate a digest of the blob.
-    /// * `digest = sha256(sk.serialize())`.
+    /// * `digest = sha512(sk.serialize())`.
     /// This function turns out to be a bit slow because
     /// it converts all the group elements into
     /// their affine coordinates before serialize them.

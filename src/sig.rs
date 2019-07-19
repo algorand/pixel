@@ -394,6 +394,7 @@ impl Signature {
         hfx.add_assign(&tmp);
 
         // negate sigma2 so that we can use sim-pairing
+        // TODO: Change to negating g2gen -- faster when g2gen is in G1
         let mut neg_sigma2 = self.sigma2;
         neg_sigma2.negate();
         let sigma1 = self.sigma1;

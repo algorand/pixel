@@ -155,11 +155,21 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     // pk = g2^x
     // sk = h^x
     let mut pk = pp.get_g2();
-    let mut sk = pp.get_h();
-    pk.mul_assign(x_sec);
-    sk.mul_assign(x_sec);
-    let pop = proof_of_possession(x_sec, pk, pp.get_ciphersuite())?;
 
+    pk.mul_assign(x_sec);
+    let pop = match proof_of_possession(x_sec, pk, pp.get_ciphersuite()){
+        Err(e) =>{
+            {
+                let _clear1 = ClearOnDrop::new(&mut x_sec);
+            }
+            assert_eq!(x_sec, Fr::zero(), "Random r is not cleared!");
+            return Err(e);
+        }
+        Ok(p) => p,
+    };
+
+    let mut sk = pp.get_h();
+    sk.mul_assign(x_sec);
     // clear temporary data
     {
         let _clear1 = ClearOnDrop::new(&mut x_sec);

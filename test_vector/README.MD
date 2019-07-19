@@ -20,7 +20,7 @@ The message is also __tentatively__ set to the string
     let msg = "this is the message we want pixel to sign";
 ```
 
-Then, the secrect key is updated from the initial stage (time stamp = 1) to
+Then, the secret key is updated from the initial stage (time stamp = 1) to
 time stamp = 64, advancing 1 at a time. Signatures are also generated for those
 new secret keys. Both secret keys and signatures are output for comparison.
 

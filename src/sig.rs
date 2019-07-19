@@ -393,19 +393,32 @@ impl Signature {
         tmp.mul_assign(msg);
         hfx.add_assign(&tmp);
 
-        // negate sigma2 so that we can use sim-pairing
-        // TODO: Change to negating g2gen -- faster when g2gen is in G1
-        let mut neg_sigma2 = self.sigma2;
-        neg_sigma2.negate();
         let sigma1 = self.sigma1;
+        let sigma2 = self.sigma2;
+
+        // negate either g2gen or sigma2 so that we can use sim-pairing
+	// for performance negate whichever is in G1
+        #[cfg(feature = "pk_in_g2")]
+	let neg_g2 = {
+		let mut tmp = pp.get_g2();
+		tmp.negate();
+		tmp
+	};
+
+	#[cfg(not(feature = "pk_in_g2"))]
+        let neg_sigma2 = {
+		let mut tmp = sigma2;
+		tmp.negate();
+		tmp
+	};
 
         #[cfg(feature = "pk_in_g2")]
-        // e(1/sigma2, g2) * e( hv^{time_vec}, sigma1) * e(h, pk)
+        // e(sigma2, 1/g2) * e( hv^{time_vec}, sigma1) * e(h, pk)
         let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
             [
                 (
-                    &(neg_sigma2.into_affine().prepare()),
-                    &(pp.get_g2().into_affine().prepare()),
+                    &(sigma2.into_affine().prepare()),
+                    &(neg_g2.into_affine().prepare()),
                 ),
                 (
                     &(hfx.into_affine().prepare()),
@@ -419,6 +432,7 @@ impl Signature {
             .iter(),
         ))
         .unwrap();
+
 
         #[cfg(not(feature = "pk_in_g2"))]
         // e(g2, 1/sigma2) * e( sigma1, hv^{time_vec}) * e(pk, h)

@@ -13,7 +13,11 @@ CREDIT: http://patorjk.com/software/taag
 
 [![Build Status](https://travis-ci.com/algorand/pixel.svg?token=cs332z4omsgc9ykLW8pu&branch=master)](https://travis-ci.com/algorand/pixel)
 
-
+TODO: update readme:
+* A lot of the features are no longer supported.
+We want to use fixed generator, and want to hard code the public key in BLS G1.
+Related options will need to be removed from the code, and this file will need to be modified accordingly.
+* We have a separate folder to generate deterministic signatures, and for cross comparison with python code.
 
 
 ## Build options

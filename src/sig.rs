@@ -399,6 +399,8 @@ impl Signature {
 
         // to use simultaneous pairing, we compute
         //  e(1/g2, sigma1) * e( sigma2, hv^{time_vec}) * e(pk, h)
+        // we negate g2 rather than sigma1, since it is slightly faster
+        // to compute the nagete in PixelG2 (a.k.a. BLS G1)
         let mut neg_g2 = pp.get_g2();
         neg_g2.negate();
         // negate either g2gen or sigma2 so that we can use sim-pairing

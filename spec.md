@@ -447,20 +447,20 @@ This function does NOT handle re-randomizations.
   struct Signature {
       ciphersuite: u8,  
       time: TimeStamp,
-      sigma1: PixelG2,
-      sigma2: PixelG1,
+      sigma1: PixelG1,
+      sigma2: PixelG2,
   }
   ```
 * Construct a signature object from some input:
   ``` rust
-  fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG2, sigma2: PixelG1) -> Signature;
+  fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG1, sigma2: PixelG2) -> Signature;
   ```
 * Get various elements from the secret key:
   ``` rust
   fn get_ciphersuite(&self) -> u8;
   fn get_time(&self) -> TimeStamp;
-  fn get_sigma1(&self) -> PixelG2 ;
-  fn get_sigma2(&self) -> PixelG1 ;
+  fn get_sigma1(&self) -> PixelG1 ;
+  fn get_sigma2(&self) -> PixelG2 ;
   ```
 * Serialization:  
   * A signature is a blob `|ciphersuite id| time | sigma1 | sigma2 |`
@@ -490,8 +490,8 @@ This function does NOT handle re-randomizations.
     1. sample `r = sk.prng.sample(info, 0)`
     2. set `m = hash_msg_into_fr(msg, ciphersuite)`
     2. use the first SubSecretKey for signing `ssk = sk.get_first_ssk()`
-    2. re-randomizing sigma1: `sig1 = ssk.g2r * g2^r`
-    2. re-randomizing sigma2
+    2. re-randomizing sigma2: `sig1 = ssk.g2r * g2^r`
+    2. re-randomizing sigma1
         1. `tmp = h0 * \prod h_i ^ t_i * h_d^m`
         2. `sig2 = ssk.hpoly * hv[d]^m * tmp^r`
     3. return `Signature{pp.ciphersuite(), tar_time, sig1, sig2}`
@@ -509,7 +509,7 @@ This function does NOT handle re-randomizations.
     3. set `m = hash_msg_into_fr(msg, ciphersuite)`
     4. set `t = self.tar_time`
     5. compute `hfx = h0 * h_i ^ t_i * h_d ^ m`
-    6. return `e(1/g2, sigma2) * e( sigma1, hfx) * e(pk, h) == 1`
+    6. return `e(1/g2, sigma1) * e( sigma2, hfx) * e(pk, h) == 1`
 
 * hash message to a field element
   ``` Rust

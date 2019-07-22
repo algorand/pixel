@@ -7,12 +7,12 @@ use std::io::{Error, ErrorKind, Read, Result, Write};
 use subkeys::SubSecretKey;
 use PixelG1;
 use PixelG2;
+use ProofOfPossession;
 use PublicKey;
 use SecretKey;
 use Signature;
-use ProofOfPossession;
 
-impl SerDes for ProofOfPossession  {
+impl SerDes for ProofOfPossession {
     /// Convert a pop into a blob:
     ///
     /// `|ciphersuite id| pop |` => bytes
@@ -24,7 +24,7 @@ impl SerDes for ProofOfPossession  {
         if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
-        let mut buf: Vec<u8> = vec![            self.get_ciphersuite()];
+        let mut buf: Vec<u8> = vec![self.get_ciphersuite()];
         self.get_pop().serialize(&mut buf, compressed)?;
 
         // format the output
@@ -52,13 +52,9 @@ impl SerDes for ProofOfPossession  {
         let pop = PixelG1::deserialize(reader)?;
 
         // finished
-        Ok(ProofOfPossession::construct(
-            constants[0],
-            pop
-        ))
+        Ok(ProofOfPossession::construct(constants[0], pop))
     }
 }
-
 
 impl SerDes for Signature {
     /// Convert a signature into a blob:
@@ -120,10 +116,10 @@ impl SerDes for Signature {
         }
 
         // read into sigma1
-        let sigma1 = PixelG2::deserialize(reader)?;
+        let sigma1 = PixelG1::deserialize(reader)?;
 
         // read into sigma2
-        let sigma2 = PixelG1::deserialize(reader)?;
+        let sigma2 = PixelG2::deserialize(reader)?;
 
         // finished
         Ok(Signature::construct(

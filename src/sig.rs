@@ -17,21 +17,22 @@ use PixelG2;
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
-/// * `sigma1 = g^r` in `PixelG2`, and
-/// * `sigma2 = ssk.hpoly * hv[d]^m * (h0 * \prod h_i ^ t_i * h_d^m)^r` in `PixelG1`.
-///
-/// As in the python code, sigma1 and sigma2 are switched --  not consistent with the paper.
+/// * `sigma1 = ssk.hpoly * hv[d]^m * (h0 * \prod h_i ^ t_i * h_d^m)^r` in `PixelG1`.
+/// * `sigma2 = g^r` in `PixelG2`
+/// This follows the paper by having sigma1 in PixelG1 and sigma2 in PixelG2.
+/// Note that it is the opposite in the python code, sigma1 and sigma2 are switched:
+/// https://github.com/hoeteck/pixel/blob/2dfc15c6b3bcd47fd2061cccf358ff685b7ed03e/pixel.py#L354.
 #[derive(Eq, Clone, Default)]
 pub struct Signature {
     ciphersuite: u8,
     time: TimeStamp,
-    sigma1: PixelG2,
-    sigma2: PixelG1,
+    sigma1: PixelG1,
+    sigma2: PixelG2,
 }
 
 impl Signature {
     /// Constructing a signature object.
-    pub fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG2, sigma2: PixelG1) -> Self {
+    pub fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG1, sigma2: PixelG2) -> Self {
         Signature {
             ciphersuite,
             time,
@@ -51,12 +52,12 @@ impl Signature {
     }
 
     /// Returns the first component of the signature.
-    pub fn get_sigma1(&self) -> PixelG2 {
+    pub fn get_sigma1(&self) -> PixelG1 {
         self.sigma1
     }
 
     /// Returns the second component of the signature.
-    pub fn get_sigma2(&self) -> PixelG1 {
+    pub fn get_sigma2(&self) -> PixelG2 {
         self.sigma2
     }
 
@@ -243,13 +244,13 @@ impl Signature {
         let tlen = timevec.get_vector_len();
         let tv = timevec.get_vector();
 
-        // re-randomizing sigma1
-        // sig1 = ssk.g2r + g2^r
-        // sig1 is returned to the caller, so it does not need to be cleared
-        let mut sig1 = ssk_sec.get_g2r();
+        // re-randomizing sigma2
+        // sig2 = ssk.g2r + g2^r
+        // sig2 is returned to the caller, so it does not need to be cleared
+        let mut sig2 = ssk_sec.get_g2r();
         let mut tmp_sec = pp.get_g2();
         tmp_sec.mul_assign(r);
-        sig1.add_assign(&tmp_sec);
+        sig2.add_assign(&tmp_sec);
         {
             let _clear = ClearOnDrop::new(&mut tmp_sec);
         }
@@ -267,10 +268,10 @@ impl Signature {
         let mut tmp2 = hlist[depth];
         tmp2.mul_assign(msg);
         tmp3_sec.add_assign(&tmp2);
-        // re-randomizing sigma2
-        // sig2 = ssk.hpoly * hv[d]^m * tmp^r
+        // re-randomizing sigma1
+        // sig1 = ssk.hpoly * hv[d]^m * tmp^r
         tmp3_sec.mul_assign(r);
-        let mut sig2 = ssk_sec.get_hpoly();
+        let mut sig1 = ssk_sec.get_hpoly();
         let mut hv_last_sec = match ssk_sec.get_last_hvector_coeff() {
             // clear buffer before returing the error
             Err(e) => {
@@ -290,8 +291,8 @@ impl Signature {
             Ok(p) => p,
         };
         hv_last_sec.mul_assign(msg);
-        sig2.add_assign(&hv_last_sec);
-        sig2.add_assign(&tmp3_sec);
+        sig1.add_assign(&hv_last_sec);
+        sig1.add_assign(&tmp3_sec);
 
         // clean up the secret data that has been used
         {
@@ -396,54 +397,57 @@ impl Signature {
         let sigma1 = self.sigma1;
         let sigma2 = self.sigma2;
 
+        // to use simultaneous pairing, we compute
+        //  e(1/g2, sigma1) * e( sigma2, hv^{time_vec}) * e(pk, h)
+        let mut neg_g2 = pp.get_g2();
+        neg_g2.negate();
         // negate either g2gen or sigma2 so that we can use sim-pairing
-	// for performance negate whichever is in G1
-        #[cfg(feature = "pk_in_g2")]
-	let neg_g2 = {
-		let mut tmp = pp.get_g2();
-		tmp.negate();
-		tmp
-	};
+        // for performance negate whichever is in G1
+        // #[cfg(feature = "pk_in_g2")]
+        // let neg_h = {
+        //     let mut tmp = pp.get_h();
+        //     tmp.negate();
+        //     tmp
+        // };
+        //
+        // #[cfg(not(feature = "pk_in_g2"))]
+        // let neg_sigma2 = {
+        //     let mut tmp = sigma2;
+        //     tmp.negate();
+        //     tmp
+        // };
 
-	#[cfg(not(feature = "pk_in_g2"))]
-        let neg_sigma2 = {
-		let mut tmp = sigma2;
-		tmp.negate();
-		tmp
-	};
-
-        #[cfg(feature = "pk_in_g2")]
-        // e(sigma2, 1/g2) * e( hv^{time_vec}, sigma1) * e(h, pk)
-        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-            [
-                (
-                    &(sigma2.into_affine().prepare()),
-                    &(neg_g2.into_affine().prepare()),
-                ),
-                (
-                    &(hfx.into_affine().prepare()),
-                    &(sigma1.into_affine().prepare()),
-                ),
-                (
-                    &(pp.get_h().into_affine().prepare()),
-                    &(pke.into_affine().prepare()),
-                ),
-            ]
-            .iter(),
-        ))
-        .unwrap();
-
-
-        #[cfg(not(feature = "pk_in_g2"))]
+        // #[cfg(feature = "pk_in_g2")]
+        // // e(sigma2, 1/g2) * e( hv^{time_vec}, sigma1) * e(h, pk)
+        // let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+        //     [
+        //         (
+        //             &(sigma1.into_affine().prepare()),
+        //             &(neg_h.into_affine().prepare()),
+        //         ),
+        //         (
+        //             &(hfx.into_affine().prepare()),
+        //             &(sigma2.into_affine().prepare()),
+        //         ),
+        //         (
+        //             &(pp.get_h().into_affine().prepare()),
+        //             &(pke.into_affine().prepare()),
+        //         ),
+        //     ]
+        //     .iter(),
+        // ))
+        // .unwrap();
+        //
+        // #[cfg(not(feature = "pk_in_g2"))]
         // e(g2, 1/sigma2) * e( sigma1, hv^{time_vec}) * e(pk, h)
         let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
             [
                 (
-                    &(pp.get_g2().into_affine().prepare()),
-                    &(neg_sigma2.into_affine().prepare()),
+                    &(neg_g2.into_affine().prepare()),
+                    &(sigma1.into_affine().prepare()),
                 ),
                 (
-                    &(sigma1.into_affine().prepare()),
+                    &(sigma2.into_affine().prepare()),
                     &(hfx.into_affine().prepare()),
                 ),
                 (

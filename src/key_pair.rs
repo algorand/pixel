@@ -157,8 +157,8 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     let mut pk = pp.get_g2();
 
     pk.mul_assign(x_sec);
-    let pop = match proof_of_possession(x_sec, pk, pp.get_ciphersuite()){
-        Err(e) =>{
+    let pop = match proof_of_possession(x_sec, pk, pp.get_ciphersuite()) {
+        Err(e) => {
             {
                 let _clear1 = ClearOnDrop::new(&mut x_sec);
             }

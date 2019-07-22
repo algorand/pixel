@@ -17,7 +17,7 @@ fn main() -> std::io::Result<()> {
     // the default seed to generate the keys is
     //  "this is a very long seed for pixel tests"
     let seed = "this is a very long seed for pixel tests";
-    let timestamp = 0;
+    let timestamp = 1;
     let (pk, mut sk, pop) = Pixel::key_gen(seed, &pp).unwrap();
 
     let mut file = File::create("test_vector/pk_plain.txt")?;

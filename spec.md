@@ -100,30 +100,28 @@ The parameter set can be accessed via
 * Sample and update
   ``` rust
   // sample a field element from PRNG, and update the internal state
-  fn sample_then_update<Blob: AsRef<[u8]>>(&mut self, info: Blob, ctr: u8) -> Fr;
+  fn sample_then_update<Blob: AsRef<[u8]>>(&mut self, info: Blob) -> Fr;
   ```
   * Input: the prng
   * Input: public info
-  * Input: ctr
   * Output: a field element
   * Output: update self's state
   * Steps:
     1. `tmp = HKDF-SHA512-expand(prng, info, 128)`
     2. `prng = PRNG(tmp[64:128])`
-    3.  return `hash_to_field(tmp[0:64], ctr)`
+    3.  return `OS2IP(tmp[0:64]) mod p`
 
 * Sample (without update)
   ``` rust
   // sample a field element from PRNG
-  fn sample<Blob: AsRef<[u8]>>(&self, info: Blob, ctr: u8) -> Fr;
+  fn sample<Blob: AsRef<[u8]>>(&self, info: Blob) -> Fr;
   ```
   * Input: the prng
   * Input: public info
-  * Input: ctr
   * Output: a field element
   * Steps:
     1. `tmp = HKDF-SHA512-expand(prng, info, 64)`
-    2. return `hash_to_field(tmp[0:64], ctr)`
+    2. return `OS2IP(tmp[0:64]) mod p`
 
 
 ## Master secret key
@@ -142,7 +140,7 @@ The parameter set can be accessed via
     2. `salt = DOM_SEP_MASTER_KEY| ciphersuite`
     3. `prng = PRNG::init(seed, salt)`
     3. `info = "key initialization"`
-    3. `x = prng.sample_then_update(info, 0)`
+    3. `x = prng.sample_then_update(info)`
     3. `pk = pp.get_g2() ^ x`
     4. `sk = pp.get_h() ^ x`
     5. `pop = proof_of_possession(x, pk, pp.ciphersuite)`
@@ -251,7 +249,7 @@ The parameter set can be accessed via
       time:         TimeStamp,          // smallest timestamp for all subkeys
       ssk:          Vec<SubSecretKey>,  // the list of the subsecretkeys that are
                                         // stored chronologically based on time stamp
-      rngseed:      [u8; 32],           // a seed that is used to generate the randomness
+      rngseed:      [u8; 64],           // a seed that is used to generate the randomness
                                         // during key updating
   }
   ```
@@ -291,7 +289,7 @@ The parameter set can be accessed via
   * Steps:
     1. returns an error is `pp.get_ciphersuite()` is not supported.
     2. info = "key initialization"
-    3. `r = prng.sample_then_update(info, 0)`
+    3. `r = prng.sample_then_update(info)`
     4. `ssk = SubSecretKey::init(pp, alpha, r)`
     5. return `construct(pp.get_ciphersuite(), 1, [ssk], prng)`
 
@@ -317,7 +315,7 @@ The parameter set can be accessed via
             * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.get_d())`
             * if `i!=0`
               * info = "key updating"
-              * `r = sk.sample_then_update(info, i-1)`
+              * `r = sk.sample_then_update(info)`
               * re-randomize the ssk via `new_ssk.randomization(pp, r)`
             * `sk.ssk.insert(i + 1, new_ssk)` so that ssk remains sorted
     6. Remove the delegator's ssk via `sk.ssk.remove(0)`
@@ -447,20 +445,23 @@ This function does NOT handle re-randomizations.
   struct Signature {
       ciphersuite: u8,  
       time: TimeStamp,
-      sigma1: PixelG1,
-      sigma2: PixelG2,
+      sigma1: PixelG2,
+      sigma2: PixelG1,
   }
   ```
+  This follows the [python code](https://github.com/hoeteck/pixel/blob/2dfc15c6b3bcd47fd2061cccf358ff685b7ed03e/pixel.py#L354)  by having sigma1 in PixelG2 and sigma2 in PixelG1.
+  Note that it is the opposite in the paper: sigma1 and sigma2 are switched.
+
 * Construct a signature object from some input:
   ``` rust
-  fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG1, sigma2: PixelG2) -> Signature;
+  fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG2, sigma2: PixelG1) -> Signature;
   ```
 * Get various elements from the secret key:
   ``` rust
   fn get_ciphersuite(&self) -> u8;
   fn get_time(&self) -> TimeStamp;
-  fn get_sigma1(&self) -> PixelG1 ;
-  fn get_sigma2(&self) -> PixelG2 ;
+  fn get_sigma1(&self) -> PixelG2 ;
+  fn get_sigma2(&self) -> PixelG1 ;
   ```
 * Serialization:  
   * A signature is a blob `|ciphersuite id| time | sigma1 | sigma2 |`
@@ -487,11 +488,11 @@ This function does NOT handle re-randomizations.
     1. returns an error if secret key's time stamp is greater than target time
     1. returns an error if the ciphersuite in pp or sk doesn't match.
     1. info = DOM_SEP_SIG | msg
-    1. sample `r = sk.prng.sample(info, 0)`
+    1. sample `r = sk.prng.sample(info)`
     2. set `m = hash_msg_into_fr(msg, ciphersuite)`
     2. use the first SubSecretKey for signing `ssk = sk.get_first_ssk()`
-    2. re-randomizing sigma2: `sig1 = ssk.g2r * g2^r`
-    2. re-randomizing sigma1
+    2. re-randomizing sigma1: `sig1 = ssk.g2r * g2^r`
+    2. re-randomizing sigma2
         1. `tmp = h0 * \prod h_i ^ t_i * h_d^m`
         2. `sig2 = ssk.hpoly * hv[d]^m * tmp^r`
     3. return `Signature{pp.ciphersuite(), tar_time, sig1, sig2}`
@@ -509,7 +510,7 @@ This function does NOT handle re-randomizations.
     3. set `m = hash_msg_into_fr(msg, ciphersuite)`
     4. set `t = self.tar_time`
     5. compute `hfx = h0 * h_i ^ t_i * h_d ^ m`
-    6. return `e(1/g2, sigma1) * e( sigma2, hfx) * e(pk, h) == 1`
+    6. return `e(1/g2, sigma2) * e( sigma1, hfx) * e(pk, h) == 1`
 
 * hash message to a field element
   ``` Rust
@@ -519,7 +520,7 @@ This function does NOT handle re-randomizations.
   * Output: a field element
   * Steps:
     1. `m = DOM_SEP_HASH_TO_MSG | ciphersuite | msg`
-    2. return `hash_to_field(m, 0)`
+    2. return `SHA512(m) mod p`
 
 * Signature aggregation
   ``` Rust
@@ -566,8 +567,6 @@ We will be using the following functions
     * HKDF-Extract(salt , seed) -> secret
     * HKDF-Expand(secret, public_info, length_of_new_secret) -> new_secret
     * hash_to_group(input, ciphersuite) -> group element
-    * hash_to_field(input, ctr = 0) -> field element
-
 
 * The parameter generation function takes a seed as one of the inputs. This seed is provided by the caller (our go library). The rust code checks if the seed is longer than 32 bytes.
 Rust code does not perform any extra checks over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc. We use SHA512's IV as the seed.
@@ -603,9 +602,9 @@ The field element is generated as follows:
   * Steps:
     * `m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)`
     * `info = "key initialization"`
-    * `t = HKDF-Expand(m, info, 64)`
-    * `x = hash_to_field(t[0..31], 0)`
-    * initialize the rng seed as `rngseed = t[32..63]`
+    * `t = HKDF-Expand(m, info, 128)`
+    * `r = OS2IP(t[0..64]) mod p`
+    * initialize the rng seed as `rngseed = t[64..128]`
 
 <!--
   * A master secret (`x`, or `alpha`, i.e., the exponent for the pk) is generated from
@@ -620,7 +619,7 @@ as follows:
   * Steps:
     * `info = "key updating"`
     * `t = HKDF-Expand(m, info, 128)`
-    * `r = hash_to_field(t[0..64], 0)`
+    * `r = OS2IP(t[0..64]) mod p`
     * update the rngseed as `rngseed = t[64..128]`
 
 
@@ -638,7 +637,7 @@ as follows:
   * Steps:
     * `info = "signing" | message`
     * `t = HKDF-Expand(m, info, 64)`
-    * `r = hash_to_field(t[0..64], 0)`
+    * `r = OS2IP(t[0..64]) mod p`
 
 The rngseed is not updated, so that for a same message, we
 will always generate a same signature.

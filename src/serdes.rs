@@ -116,10 +116,10 @@ impl SerDes for Signature {
         }
 
         // read into sigma1
-        let sigma1 = PixelG1::deserialize(reader)?;
+        let sigma1 = PixelG2::deserialize(reader)?;
 
         // read into sigma2
-        let sigma2 = PixelG2::deserialize(reader)?;
+        let sigma2 = PixelG1::deserialize(reader)?;
 
         // finished
         Ok(Signature::construct(

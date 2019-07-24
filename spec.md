@@ -125,7 +125,7 @@ The parameter set can be accessed via
 
 * Re-randomization
   ``` rust
-  // sample a field element from PRNG, and update the internal state
+  // re_randomize the prng with a new seed and some salt
   fn re_randomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, salt: Blob);
   ```
   * Input: the prng

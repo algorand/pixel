@@ -123,6 +123,18 @@ The parameter set can be accessed via
     1. `tmp = HKDF-SHA512-expand(prng, info, 64)`
     2. return `OS2IP(tmp[0:64]) mod p`
 
+* Re-randomization
+  ``` rust
+  // sample a field element from PRNG, and update the internal state
+  fn re_randomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, salt: Blob);
+  ```
+  * Input: the prng
+  * Input: a seed and a salt for re-randomization
+  * Output: update self's state
+  * Steps:
+    1. `m = HKDF-SHA512-extract(prng|seed, salt)`
+    2. `return PRNG(m)`
+
 
 ## Master secret key
 
@@ -296,11 +308,12 @@ The parameter set can be accessed via
 * Update:
 
   ``` Rust
-  fn update(&mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String>
+  fn update<Blob: AsRef<[u8]>>(&mut self, pp: &PubParam, tar_time: TimeStamp, seed: Blob) -> Result<(), String>
   ```
   * Input: self, a secret key
   * Input: public parameter
   * Input: target time
+  * Input: a seed to re-randomize the prng
   * Output: mutate self to an sk for target time
   * Error: ERR_CIPHERSUITE, ERR_SERIAL, ERR_TIME_STAMP
   * Steps:
@@ -308,6 +321,7 @@ The parameter set can be accessed via
     2. Find the ancestor node `delegator = sk.find_ancestor(tar_time)`, returns an error if time is not correct
     3. Update self to an sk for delegator's time by removing SubSecretKeys whose time stamps are smaller than delegator's time, returns an error if no SubSecretKey is left after removal
     4. If delegator's time equals target time, return success
+    4. Update sk's prng before sampling `r`: `sk.prng.re-randomize(seed, salt)` where `salt = "secret key update"`
     5. Generate a gamma list from target time `GammaList = target_time.gamma_list(pp.get_d())`, returns an error if time stamp is invalid
     6. Use the first ssk to delegate `delegator_ssk = sk.get_first_ssk()`
     6. for (i, TimeStamp) in Gammalist

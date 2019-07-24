@@ -272,7 +272,6 @@ fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
 // 65535  ->  FF:FF
 #[test]
 fn test_os2ip() {
-    // TODO: more tests with > p integers
     assert_eq!(Fr::from_str("0").unwrap(), os2ip_mod_p(&[0u8, 0u8]));
     assert_eq!(Fr::from_str("1").unwrap(), os2ip_mod_p(&[0u8, 1u8]));
     assert_eq!(Fr::from_str("255").unwrap(), os2ip_mod_p(&[0u8, 0xffu8]));
@@ -280,6 +279,36 @@ fn test_os2ip() {
     assert_eq!(
         Fr::from_str("65535").unwrap(),
         os2ip_mod_p(&[0xffu8, 0xffu8])
+    );
+    // 2^128
+    assert_eq!(
+        Fr::from_str("340282366920938463463374607431768211456").unwrap(),
+        // 1 followed by 128/8 = 16 zeros
+        os2ip_mod_p(&[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    );
+    // 2^256 % p
+    assert_eq!(
+        Fr::from_str(
+            "10920338887063814464675503992315976177888879664585288394250266608035967270910"
+        )
+        .unwrap(),
+        os2ip_mod_p(&[
+            // 1 followed by 256/8 = 32 zeros
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0
+        ])
+    );
+    // 2^384 % p
+    assert_eq!(
+        Fr::from_str(
+            "20690987792304517493546419304065979215229097455316523017309531943206242971949"
+        )
+        .unwrap(),
+        os2ip_mod_p(&[
+            // 1 followed by 384/8 = 48 zeros
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ])
     );
 }
 

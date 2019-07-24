@@ -26,7 +26,7 @@ def key_gen(seed):
     info = b"key initialization"
 
     prng = prng_init(seed, salt)
-    x, prng = prng_sample_then_update(prng,info, 0)
+    x, prng = prng_sample_then_update(prng,info)
 
     # pk = g2^x
     pk = point_mul(x, pixelg2gen)
@@ -35,7 +35,7 @@ def key_gen(seed):
     msk = point_mul(x, h)
 
     # r: randomness used in init
-    r, prng = prng_sample_then_update(prng,info, 0)
+    r, prng = prng_sample_then_update(prng,info)
     # g2r = g2^2
     g2r = point_mul(r, pixelg2gen)
 
@@ -79,6 +79,7 @@ def serialize_sk(sk):
 def key_test_vector_gen():
     seed = b"this is a very long seed for pixel tests"
     pk, sk = key_gen(seed)
+    print_sk(sk)
 
     pk_buf = b"\0" + serialize(pk, True)
     f = open("test_vector/pk_bin.txt", "wb")
@@ -89,6 +90,26 @@ def key_test_vector_gen():
     f = open("test_vector/sk_bin_01.txt", "wb")
     f.write(sk_buf)
     f.close()
+
+
+    fname = "test_vector/sk_plain_01.txt"
+    t = sys.stdout
+    sys.stdout = open(fname, 'w')
+    print_sk(sk2)
+    sys.stdout = t
+
+def print_sk(sk):
+    print("prng:")
+    print(sk[0].hex())
+    for e in sk[1]:
+        print ("time:%d"%e[0])
+        print("g2r:")
+        print_g1_hex(e[1])
+        print("hpoly:")
+        print_g2_hex(e[2])
+        for i in range(len(e[3])):
+            print("h%d"%i)
+            print_g2_hex(e[3][i])
 
 
 if __name__ == "__main__":

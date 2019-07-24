@@ -14,7 +14,7 @@ def prng_init(seed, salt):
     return hkdf.hkdf_extract(salt, input_key_material=seed, hash=hashlib.sha512);
 
 # sample a field element, update the seed
-def prng_sample_then_update(prng_seed, info, ctr=0):
+def prng_sample_then_update(prng_seed, info):
     key = hkdf.hkdf_expand(prng_seed, info, 128)
     hashinput = key[:64]
     new_prng_seed = key[64:]
@@ -28,14 +28,12 @@ def prng_sample_then_update(prng_seed, info, ctr=0):
     # Inject \0 for ciphersuite so that the Hr function matches rust's
     # hash_to_field
 
-    print(hashinput.hex())
 
     r = OS2IP(hashinput) % q
-    print(hex(r))
     return r, new_prng_seed
 
 # sample a field element, do not update the seed
-def prng_sample(prng_seed, info, ctr=0):
+def prng_sample(prng_seed, info):
     hashinput = hkdf.hkdf_expand(prng_seed, info, 64)
 
     # Riad:

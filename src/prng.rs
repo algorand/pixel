@@ -6,8 +6,8 @@ use clear_on_drop::ClearOnDrop;
 use hkdf::Hkdf;
 use sha2::{digest::generic_array, Sha512};
 // hash to Fr
+use bigint::U512;
 use ff::PrimeField;
-use num_bigint::BigUint;
 use pairing::bls12_381::{Fr, FrRepr};
 use std::ops::Rem;
 
@@ -195,6 +195,13 @@ impl PRNG {
 /// the input is a 64 bytes array, and the output is between 0 and p-1
 /// i.e., it performs mod operation by default.
 fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
+    // "For the purposes of this document, and consistent with ASN.1 syntax,
+    // an octet string is an ordered sequence of octets (eight-bit bytes).
+    // The sequence is indexed from first (conventionally, leftmost) to last
+    // (rightmost).  For purposes of conversion to and from integers, the
+    // first octet is considered the most significant in the following
+    // conversion primitives.
+    //
     // OS2IP converts an octet string to a nonnegative integer.
     // OS2IP (X)
     // Input:  X octet string to be converted
@@ -205,41 +212,75 @@ fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
     //  <= i <= xLen.
     // 2.  Let x = x_(xLen-1) 256^(xLen-1) + x_(xLen-2) 256^(xLen-2) +
     //  ...  + x_1 256 + x_0.
-    // 3.  Output x.
+    // 3.  Output x. "
 
-    // This says the os2ip uses little endian representation
-    // TODO: review and test it.
+    // TODO: review and test this function.
 
-    let r = BigUint::from_bytes_le(oct_str.as_ref());
+    let mut r_sec = U512::from(oct_str);
+
     // hard coded modulus p
-    let p = BigUint::parse_bytes(
-        b"52435875175126190479447740508185965837690552500527637822603658699938581184513",
-        10,
-    )
-    .unwrap();
-    let t = r.rem(p);
-    let bytes = t.to_bytes_be();
-    // FIXME: it may be that t < 2^248 with 1/256 probability, then
-    // bytes will be an array of 31 bytes, instead of 32.
-    // this triggers an failure in API tests.
-    println!("bytes: {} {:?}", bytes.len(), bytes);
+    let p = U512::from([
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0x73, 0xED, 0xA7, 0x53, 0x29, 0x9D, 0x7D, 0x48, 0x33, 0x39, 0xD8, 0x08, 0x09, 0xA1,
+        0xD8, 0x05, 0x53, 0xBD, 0xA4, 0x02, 0xFF, 0xFE, 0x5B, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0x00,
+        0x00, 0x00, 0x01,
+    ]);
+    // t = r % p
+    let mut t_sec = r_sec.rem(p);
+
+    // convert t from a U512 into a primefield object s
+    let mut tslide: [u8; 64] = [0; 64];
+    let bytes: &mut [u8] = tslide.as_mut();
+    t_sec.to_big_endian(bytes);
+
     let s = FrRepr([
         u64::from_be_bytes([
-            bytes[24], bytes[25], bytes[26], bytes[27], bytes[28], bytes[29], bytes[30], bytes[31],
+            bytes[56], bytes[57], bytes[58], bytes[59], bytes[60], bytes[61], bytes[62], bytes[63],
         ]),
         u64::from_be_bytes([
-            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
+            bytes[48], bytes[49], bytes[50], bytes[51], bytes[52], bytes[53], bytes[54], bytes[55],
         ]),
         u64::from_be_bytes([
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+            bytes[40], bytes[41], bytes[42], bytes[43], bytes[44], bytes[45], bytes[46], bytes[47],
         ]),
         u64::from_be_bytes([
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[32], bytes[33], bytes[34], bytes[35], bytes[36], bytes[37], bytes[38], bytes[39],
         ]),
     ]);
+    // clear r_sec and t_sec
+    {
+        let _clear1 = ClearOnDrop::new(&mut r_sec);
+        let _clear2 = ClearOnDrop::new(&mut t_sec);
+    }
+    assert_eq!(r_sec, U512::default());
+    assert_eq!(t_sec, U512::default());
 
-    println!("bytes: {:?}", s);
+    // manually clear bytes since Default trait is not implemented for [u8;64]
+    for i in 0..64 {
+        bytes[i] = i as u8;
+    }
+
     Fr::from_repr(s).unwrap()
+}
+
+// examples from
+// https://crypto.stackexchange.com/questions/37537/what-are-i2osp-os2ip-in-rsa-pkcs1
+//  0  ->  00:00
+//  1  ->  00:01
+// 255  ->  00:FF
+// 256  ->  01:00
+// 65535  ->  FF:FF
+#[test]
+fn test_os2ip() {
+    // TODO: more tests with > p integers
+    assert_eq!(Fr::from_str("0").unwrap(), os2ip_mod_p(&[0u8, 0u8]));
+    assert_eq!(Fr::from_str("1").unwrap(), os2ip_mod_p(&[0u8, 1u8]));
+    assert_eq!(Fr::from_str("255").unwrap(), os2ip_mod_p(&[0u8, 0xffu8]));
+    assert_eq!(Fr::from_str("256").unwrap(), os2ip_mod_p(&[1u8, 0u8]));
+    assert_eq!(
+        Fr::from_str("65535").unwrap(),
+        os2ip_mod_p(&[0xffu8, 0xffu8])
+    );
 }
 
 // TODO: more test cases

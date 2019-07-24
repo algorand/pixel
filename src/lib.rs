@@ -21,12 +21,12 @@
 //! * The current implementaion only supports ciphersuite id  = `0x00` and `0x01`. The exact
 //! mapping between ids and parameters is yet to be specified.
 
+extern crate bigint;
 extern crate bls_sigs_ref_rs;
 extern crate clear_on_drop;
 extern crate ff;
 extern crate generic_array;
 extern crate hkdf;
-extern crate num_bigint;
 extern crate pairing;
 extern crate pixel_param as param;
 extern crate sha2;

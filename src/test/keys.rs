@@ -19,7 +19,7 @@ fn test_keypair() {
     let keypair = res.unwrap();
     println!("pk: {:?}", keypair.0.get_pk().into_affine());
     println!("sk: {:?}", keypair.1);
-//    assert!(false)
+    //    assert!(false)
 }
 
 #[test]

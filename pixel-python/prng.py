@@ -5,7 +5,8 @@ import hkdf
 import hashlib
 
 from hashlib import sha512, sha256
-from hash_to_field import Hr
+from hash_to_field import OS2IP
+from consts import q
 
 # a wrapper of the HKDF-SHA512_extract function
 def prng_init(seed, salt):
@@ -26,7 +27,11 @@ def prng_sample_then_update(prng_seed, info, ctr=0):
 
     # Inject \0 for ciphersuite so that the Hr function matches rust's
     # hash_to_field
-    r = Hr(b"\0" + hashinput)[0]
+
+    print(hashinput.hex())
+
+    r = OS2IP(hashinput) % q
+    print(hex(r))
     return r, new_prng_seed
 
 # sample a field element, do not update the seed
@@ -41,7 +46,7 @@ def prng_sample(prng_seed, info, ctr=0):
 
     # Inject \0 for ciphersuite so that the Hr function matches rust's
     # hash_to_field
-    r = Hr(b"\0" + hashinput)[0]
+    r = OS2IP(hashinput) % p
     return r
 
 # basic functionality tests that matches Rust
@@ -55,9 +60,9 @@ def prng_test():
     r2 = prng_sample(new_prng_seed, info)
     r3 = prng_sample(new_prng_seed, info)
 
-    assert r1 == 0x6c007fa36465ea6a2832f035ac884bdd724056b516f816876d576de589d4ba36
-    assert r2 == 0x34036972b912c2b7d5f313bf2cac29d555c2d1b18347008f1c071c2621e2e948
-    assert r3 == 0x34036972b912c2b7d5f313bf2cac29d555c2d1b18347008f1c071c2621e2e948
+    assert r1 == 0x5fc61b25c385eefe94ee9c8f205eb575e43d41800be63d0f1dd41cab6950f572
+    assert r2 == 0x30cdf80e28b7c7391a8a0c2ff8503944f808a1c0cc22efd2f217fe299b51645c
+    assert r3 == 0x30cdf80e28b7c7391a8a0c2ff8503944f808a1c0cc22efd2f217fe299b51645c
 
 
 if __name__ == "__main__":

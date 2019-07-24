@@ -150,7 +150,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     // this is a local secret - need to clear after use
     //  x = hkdf-expand(prng, info, ctr)
     //  ctr is set to 0
-    let mut x_sec = prng.sample_then_update(info, 0);
+    let mut x_sec = prng.sample_then_update(info);
 
     // pk = g2^x
     // sk = h^x

@@ -54,8 +54,8 @@ impl SecretKey {
 
         let info = "key initialization";
         // r is a local secret, and need to be cleared after use
-        let mut r_sec = prng.sample_then_update(info, 0);
-
+        let mut r_sec = prng.sample_then_update(info);
+        println!("rsec: {:?}", r_sec);
         // ssk is passed to the caller
         let ssk = SubSecretKey::init(&pp, alpha, r_sec);
 
@@ -419,8 +419,11 @@ impl SecretKey {
                 //  m = HKDF-expand(prngseed, info, 128)
                 //  r = hash_to_field(m[0..64], ctr)
                 //  prngseed = m[64..128]
+                // note that a key update requires zero or one
+                // random field element. So the following function
+                // shouldn't be called more than once.
                 let info = "key updating";
-                let mut r_sec = new_sk.prng.sample_then_update(info, (i - 1) as u8);
+                let mut r_sec = new_sk.prng.sample_then_update(info);
 
                 assert_ne!(new_sk.prng, self.prng, "prng not updated");
 

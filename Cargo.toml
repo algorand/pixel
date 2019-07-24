@@ -32,6 +32,7 @@ clear_on_drop = "0.2.3"
 pixel_param = {path = "../pixel_param"}
 generic-array = ""
 #pixel_param = { git = "https://github.com/algorand/pixel_param"}
+num-bigint = "0.2"
 
 [[bench]]
 name = "pixel_bench"

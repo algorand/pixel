@@ -195,7 +195,7 @@ impl Signature {
         //  m = HKDF-Expand(prng_seed, info, 64)
         //  r = hash_to_field(m, ctr)
         let info = [DOM_SEP_SIG.as_bytes(), msg].concat();
-        let mut r_sec = sk.get_prng().sample(info, 0);
+        let mut r_sec = sk.get_prng().sample(info);
 
         // hash the message into a field element
         let m = hash_msg_into_fr(msg, pp.get_ciphersuite());

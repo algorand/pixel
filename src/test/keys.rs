@@ -8,8 +8,8 @@ use PublicKey;
 
 #[test]
 fn test_keypair() {
-    let pp = PubParam::init_without_seed();
-    let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+    let pp = PubParam::default();
+    let res = KeyPair::keygen(b"this is a very long seed for pixel tests", &pp);
     assert!(
         res.is_ok(),
         "key gen failed\n\
@@ -17,7 +17,9 @@ fn test_keypair() {
         res.err()
     );
     let keypair = res.unwrap();
-    println!("{:?}", keypair);
+    println!("pk: {:?}", keypair.0.get_pk().into_affine());
+    println!("sk: {:?}", keypair.1);
+//    assert!(false)
 }
 
 #[test]

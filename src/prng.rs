@@ -188,6 +188,14 @@ impl PRNG {
         }
         assert_eq!(*self, PRNG::default(), "old seed not cleared");
     }
+
+    /// Mix new entropy into the PRNG.
+    pub fn rerandomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, salt: Blob) {
+        let m = [&self.0.to_vec(), seed.as_ref()].concat();
+        let k = Hkdf::<Sha512>::extract(Some(salt.as_ref()), m.as_ref());
+        self.0.clone_from_slice(&k.prk[0..64]);
+        // TODO: clear m, k?
+    }
 }
 
 /// this is pixel's Octect String to Integer Primitive (os2ip) function

@@ -95,7 +95,7 @@ def key_test_vector_gen():
     fname = "test_vector/sk_plain_01.txt"
     t = sys.stdout
     sys.stdout = open(fname, 'w')
-    print_sk(sk2)
+    print_sk(sk)
     sys.stdout = t
 
 def print_sk(sk):

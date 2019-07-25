@@ -44,8 +44,12 @@ def prng_sample(prng_seed, info):
 
     # Inject \0 for ciphersuite so that the Hr function matches rust's
     # hash_to_field
-    r = OS2IP(hashinput) % p
+    r = OS2IP(hashinput) % q
     return r
+
+def prng_rerandomize(prng_seed, newseed, salt):
+    return hkdf.hkdf_extract(salt, input_key_material=(prng_seed+newseed), hash=hashlib.sha512);
+
 
 # basic functionality tests that matches Rust
 def prng_test():
@@ -53,7 +57,17 @@ def prng_test():
     info = bytes("info", "ascii")
     salt = bytes("salt", "ascii")
     prng = prng_init(seed, salt)
+
+    # for e in prng:
+    #     print ("%s,"%hex(e))
+    # print(prng.hex())
     r1, new_prng_seed = prng_sample_then_update(prng, info)
+
+    # for e in new_prng_seed:
+    #     print ("%s,"%hex(e))
+    # print(prng.hex())
+    # print(new_prng_seed.hex())
+
     # test that the new-seed is not mutated
     r2 = prng_sample(new_prng_seed, info)
     r3 = prng_sample(new_prng_seed, info)
@@ -62,6 +76,18 @@ def prng_test():
     assert r2 == 0x30cdf80e28b7c7391a8a0c2ff8503944f808a1c0cc22efd2f217fe299b51645c
     assert r3 == 0x30cdf80e28b7c7391a8a0c2ff8503944f808a1c0cc22efd2f217fe299b51645c
 
+    new_prng_seed2 = prng_rerandomize(new_prng_seed, seed, salt)
+    # for e in new_prng_seed2:
+    #     print ("%s,"%hex(e))
+    # print(prng.hex())
+    # print(new_prng_seed2.hex())
+    r4, new_prng_seed3 = prng_sample_then_update(new_prng_seed2, info)
+    # print(r4)
+    # print(hex(r4))
+    # for e in new_prng_seed3:
+    #     print ("%s,"%hex(e))
+    # print(prng.hex())
+    # print(new_prng_seed.hex())
 
 if __name__ == "__main__":
     def main():

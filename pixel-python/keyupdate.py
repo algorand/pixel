@@ -165,7 +165,7 @@ def key_update_test_vector_gen():
         print(i)
 
         # update the secret key sequentially, and make sure the
-        # updated key matched rust's outpus.
+        # updated key matched rust's outputs.
         sk2 = sk_update(copy.deepcopy(sk), default_param, i)
         sk_buf = serialize_sk(sk2)
 

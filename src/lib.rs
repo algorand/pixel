@@ -30,12 +30,10 @@ extern crate pairing;
 extern crate pixel_param as param;
 extern crate sha2;
 
-
 /// Domain separators are defined here.
 mod domain_sep;
 /// Error messages are defined here.
 mod pixel_err;
-
 
 // We may upstream this mod to pairing library.
 /// This module defines memebership tests for Pixel Groups
@@ -69,8 +67,8 @@ pub use pop::ProofOfPossession;
 pub use public_key::PublicKey;
 pub use secret_key::SecretKey;
 pub use serdes::SerDes;
-pub use subkeys::SubSecretKey;
 pub use sig::Signature;
+pub use subkeys::SubSecretKey;
 pub use time::{TimeStamp, TimeVec};
 
 /// Pixel is a trait that implements the algorithms within the pixel signature scheme.

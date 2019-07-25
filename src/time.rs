@@ -128,39 +128,34 @@ fn time_to_vec(time: TimeStamp, d: usize) -> Result<Vec<u64>, String> {
         return Err(ERR_TIME_STAMP.to_owned());
     }
 
-    // assert!(
-    //     time <= max_t && time != 0,
-    //     "time_to_vec invalid time {} > {} for depth {}",
-    //     time,
-    //     max_t,
-    //     d
-    // );
-
-    /*
-        if t==1:
-          return []
-        if D>0 and t > pow(2,D-1):
-           return [2] + time2vec(t-pow(2,D-1),D-1)
-        else:
-           return [1] + time2vec(t-1,D-1)
-    */
-
-    //
+    // python code:
     // if t==1:
+    //   return []
+    // if D>0 and t > pow(2,D-1):
+    //    return [2] + time2vec(t-pow(2,D-1),D-1)
+    // else:
+    //    return [1] + time2vec(t-1,D-1)
+
+    // if t == 1:
     //   return []
     let mut tmp = Vec::new();
     if time == 1 {
         return Ok(tmp);
     }
 
-    //  if D>0 and t > pow(2,D-1):
-    //      return [2] + time2vec(t-pow(2,D-1),D-1)
-    if d > 0 && time > (1 << (d - 1)) {
-        tmp = time_to_vec(time - 2u64.pow(d as u32 - 1), d - 1)?;
+    // if t > pow(2, D-1), add the right child to the list
+    // and process to the right node
+    //  1. subtract 2^(d-1) from time
+    //  2. add [2] to the vector
+    // if t <= pow(2, D-1), add the left child to the list
+    // and process to the right node
+    //  1. subtract 1 from time
+    //  2. add [1] to the vector
+    let threshold = 1 << (d - 1);
+    if time > threshold {
+        tmp = time_to_vec(time - threshold, d - 1)?;
         tmp.insert(0, 2);
     } else {
-        // else:
-        //    return [1] + time2vec(t-1,D-1)
         tmp = time_to_vec(time - 1, d - 1)?;
         tmp.insert(0, 1);
     }
@@ -171,13 +166,13 @@ fn time_to_vec(time: TimeStamp, d: usize) -> Result<Vec<u64>, String> {
 // Convert a vector back to time.
 // Returns an error if time depth is invalid.
 fn vec_to_time(mut t_vec: Vec<u64>, d: usize) -> Result<u64, String> {
-    /*
-        if tvec == []:
-          return 1
-          else:
-          ti = tvec.pop(0)
-          return 1 + (ti-1) * (pow(2,D-1)-1) + vec2time(tvec,D-1)
-    */
+    // python code:
+    //     if tvec == []:
+    //       return 1
+    //       else:
+    //       ti = tvec.pop(0)
+    //       return 1 + (ti-1) * (pow(2,D-1)-1) + vec2time(tvec,D-1)
+
     // requires D >=1 and t in {1,2,...,2^D-1}
     if d == 0 {
         #[cfg(debug_assertions)]
@@ -185,9 +180,13 @@ fn vec_to_time(mut t_vec: Vec<u64>, d: usize) -> Result<u64, String> {
         return Err(ERR_TIME_DEPTH.to_owned());
     }
     if t_vec == [] {
+        // an empty list is 1
         Ok(1)
     } else {
+        // process t_vec[0] recursively
         let tmp: Vec<u64> = t_vec.drain(0..1).collect();
+        // if t_vec[0] == 1 => proceed to the left child, so we add the time by 1
+        // if t_vec[0] == 1 => proceed to the right child, so we add the time by 2^(d-1)
         Ok(1 + (tmp[0] - 1) * ((1u64 << (d - 1)) - 1) + vec_to_time(t_vec, d - 1)?)
     }
 }

@@ -1,14 +1,11 @@
+use crate::{PixelG2, ProofOfPossession, SerDes, PK_LEN};
 use bls_sigs_ref_rs::BLSSignature;
 use domain_sep;
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
-use serdes::SerDes;
-use PixelG2;
-use ProofOfPossession;
-use PK_LEN;
 
-/// The public key structure is a wrapper of `PixelG2` group.
-/// The actual group that the public key lies in depends on `pk_in_g2` flag.
+/// The public key structure is a wrapper of `PixelG2` group,
+/// which is mapped to BLS G1.
 #[derive(Debug, Clone, Default)]
 pub struct PublicKey {
     /// ciphersuite id

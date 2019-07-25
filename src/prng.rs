@@ -5,13 +5,13 @@ use clear_on_drop::ClearOnDrop;
 // use hkdf-sha512 to extract and expand a seed
 use hkdf::Hkdf;
 use sha2::{digest::generic_array, Sha512};
-// hash to Fr
+// hash to Fr requires the following traits
 use bigint::U512;
 use ff::PrimeField;
 use pairing::bls12_381::{Fr, FrRepr};
 use std::ops::Rem;
 
-/// A PRNG in Pixel is a wrapper of 32 byte array.
+/// A PRNG in Pixel is a wrapper of 64 byte array.
 /// This array is initiated during key generation,
 /// stored as part of the secret key, updated When
 /// secret key is updated, and is used to generate
@@ -40,7 +40,8 @@ impl std::fmt::Debug for PRNG {
     }
 }
 
-/// convenient function to compare PRNGs
+/// convenient function to compare PRNGs.
+/// It is required when we want to check the prngs are zeroed out after cleanning.
 impl std::cmp::PartialEq for PRNG {
     fn eq(&self, other: &Self) -> bool {
         for i in 0..64 {
@@ -98,6 +99,8 @@ impl PRNG {
             hk_sec.expand(info.as_ref(), &mut output_sec).is_ok(),
             "hkdf expand failed"
         );
+        // convert the first 64 bytes of the output to a field element
+        // by os2ip(output_sec[0..64]) % p
         let r = os2ip_mod_p(&output_sec[0..64]);
 
         // clear the old seed
@@ -160,7 +163,8 @@ impl PRNG {
             "hkdf expand failed"
         );
 
-        // hash the first 64 bytes of the output to a field element
+        // convert the first 64 bytes of the output to a field element
+        // by os2ip(output_sec) % p
         let r = os2ip_mod_p(&output_sec);
 
         // clear the buffer and hk
@@ -232,8 +236,6 @@ pub fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
     //  ...  + x_1 256 + x_0.
     // 3.  Output x. "
 
-    // TODO: review and test this function.
-
     let mut r_sec = U512::from(oct_str);
 
     // hard coded modulus p
@@ -250,6 +252,9 @@ pub fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
     let mut tslide: [u8; 64] = [0; 64];
     let bytes: &mut [u8] = tslide.as_mut();
     t_sec.to_big_endian(bytes);
+
+    // the top 32 bytes should be 0s after the mod operation
+    assert_eq!(bytes[0..32].to_vec(), vec![0; 32]);
 
     let s = FrRepr([
         u64::from_be_bytes([
@@ -330,7 +335,6 @@ fn test_os2ip() {
     );
 }
 
-// TODO: move the tests to a separate file
 #[test]
 fn test_prng() {
     // test sample then update function

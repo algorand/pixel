@@ -56,7 +56,7 @@ mod secret_key;
 /// and 48 byte for group element.
 pub const PK_LEN: usize = 49;
 
-/// The Signature size is always 149.
+/// The Signature size is 149.
 /// 1 byte for ciphersuite ID, 4 bytes for time stamp,
 /// 48+96 bytes for two group elements.
 pub const SIG_LEN: usize = 149;

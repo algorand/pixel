@@ -1,4 +1,5 @@
 // implements the signature structure, the signing and verification algorithms
+use crate::{PixelG1, PixelG2, PublicKey, SecretKey, SubSecretKey};
 use clear_on_drop::ClearOnDrop;
 use domain_sep::DOM_SEP_SIG;
 use ff::Field;
@@ -7,14 +8,10 @@ use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng;
-use public_key::PublicKey;
-use secret_key::SecretKey;
 use sha2::Digest;
 use std::fmt;
-use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
-use PixelG1;
-use PixelG2;
+
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
@@ -194,7 +191,7 @@ impl Signature {
         // We generate a random field element from the prng; the prng is not updated.
         // Within sample():
         //  m = HKDF-Expand(prng_seed, info, 64)
-        //  r = hash_to_field(m, ctr)
+        //  r = OS2IP(m) % p
         let info = [DOM_SEP_SIG.as_bytes(), msg].concat();
         let mut r_sec = sk.get_prng().sample(info);
 
@@ -275,7 +272,7 @@ impl Signature {
         tmp3_sec.add_assign(&tmp2);
 
         // re-randomizing sigma2
-        // sig2 = ssk.hpoly * hv[d]^m * tmp^r
+        // sig2 = ssk.hpoly * hv[d]^m * tmp3^r
         tmp3_sec.mul_assign(r);
         let mut sig2 = ssk_sec.get_hpoly();
         let mut hv_last_sec = match ssk_sec.get_last_hvector_coeff() {

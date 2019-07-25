@@ -6,12 +6,8 @@ use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng::PRNG;
-use serdes::SerDes;
-use PixelG1;
-use PixelG2;
-use ProofOfPossession;
-use PublicKey;
-use SecretKey;
+
+use crate::{PixelG1, PixelG2, ProofOfPossession, PublicKey, SecretKey, SerDes};
 
 /// The keypair is  a pair of public and secret keys,
 /// and a proof of possesion of the public key.

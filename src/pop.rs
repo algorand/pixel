@@ -25,4 +25,7 @@ impl ProofOfPossession {
     pub fn get_pop(&self) -> PixelG1 {
         self.pop
     }
+
+    // the actual pop generation and verification functions
+    // stay within the public key module
 }

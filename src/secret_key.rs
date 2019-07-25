@@ -1,22 +1,21 @@
+use crate::{PixelG1, PublicKey, SerDes, SubSecretKey};
 use clear_on_drop::ClearOnDrop;
 use ff::Field;
 use pairing::bls12_381::Fr;
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng::PRNG;
-use serdes::SerDes;
 use sha2::Digest;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
-use PixelG1;
-use SubSecretKey;
 
-use crate::PublicKey;
-/// The secret key is a list of SubSecretKeys;
-/// the length of the list can be arbitrary;
-/// they are arranged in a chronological order.
-/// There are two extra fields, the ciphersuite id,
-/// and the time stamp.
+/// The secret key consists of ...
+/// * a list of SubSecretKeys;
+///     the length of the list can be arbitrary;
+///     they are arranged in a chronological order.
+/// * the ciphersuite id,
+/// * time stamp,
+/// * and a prng.
 #[derive(Clone, Default)]
 pub struct SecretKey {
     /// ciphersuite id
@@ -132,6 +131,7 @@ impl SecretKey {
     /// their affine coordinates before serialize them.
     /// And because the size is big, so the hash function
     /// will have quite a lot of iterations.
+    /// This function is not used by any pixel interal calls.
     pub fn digest(&self) -> Result<Vec<u8>, String> {
         let mut hashinput = vec![0u8; self.get_size()];
         // serializae a sk into buffer
@@ -414,8 +414,6 @@ impl SecretKey {
 
                 assert_ne!(new_sk.prng, self.prng, "prng not updated");
 
-                // TODO: decide what about non-deterministic version?
-
                 match new_ssk.randomization(&pp, r_sec) {
                     Err(e) => {
                         {
@@ -597,7 +595,6 @@ impl SecretKey {
                 assert_eq!(ssk, Vec::default(), "ssk not cleared");
                 #[cfg(debug_assertions)]
                 println!("Validation failed: time does not match the gamma_list");
-                #[cfg(feature = "verbose")]
                 #[cfg(debug_assertions)]
                 println!(
                     "Current time: {}\n\

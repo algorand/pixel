@@ -1,7 +1,5 @@
 // this module handles the time stamp that is used
 
-use ff::PrimeField;
-use pairing::bls12_381::{Fr, FrRepr};
 use pixel_err::*;
 use std::iter::FromIterator;
 
@@ -48,18 +46,6 @@ impl TimeVec {
     pub fn init(time: TimeStamp, depth: usize) -> Result<Self, String> {
         let vec = time_to_vec(time, depth)?;
         Ok(TimeVec { time, vec })
-    }
-
-    /// into_fr() extracts the time vector and converts
-    /// the vector into the Fr form
-    /// code deprecated
-    #[allow(dead_code)]
-    fn build_fr_vec(&self) -> Vec<Fr> {
-        let mut vec: Vec<Fr> = vec![];
-        for e in self.get_vector() {
-            vec.push(Fr::from_repr(FrRepr([e as u64, 0, 0, 0])).unwrap());
-        }
-        vec
     }
 
     /// checks if self is a prefix of the other time vector

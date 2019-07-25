@@ -124,7 +124,7 @@ impl PRNG {
         // to clear the memory.
         // So we manually clear out this array by writing
         // travial data to it.
-         for (i, e) in new_seed.iter_mut().enumerate() {
+        for (i, e) in new_seed.iter_mut().enumerate() {
             *e = i as u8;
         }
 

@@ -16,8 +16,8 @@
 //! By default the groups are switched so that
 //! the public key lies in `G2` over BLS12-381 curve.
 //! This yields smaller public keys.
-//! * The depth is set to 30 by default. This gives 170 years of life time for the secret keys,
-//! assuming each key lasts for 5 second. This parameter is defined by `CONST_D`.
+//! * The depth is set to 32 by default. This gives 700 years of life time for the secret keys,
+//! assuming each key lasts for 5 second. This parameter is defined by `CONST_D` in pixel_param.
 //! * The current implementaion only supports ciphersuite id  = `0x00` and `0x01`. The exact
 //! mapping between ids and parameters is yet to be specified.
 
@@ -25,18 +25,22 @@ extern crate bigint;
 extern crate bls_sigs_ref_rs;
 extern crate clear_on_drop;
 extern crate ff;
-extern crate generic_array;
 extern crate hkdf;
 extern crate pairing;
 extern crate pixel_param as param;
 extern crate sha2;
 
-mod domain_sep;
 
-/// this module defines memebership tests for Pixel Groups
-pub mod membership;
-// mod param;
+/// Domain separators are defined here.
+mod domain_sep;
+/// Error messages are defined here.
 mod pixel_err;
+
+
+// We may upstream this mod to pairing library.
+/// This module defines memebership tests for Pixel Groups
+pub mod membership;
+
 mod prng;
 mod serdes;
 mod sig;
@@ -49,86 +53,15 @@ mod key_pair;
 mod pop;
 mod public_key;
 mod secret_key;
-// // by default the groups are switched so that
-// // the public key lies in G2
-// // this yields smaller public keys
-// // in the case where public key lies in G1,
-// // we need to unswitch the groups
-// // to enable this feature, set `features=pk_in_g2` flag
-//
-// //  additional comments for cargo doc
-// /// The pixel G1 group is mapped to G1 over BLS12-381 curve.
-// /// Note that `features=pk_in_g2` flag is set.
-// #[cfg(feature = "pk_in_g2")]
-// pub type PixelG1 = pairing::bls12_381::G1;
-// //  additional comments for cargo doc
-// /// The pixel G2 group is mapped to G2 over BLS12-381 curve.
-// /// Note that `features=pk_in_g2` flag is set.
-// #[cfg(feature = "pk_in_g2")]
-// pub type PixelG2 = pairing::bls12_381::G2;
-// //  additional comments for cargo doc
-// /// By default the groups are switched so that
-// /// the public key lies in G2.
-// /// This means pixel G1 group is mapped to G2 over BLS12-381 curve.
-// #[cfg(not(feature = "pk_in_g2"))]
-// pub type PixelG1 = pairing::bls12_381::G2;
-// //  additional comments for cargo doc
-// /// By default the groups are switched so that
-// /// the public key lies in G2.
-// /// This means pixel G2 group is mapped to G1 over BLS12-381 curve.
-// #[cfg(not(feature = "pk_in_g2"))]
-// pub type PixelG2 = pairing::bls12_381::G1;
 
 /// The size of pk is 49 when PK is in G1. 1 byte for ciphersuite ID
 /// and 48 byte for group element.
-#[cfg(not(feature = "pk_in_g2"))]
 pub const PK_LEN: usize = 49;
-
-/// The size of pk is 97 when PK is in G2. 1 byte for ciphersuite ID
-/// and 96 byte for group element.
-#[cfg(feature = "pk_in_g2")]
-pub const PK_LEN: usize = 97;
 
 /// The Signature size is always 149.
 /// 1 byte for ciphersuite ID, 4 bytes for time stamp,
 /// 48+96 bytes for two group elements.
 pub const SIG_LEN: usize = 149;
-
-/// The size of public param is ...
-/// * 1 byte for ciphersuite ID
-/// * 1 byte for depth
-/// * 144 for g2 and h
-/// * |PIXELG2| *(d+1) for hlist
-#[cfg(not(debug_assertions))]
-#[cfg(not(feature = "pk_in_g2"))]
-pub const PP_LEN: usize = 3314;
-
-/// The size of public param is  when PK is in G1...
-/// * 1 byte for ciphersuite ID
-/// * 1 byte for depth
-/// * 144 for g2 and h
-/// * |PIXELG2| *(d+1) for hlist
-#[cfg(not(debug_assertions))]
-#[cfg(feature = "pk_in_g2")]
-pub const PP_LEN: usize = 1730;
-
-// /// The size of public param is  when PK is in G1...
-// /// * 1 byte for ciphersuite ID
-// /// * 1 byte for depth
-// /// * 144 for g2 and h
-// /// * |PIXELG2| *(d+1) for hlist
-// #[cfg(debug_assertions)]
-// #[cfg(not(feature = "pk_in_g2"))]
-// pub const PP_LEN: usize = 626;
-
-/// The size of public param is  when PK is in G1...
-/// * 1 byte for ciphersuite ID
-/// * 1 byte for depth
-/// * 144 for g2 and h
-/// * |PIXELG2| *(d+1) for hlist
-#[cfg(debug_assertions)]
-#[cfg(feature = "pk_in_g2")]
-pub const PP_LEN: usize = 386;
 
 // Expose this constant.
 pub use param::{PixelG1, PixelG2, PubParam, CONST_D, VALID_CIPHERSUITE};
@@ -137,27 +70,8 @@ pub use public_key::PublicKey;
 pub use secret_key::SecretKey;
 pub use serdes::SerDes;
 pub use subkeys::SubSecretKey;
-
-//
-// // expose the submodules of this crate for debug versions
-// //#[cfg(debug_assertions)]
-// pub use keys::{ProofOfPossession, PublicKey, SecretKey, SubSecretKey};
-// //#[cfg(debug_assertions)]
-// pub use param::PubParam;
-//#[cfg(debug_assertions)]
 pub use sig::Signature;
-//#[cfg(debug_assertions)]
 pub use time::{TimeStamp, TimeVec};
-
-// // hide the submodules of this crate for release versions
-// #[cfg(not(debug_assertions))]
-// use keys::{PublicKey, SecretKey};
-// #[cfg(not(debug_assertions))]
-// use param::PubParam;
-// #[cfg(not(debug_assertions))]
-// use sig::Signature;
-// #[cfg(not(debug_assertions))]
-// use time::TimeStamp;
 
 /// Pixel is a trait that implements the algorithms within the pixel signature scheme.
 pub trait PixelSignature {
@@ -194,6 +108,7 @@ pub trait PixelSignature {
 
     /// Input a secret key, the public parameter and a time stamp,
     /// update the key to that time stamp.
+    /// TODO: rerandomize the seed
     fn sk_update(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam) -> Result<(), String> {
         sk.update(&pp, tar_time)
     }

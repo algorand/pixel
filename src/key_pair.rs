@@ -111,10 +111,11 @@ impl KeyPair {
 /// then expand the secret with HKDF-SHA512-Expand
 ///  `t = HKDF-Expand(m, info, 64)`
 /// with info = "key initialization"
-/// Use the first 32 bytes as the input to hash_to_field.
-/// Use the last 32 bytes as the rngseed.
+/// Use the first 64 bytes as the input to hash_to_field.
+/// Use the last 64 bytes as the rngseed.
 /// The public/secret key is then set to g2^x and h^x
 /// It also generate a proof of possesion which is a BLS signature on g2^x.
+/// TODO: change BLS signature to Pixel signature, to remove dependencies on BLS crate.
 /// This function is private -- it should be used only as a subroutine to key gen function
 fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, PixelG1, PRNG), String> {
     // make sure we have enough entropy
@@ -148,21 +149,19 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     // get a field element
     let info = b"key initialization";
     // this is a local secret - need to clear after use
-    //  x = hkdf-expand(prng, info, ctr)
-    //  ctr is set to 0
+    //  x = hkdf-expand(prng, info)
     let mut x_sec = prng.sample_then_update(info);
 
     // pk = g2^x
     // sk = h^x
     let mut pk = pp.get_g2();
-
     pk.mul_assign(x_sec);
     let pop = match proof_of_possession(x_sec, pk, pp.get_ciphersuite()) {
         Err(e) => {
             {
                 let _clear1 = ClearOnDrop::new(&mut x_sec);
             }
-            assert_eq!(x_sec, Fr::zero(), "Random r is not cleared!");
+            assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
             return Err(e);
         }
         Ok(p) => p,
@@ -174,7 +173,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     {
         let _clear1 = ClearOnDrop::new(&mut x_sec);
     }
-    assert_eq!(x_sec, Fr::zero(), "Random r is not cleared!");
+    assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
 
     Ok((pk, sk, pop, prng))
 }
@@ -183,6 +182,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
 /// This function is a subroutine of the key generation function, and
 /// should not be called anywhere else -- the master secret key is
 /// destroyed after key generation.
+/// TODO: Change to pixel signatures for POP
 fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1, String> {
     // buf = DOM_SEP_POP | serial (PK)
     let mut buf = domain_sep::DOM_SEP_POP.as_bytes().to_vec();
@@ -206,16 +206,6 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
 
     // check e(pk, h) ?= e(g2, sk)
     // which is e(pk,h) * e(-g2,sk) == 1
-    #[cfg(feature = "pk_in_g2")]
-    let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-        [
-            (&(sk.into_affine().prepare()), &(g2.into_affine().prepare())),
-            (&(h.into_affine().prepare()), &(pk.into_affine().prepare())),
-        ]
-        .iter(),
-    ))
-    .unwrap();
-    #[cfg(not(feature = "pk_in_g2"))]
     let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (&(g2.into_affine().prepare()), &(sk.into_affine().prepare())),

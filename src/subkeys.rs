@@ -1,5 +1,4 @@
 // a module for sub secret keys and related functions
-// to decide: whether this should be packed into key.rs?
 
 use clear_on_drop::ClearOnDrop;
 use ff::Field;
@@ -254,7 +253,6 @@ impl SubSecretKey {
         let list = pp.get_hlist();
         let t = match TimeVec::init(self.time, depth) {
             Err(_e) => {
-                #[cfg(feature = "verbose")]
                 #[cfg(debug_assertions)]
                 println!("Error in ssk validation: {}", _e);
                 return false;

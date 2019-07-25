@@ -6,15 +6,15 @@ use membership::MembershipTesting;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
+use prng;
 use public_key::PublicKey;
 use secret_key::SecretKey;
+use sha2::Digest;
 use std::fmt;
 use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
-use prng;
-use sha2::Digest;
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
@@ -377,7 +377,6 @@ impl Signature {
         let mut hfx = list[0];
         let timevec = match TimeVec::init(tar_time, depth) {
             Err(_e) => {
-                #[cfg(feature = "verbose")]
                 #[cfg(debug_assertions)]
                 println!("Error in verification: {}", _e);
                 return false;
@@ -409,45 +408,7 @@ impl Signature {
         // to compute the nagete in PixelG2 (a.k.a. BLS G1)
         let mut neg_g2 = pp.get_g2();
         neg_g2.negate();
-        // negate either g2gen or sigma2 so that we can use sim-pairing
-        // for performance negate whichever is in G1
-        // #[cfg(feature = "pk_in_g2")]
-        // let neg_h = {
-        //     let mut tmp = pp.get_h();
-        //     tmp.negate();
-        //     tmp
-        // };
-        //
-        // #[cfg(not(feature = "pk_in_g2"))]
-        // let neg_sigma2 = {
-        //     let mut tmp = sigma2;
-        //     tmp.negate();
-        //     tmp
-        // };
 
-        // #[cfg(feature = "pk_in_g2")]
-        // // e(sigma2, 1/g2) * e( hv^{time_vec}, sigma1) * e(h, pk)
-        // let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
-        //     [
-        //         (
-        //             &(sigma1.into_affine().prepare()),
-        //             &(neg_h.into_affine().prepare()),
-        //         ),
-        //         (
-        //             &(hfx.into_affine().prepare()),
-        //             &(sigma2.into_affine().prepare()),
-        //         ),
-        //         (
-        //             &(pp.get_h().into_affine().prepare()),
-        //             &(pke.into_affine().prepare()),
-        //         ),
-        //     ]
-        //     .iter(),
-        // ))
-        // .unwrap();
-        //
-        // #[cfg(not(feature = "pk_in_g2"))]
-        // e(g2, 1/sigma2) * e( sigma1, hv^{time_vec}) * e(pk, h)
         let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
             [
                 (
@@ -529,56 +490,12 @@ impl Signature {
         let pk = PublicKey::construct(ciphersuite, agg_pke);
         Signature::verify_bytes(&self, &pk, &pp, msg)
     }
-
-    // /// This function aggregtes the signature as follows:
-    // /// 1. assume all sigs are valid, aggregate without validate
-    // /// 2. verify aggregated signature -- if verified, return the siganture, and an empty list.
-    // /// 3. check the signature individually, update the sig_list and pk_list
-    // ///     with valid ones
-    // /// 4. return an aggregeted signature on valid ones, and a list of invalid ones
-    // pub fn aggregate_with_validate(
-    //     sig_list: &mut Vec<Self>,
-    //     pk_list: &mut Vec<PublicKey>,
-    //     pp: &PubParam,
-    //     msg: &[u8],
-    // ) -> Result<(Signature, Vec<(Signature, PublicKey)>), String> {
-    //     // check if the numbers match
-    //     if sig_list.len() != pk_list.len() {
-    //         return Err(ERR_AGGREGATE_NUMBER_NOT_MATCH.to_owned());
-    //     }
-    //     // generate an aggregated signature, and try to verify it
-    //     // also checks the ciphersuite ids match within those functions
-    //     let agg_sig = Signature::aggregate_without_validate(sig_list)?;
-    //     if agg_sig.verify_bytes_aggregated(pk_list, pp, msg) {
-    //         return Ok((agg_sig, vec![]));
-    //     }
-    //
-    //     // check individual ones
-    //     let mut invalid_list: Vec<(Signature, PublicKey)> = vec![];
-    //     for i in 0..sig_list.len() {
-    //         if !Signature::verify_bytes(&sig_list[i], &pk_list[i], &pp, msg) {
-    //             // push this pair to the invalid list
-    //             invalid_list.push((sig_list[i].clone(), pk_list[i].clone()));
-    //
-    //             sig_list[i] = Signature::default();
-    //             pk_list[i] = PublicKey::default();
-    //         }
-    //     }
-    //
-    //     // for i in 0..sig_list.len() {
-    //     //         if !sig_list[i].verify_bytes(&pk_list[i], pp, msg) {
-    //     //             let t = sig_list.remo
-    //     //         }
-    //     // }
-    //     Err("err".to_owned())
-    // }
 }
 
 /// This function hashes a message into a field element
-/// using the hash_to_field method from BLS signature.
+/// by returning sha512(DOM_SEP_HASH_TO_MSG | ciphersuite | msg) % p
 fn hash_msg_into_fr(msg: &[u8], ciphersuite: u8) -> Fr {
     use domain_sep::DOM_SEP_HASH_TO_MSG;
-    // TODO: review this part.
     // output sha512(DOM_SEP_HASH_TO_MSG | ciphersuite | msg) % p
     //  DOM_SEP_HASH_TO_MSG:    domain seperator
     //  msg:                    input message

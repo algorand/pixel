@@ -55,7 +55,7 @@ impl SecretKey {
         let info = "key initialization";
         // r is a local secret, and need to be cleared after use
         let mut r_sec = prng.sample_then_update(info);
-        println!("rsec: {:?}", r_sec);
+
         // ssk is passed to the caller
         let ssk = SubSecretKey::init(&pp, alpha, r_sec);
 
@@ -77,20 +77,6 @@ impl SecretKey {
             ssk: vec![ssk],
             prng,
         })
-    }
-
-    /// This function initializes the secret key at time stamp = 1.
-    /// It takes the root secret `alpha` and a field element `r` as inputs.
-    /// Currently this function is used by testing only.
-    #[cfg(test)]
-    pub fn init_det(pp: &PubParam, alpha: PixelG1, r: Fr, rngseed: &[u8; 64]) -> Self {
-        let ssk = SubSecretKey::init(&pp, alpha, r);
-        SecretKey {
-            ciphersuite: pp.get_ciphersuite(),
-            time: 1,
-            ssk: vec![ssk],
-            prng: PRNG::construct(*rngseed),
-        }
     }
 
     /// Returns the ciphersuite id of the secret key
@@ -240,6 +226,7 @@ impl SecretKey {
         new_sk.time = delegator_time;
 
         #[cfg(debug_assertions)]
+        #[cfg(test)]
         println!(
             "delegating from {} to {} using delegator time {}",
             new_sk.get_time(),

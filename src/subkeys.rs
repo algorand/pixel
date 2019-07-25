@@ -147,8 +147,11 @@ impl SubSecretKey {
         for i in 0..tlen {
             // tmp2 stores with public infomation only
             let mut tmp2 = hlist[i + 1];
-            // todo: optimize this part with double()
-            tmp2.mul_assign(tv[i]);
+            // optimize this part with double()
+            if tv[i] == 2 {
+                tmp2.double();
+            }
+            // tmp2.mul_assign(tv[i]);
             tmp3_sec.add_assign(&tmp2);
         }
 

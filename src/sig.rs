@@ -1,5 +1,4 @@
 // implements the signature structure, the signing and verification algorithms
-use bls_sigs_ref_rs::FromRO;
 use clear_on_drop::ClearOnDrop;
 use domain_sep::DOM_SEP_SIG;
 use ff::Field;
@@ -14,6 +13,8 @@ use subkeys::SubSecretKey;
 use time::{TimeStamp, TimeVec};
 use PixelG1;
 use PixelG2;
+use prng;
+use sha2::Digest;
 /// A signature consists of two elements sigma1 and sigma2,
 /// where ...
 ///
@@ -261,7 +262,11 @@ impl Signature {
         let mut tmp3_sec = hlist[0];
         for i in 0..tlen {
             let mut tmp2 = hlist[i + 1];
-            tmp2.mul_assign(tv[i]);
+            // accecelate this with doubling
+            if tv[i] == 2 {
+                tmp2.double();
+            }
+            // tmp2.mul_assign(tv[i]);
             tmp3_sec.add_assign(&tmp2);
         }
         // tmp2 does not handle secret data
@@ -574,12 +579,15 @@ impl Signature {
 fn hash_msg_into_fr(msg: &[u8], ciphersuite: u8) -> Fr {
     use domain_sep::DOM_SEP_HASH_TO_MSG;
     // TODO: review this part.
-    // output hash_to_field(DOM_SEP_HASH_TO_MSG | ciphersuite | msg, 0)
+    // output sha512(DOM_SEP_HASH_TO_MSG | ciphersuite | msg) % p
     //  DOM_SEP_HASH_TO_MSG:    domain seperator
     //  msg:                    input message
-    //  0:                      counter, 0 since we use the first field element
     let m = [DOM_SEP_HASH_TO_MSG.as_bytes(), [ciphersuite].as_ref(), msg].concat();
-    Fr::from_ro(m, 0)
+    let mut hasher = sha2::Sha512::new();
+    hasher.input(m);
+    // obtain the output
+    let hashresult = hasher.result();
+    prng::os2ip_mod_p(&hashresult)
 }
 
 impl fmt::Debug for Signature {

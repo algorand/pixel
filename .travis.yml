@@ -1,13 +1,8 @@
-before_install:
-- echo -e "machine github.com\n  login ci-user\n  password $CI_USER_TOKEN" > ~/.netrc
-
-
 language: rust
 rust:
   - stable
 #  - beta
 #  - nightly
-
 
 before_script:
   - rustup component add clippy
@@ -16,26 +11,9 @@ env:
   - CARGO_FLAG=clippy --all-targets --all-features -- -D warnings
   - CARGO_FLAG=test
   - CARGO_FLAG=test -- --ignored
-  - CARGO_FLAG=test --features=pk_in_g2
-  - CARGO_FLAG=test --features=pk_in_g2 -- --ignored
-#  - CARGO_FLAG=test --features=pk_in_g2,use_rand_generators
-#  - CARGO_FLAG=test --features=pk_in_g2,use_rand_generators -- --ignored
   - CARGO_FLAG=test --release
   - CARGO_FLAG=test --release -- --ignored
-  - CARGO_FLAG=test --features=pk_in_g2 --release
-  - CARGO_FLAG=test --features=pk_in_g2 --release -- --ignored
-#  - CARGO_FLAG=test --features=pk_in_g2,use_rand_generators --release
-#  - CARGO_FLAG=test --features=pk_in_g2,use_rand_generators --release -- --ignored
   - CARGO_FLAG=bench
 script:
-  #- cargo clippy
-  # if you want the build job to fail when encountering warnings, use
-  #- cargo clippy -- -D warnings
-  # in order to also check tests and non-default crate features, use
-  #- cargo clippy --all-targets --all-features -- -D warnings
-  # all sorts of tests with different compiling flags
-  - cargo $CARGO_FLAG
-# if: rust = stable
-#   - cargo bench
 
-  # etc.
+  - cargo $CARGO_FLAG

@@ -16,10 +16,7 @@ fn test_keypair() {
          error message {:?}",
         res.err()
     );
-    let keypair = res.unwrap();
-    println!("pk: {:?}", keypair.0.get_pk().into_affine());
-    println!("sk: {:?}", keypair.1);
-    //    assert!(false)
+    let _keypair = res.unwrap();
 }
 
 #[test]
@@ -67,7 +64,6 @@ fn test_quick_key_update() {
             assert!(ssk.validate(&pk, &pp), "validation failed");
         }
         sk = sk2;
-        println!("{:?}", sk);
     }
 }
 
@@ -91,6 +87,7 @@ fn test_long_key_update() {
     // 1. performs key updates with all possible `start_time` and `finish_time`
     // 2. for each updated key, checks the validity of its subkeys
     for j in 2..16 {
+        println!("delegate to time {}", j);
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
         assert!(
@@ -100,6 +97,7 @@ fn test_long_key_update() {
             res.err()
         );
         for i in j + 1..16 {
+                    println!("delegate from time {} to time {}", j, i);
             let mut sk3 = sk2.clone();
             let res = sk3.update(&pp, i);
             assert!(
@@ -164,6 +162,7 @@ fn test_long_sk_validation() {
     // 1. performs key updates with all possible `start_time` and `finish_time`
     // 2. for each updated key, checks the validity
     for j in 2..16 {
+                println!("validate key for time {}", j);
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
         assert!(

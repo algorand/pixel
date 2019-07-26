@@ -59,12 +59,14 @@ fn test_long_signature_tests() {
     // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
     // 3. check that the signature generated from dedicated keys can be verified
     for j in 2..16 {
+        println!("delegate to time {}", j);
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j);
         assert!(res.is_ok(), "updating failed");
         assert!(sk2.validate(&pk, &pp), "validation failed");
 
         for i in j + 1..16 {
+            println!("from time {} to  time {}", j, i);
             let mut sk3 = sk2.clone();
             let res = sk3.update(&pp, i);
             assert!(res.is_ok(), "updating failed");
@@ -133,6 +135,73 @@ fn test_quick_aggregated_signature_tests() {
     assert!(res, "verifying aggregates signature failed.");
 
     for j in 2..16 {
+        let mut sklist2 = sklist.clone();
+        for i in 0..10 {
+            let res = sklist2[i].update(&pp, j);
+            assert!(res.is_ok(), "updating failed");
+
+            let res = Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg);
+            assert!(res.is_ok(), "signing failed");
+            let sig = res.unwrap();
+            assert!(
+                sig.verify_bytes(&pklist[i], &pp, msg),
+                "signature verification failed"
+            );
+        }
+        let sig_agg = Signature::aggregate_without_validate(&siglist).unwrap();
+        let res = sig_agg.verify_bytes_aggregated(&pklist, &pp, msg);
+
+        assert!(res, "verifying aggregates signature failed.");
+    }
+}
+
+// A simple and long tests on
+/// * key generation
+/// * key update
+/// * sign
+/// * aggregation
+/// * batch verification
+#[test]
+#[ignore]
+fn test_long_aggregated_signature_tests() {
+    let pp = PubParam::init_without_seed();
+
+    let mut sklist: Vec<SecretKey> = vec![];
+    let mut pklist: Vec<PublicKey> = vec![];
+    let mut siglist: Vec<Signature> = vec![];
+    for i in 0..10 {
+        let key_gen_seed = format!("this is a very very long seed for testing #{}", i);
+
+        let res = KeyPair::keygen(key_gen_seed.as_ref(), &pp);
+        assert!(res.is_ok(), "key gen failed");
+        let (pk, sk, pop) = res.unwrap();
+        assert!(pk.validate(&pop));
+        sklist.push(sk);
+        pklist.push(pk);
+    }
+
+    let msg = b"message to sign";
+
+    // generate 10 signatures on a same message
+    for i in 0..10 {
+        let res = Signature::sign_bytes(&sklist[i], 1, &pp, msg);
+        assert!(res.is_ok(), "signing failed");
+        let sig = res.unwrap();
+        assert!(
+            sig.verify_bytes(&pklist[i], &pp, msg),
+            "verification failed"
+        );
+        siglist.push(sig);
+    }
+
+    // aggregate the siganture and then verify it
+    let sig_agg = Signature::aggregate_without_validate(&siglist).unwrap();
+    let res = sig_agg.verify_bytes_aggregated(&pklist, &pp, msg);
+
+    assert!(res, "verifying aggregates signature failed.");
+
+    for j in 2..16 {
+        println!("delegate to time {}", j);
         let mut sklist2 = sklist.clone();
         for i in 0..10 {
             let res = sklist2[i].update(&pp, j);

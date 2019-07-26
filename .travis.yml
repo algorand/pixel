@@ -9,10 +9,10 @@ before_script:
 
 env:
   - CARGO_FLAG=clippy --all-targets --all-features -- -D warnings
-  - CARGO_FLAG=test
-  - CARGO_FLAG=test -- --ignored
-  - CARGO_FLAG=test --release
-  - CARGO_FLAG=test --release -- --ignored
+  - CARGO_FLAG=test -- --nocapture
+  - CARGO_FLAG=test -- --ignored -- --nocapture
+  - CARGO_FLAG=test --release -- --nocapture
+  - CARGO_FLAG=test --release -- --ignored -- --nocapture
   - CARGO_FLAG=bench
 script:
 

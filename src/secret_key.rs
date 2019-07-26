@@ -227,9 +227,6 @@ impl SecretKey {
         // to ensure only one copy lives in the memory
         let mut new_sk = self.clone();
 
-        // step 0 update new_sk's prng
-        let salt = domain_sep::DOM_SEP_SK_RERANDOMIZE;
-        new_sk.prng.rerandomize(seed, salt.as_ref());
         // step 1.1 update new_sk's time stamp
         // the current sk is ### new_sk = {9, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} ###
         new_sk.time = delegator_time;
@@ -358,6 +355,11 @@ impl SecretKey {
 
         // step 4. delegate the first ssk in the ssk_vec to the gamma_list
         // note: we don't need to modify other ssks in the current ssk_vec
+
+        // step 4.1. update new_sk's prng before sampling r
+        let salt = domain_sep::DOM_SEP_SK_RERANDOMIZE;
+        new_sk.prng.rerandomize(seed, salt.as_ref());
+
         'out: for (i, tmptime) in gamma_list.iter().enumerate() {
             // this loop applies to example 2
             // if the ssk already exists in current sk, for example, ssk_for_t_9, i.e. time vec = [2]

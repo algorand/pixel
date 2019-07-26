@@ -1,5 +1,5 @@
-from keygen import key_gen,serialize_sk,print_sk
-from prng import prng_sample_then_update
+from keygen import key_gen, serialize_sk, print_sk
+from prng import prng_sample_then_update, prng_rerandomize
 from param import d, default_param
 
 import sys
@@ -11,7 +11,7 @@ from util import print_g1_hex, print_g2_hex
 
 
 # see the rust code for the detailed logic and examples
-def sk_update(sk, pp, tar_time):
+def sk_update(sk, pp, tar_time, seed):
 
     # find the ancestor node of the tar-time
     # if the ancestor happens to be the same as tar-time
@@ -36,9 +36,14 @@ def sk_update(sk, pp, tar_time):
     # the right child is form by delegating to the second vector in the gamma list
     ssk2 = delegate(copy.deepcopy(delegator), copy.deepcopy(vec_to_time(gammalist[1],d)))
 
+
+    # re-randomize the prng
+    salt = b"Pixel secret key rerandomize"
+    new_seed = prng_rerandomize(sk[0], seed, salt)
+
     # randomize the right child
-    info = b"key updating"
-    r, new_seed = prng_sample_then_update(sk[0], info)
+    info = b"Pixel secret key update"
+    r, new_seed = prng_sample_then_update(new_seed, info)
     ssk2 = randomization(ssk2, pp, r)
 
     # remove the delegator from sk_vec
@@ -166,7 +171,7 @@ def key_update_test_vector_gen():
 
         # update the secret key sequentially, and make sure the
         # updated key matched rust's outputs.
-        sk2 = sk_update(copy.deepcopy(sk), default_param, i)
+        sk2 = sk_update(copy.deepcopy(sk), default_param, i, "")
         sk_buf = serialize_sk(sk2)
 
         fname = "test_vector/sk_plain_%02d.txt"%i

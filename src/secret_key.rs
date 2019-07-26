@@ -52,7 +52,7 @@ impl SecretKey {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
-        let info = "key initialization";
+        let info = domain_sep::DOM_SEP_SK_INIT;
         // r is a local secret, and need to be cleared after use
         let mut r_sec = prng.sample_then_update(info);
 
@@ -228,7 +228,7 @@ impl SecretKey {
         let mut new_sk = self.clone();
 
         // step 0 update new_sk's prng
-        let salt = domain_sep::DOM_SEP_SK_UPDATE;
+        let salt = domain_sep::DOM_SEP_SK_RERANDOMIZE;
         new_sk.prng.rerandomize(seed, salt.as_ref());
         // step 1.1 update new_sk's time stamp
         // the current sk is ### new_sk = {9, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} ###
@@ -418,7 +418,7 @@ impl SecretKey {
                 // note that a key update requires zero or one
                 // random field element. So the following function
                 // shouldn't be called more than once.
-                let info = "key updating";
+                let info = domain_sep::DOM_SEP_SK_UPDATE;
                 let mut r_sec = new_sk.prng.sample_then_update(info);
 
                 assert_ne!(new_sk.prng, self.prng, "prng not updated");

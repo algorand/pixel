@@ -73,7 +73,7 @@ def test_vector():
         print("updating to time %d"%i)
 
         # updated sk and signatures
-        sk2 = sk_update(copy.deepcopy(sk), default_param, i)
+        sk2 = sk_update(copy.deepcopy(sk), default_param, i, b"")
         sig = sign_present(sk2, i, default_param, msg)
 
         # output sk to a human readable file

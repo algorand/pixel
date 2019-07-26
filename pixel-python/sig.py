@@ -91,7 +91,7 @@ def signature_test_vector_gen():
 
     for i in range(2,64):
         print(i)
-        sk_new = sk_update(sk,default_param,i)
+        sk_new = sk_update(sk,default_param,i, b"")
         sig = sign_present(sk_new,i,default_param,msg)
 
         fname = "test_vector/sig_bin_%02d.txt"%i

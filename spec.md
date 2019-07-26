@@ -151,7 +151,7 @@ The parameter set can be accessed via
     1. check seed length and ciphersuite id, return an error if seed is too short or ciphersuite id is not supported.
     2. `salt = DOM_SEP_MASTER_KEY| ciphersuite`
     3. `prng = PRNG::init(seed, salt)`
-    3. `info = "key initialization"`
+    3. `info = "Pixel master key"`
     3. `x = prng.sample_then_update(info)`
     3. `pk = pp.get_g2() ^ x`
     4. `sk = pp.get_h() ^ x`
@@ -300,7 +300,7 @@ The parameter set can be accessed via
   * Error: ERR_CIPHERSUITE, ERR_SERIAL
   * Steps:
     1. returns an error is `pp.get_ciphersuite()` is not supported.
-    2. info = "key initialization"
+    2. info = "Pixel secret key init"
     3. `r = prng.sample_then_update(info)`
     4. `ssk = SubSecretKey::init(pp, alpha, r)`
     5. return `construct(pp.get_ciphersuite(), 1, [ssk], prng)`
@@ -321,14 +321,14 @@ The parameter set can be accessed via
     2. Find the ancestor node `delegator = sk.find_ancestor(tar_time)`, returns an error if time is not correct
     3. Update self to an sk for delegator's time by removing SubSecretKeys whose time stamps are smaller than delegator's time, returns an error if no SubSecretKey is left after removal
     4. If delegator's time equals target time, return success
-    4. Update sk's prng before sampling `r`: `sk.prng.re-randomize(seed, salt)` where `salt = "Pixel secret key update"`
+    4. Update sk's prng before sampling `r`: `sk.prng.re-randomize(seed, salt)` where `salt = "Pixel secret key rerandomize"`
     5. Generate a gamma list from target time `GammaList = target_time.gamma_list(pp.get_d())`, returns an error if time stamp is invalid
     6. Use the first ssk to delegate `delegator_ssk = sk.get_first_ssk()`
     6. for (i, TimeStamp) in Gammalist
         1. if delegator's time is a prefix of TimeStamp
             * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.get_d())`
             * if `i!=0`
-              * info = "key updating"
+              * info = "Pixel secret key update"
               * `r = sk.sample_then_update(info)`
               * re-randomize the ssk via `new_ssk.randomization(pp, r)`
             * `sk.ssk.insert(i + 1, new_ssk)` so that ssk remains sorted

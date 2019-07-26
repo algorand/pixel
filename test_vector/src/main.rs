@@ -17,6 +17,7 @@ fn main() -> std::io::Result<()> {
     // the default seed to generate the keys is
     //  "this is a very long seed for pixel tests"
     let seed = "this is a very long seed for pixel tests";
+    let rngseed = "";
     let timestamp = 1;
     let (pk, mut sk, pop) = Pixel::key_gen(seed, &pp).unwrap();
 
@@ -49,7 +50,7 @@ fn main() -> std::io::Result<()> {
     // update the key from time 1 to time 64, sequentially
     // and use the key to sign the message
     for i in 2..64 {
-        assert!(Pixel::sk_update(&mut sk, i as u64, &pp).is_ok());
+        assert!(Pixel::sk_update(&mut sk, i as u64, &pp, rngseed).is_ok() );
         let sig = Pixel::sign_present(&mut sk, i as u64, &pp, msg).unwrap();
         assert!(Pixel::verify(&pk, &pp, msg, &sig));
 

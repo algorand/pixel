@@ -15,18 +15,15 @@ description = "Pixel: Algorand's consensus signature over curve BLS12-381"
 
 [dependencies]
 rand = "0.4"
-#pairing = { version = "0.14.3", path = "../pairing-fork-transmute", features = [ "transmutable" ] }
 pairing = { version = "0.14.3", git = "ssh://git@github.com/algorand/pairing-fork-transmute", features = [ "transmutable" ] }
 criterion = "0.2.11"
 walkdir = "2.2.7"
 hkdf = "0.7"
 sha2 = "0.8"
 ff = { version = "0.4", features = ["derive"] }
-#bls_sigs_ref-rs = { path = "../bls_sigs_ref-fork/rust-impl"}
 bls_sigs_ref-rs = {git = "ssh://git@github.com/algorand/bls_sigs_ref-fork"}
 clear_on_drop = "0.2.3"
 generic-array = ""
-#pixel_param = {path = "../pixel_param"}
 pixel_param = { git = "ssh://git@github.com/algorand/pixel_param"}
 bigint = { version = "4", default-features = false }
 

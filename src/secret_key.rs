@@ -220,8 +220,6 @@ impl SecretKey {
         // as follows
         let delegator_time = self.find_ancestor(tar_time)?;
 
-        println!("sk prng {:?}", self.get_prng());
-
         // make a clone of self, in case an error is raised, we do not want to mutate the key
         // the new_sk has a same life time as the old key
         // note: since we will replace self with new_sk by the end of this function,
@@ -232,7 +230,6 @@ impl SecretKey {
         // step 0 update new_sk's prng
         let salt = domain_sep::DOM_SEP_SK_UPDATE;
         new_sk.prng.rerandomize(seed, salt.as_ref());
-        println!("new sk prng {:?}", new_sk.get_prng());
         // step 1.1 update new_sk's time stamp
         // the current sk is ### new_sk = {9, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} ###
         new_sk.time = delegator_time;
@@ -489,7 +486,6 @@ impl SecretKey {
             "failed to clear old secret key"
         );
         *self = new_sk;
-        println!("self prng: {:?}", self.prng);
         Ok(())
     }
 

@@ -43,7 +43,6 @@ fn test_quick_key_update() {
              error message {:?}",
             res.err()
         );
-
         // makes sure the seed is mutated in after the delegation
         assert_ne!(sk.get_prng(), sk2.get_prng());
         for ssk in sk2.get_ssk_vec() {
@@ -66,7 +65,6 @@ fn test_quick_key_update() {
         }
         sk = sk2;
     }
-    assert!(false);
 }
 
 /// this test takes quite some time to finish

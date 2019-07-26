@@ -31,29 +31,30 @@ fn test_quick_key_update() {
     );
     let (pk, mut sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
-    println!("{:?}", sk);
+
+    let seed = "";
     // update from 1 to j
     for j in 2..16 {
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(
             res.is_ok(),
             "update failed\n\
              error message {:?}",
             res.err()
         );
+
         // makes sure the seed is mutated in after the delegation
         assert_ne!(sk.get_prng(), sk2.get_prng());
         for ssk in sk2.get_ssk_vec() {
             assert!(ssk.validate(&pk, &pp), "validation failed");
         }
-        println!("{:?}", sk);
     }
 
     // update incrementally
     for j in 2..16 {
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(
             res.is_ok(),
             "update failed\n\
@@ -65,6 +66,7 @@ fn test_quick_key_update() {
         }
         sk = sk2;
     }
+    assert!(false);
 }
 
 /// this test takes quite some time to finish
@@ -83,13 +85,15 @@ fn test_long_key_update() {
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
 
+    let seed = "";
+
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`
     // 2. for each updated key, checks the validity of its subkeys
     for j in 2..16 {
         println!("delegate to time {}", j);
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(
             res.is_ok(),
             "update failed\n\
@@ -97,9 +101,9 @@ fn test_long_key_update() {
             res.err()
         );
         for i in j + 1..16 {
-                    println!("delegate from time {} to time {}", j, i);
+            println!("delegate from time {} to time {}", j, i);
             let mut sk3 = sk2.clone();
-            let res = sk3.update(&pp, i);
+            let res = sk3.update(&pp, i, seed.as_ref());
             assert!(
                 res.is_ok(),
                 "update failed\n\
@@ -129,9 +133,11 @@ fn test_sk_validation() {
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
     assert!(sk.validate(&pk, &pp), "invalid sk");
+
+    let seed = "";
     for j in 2..16 {
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(
             res.is_ok(),
             "update failed\n\
@@ -158,13 +164,15 @@ fn test_long_sk_validation() {
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
     assert!(sk.validate(&pk, &pp), "invalid sk");
+
+    let seed = "";
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`
     // 2. for each updated key, checks the validity
     for j in 2..16 {
-                println!("validate key for time {}", j);
+        println!("validate key for time {}", j);
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(
             res.is_ok(),
             "update failed\n\
@@ -174,7 +182,7 @@ fn test_long_sk_validation() {
         assert!(sk2.validate(&pk, &pp), "invalid sk");
         for i in j + 1..16 {
             let mut sk3 = sk2.clone();
-            let res = sk3.update(&pp, i);
+            let res = sk3.update(&pp, i, seed.as_ref());
             assert!(
                 res.is_ok(),
                 "update failed\n\

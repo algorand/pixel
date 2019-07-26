@@ -63,15 +63,16 @@ fn test_pixel_api() {
 
     // testing basic signings
     let msg = "message to sign";
-    let res = Pixel::sign(&mut sk, 1, &pp, msg);
+    let seed = "";
+    let res = Pixel::sign(&mut sk, 1, &pp, msg, seed);
     assert!(res.is_ok(), "error in signing algorithm");
     let sig = res.unwrap();
     assert!(Pixel::verify(&pk, &pp, msg, &sig), "verification failed");
     // testing update-then-sign for present
     for j in 2..16 {
-        let res = Pixel::sk_update(&mut sk, j, &pp);
+        let res = Pixel::sk_update(&mut sk, j, &pp, seed);
         assert!(res.is_ok(), "error in key updating");
-        let res = Pixel::sign(&mut sk, j, &pp, msg);
+        let res = Pixel::sign(&mut sk, j, &pp, msg, seed);
         assert!(res.is_ok(), "error in signing algorithm");
         let sig = res.unwrap();
         assert!(Pixel::verify(&pk, &pp, msg, &sig), "verification failed");
@@ -79,7 +80,7 @@ fn test_pixel_api() {
     // testing signing for future
     for j in 2..16 {
         let mut sk3 = sk2.clone();
-        let res = Pixel::sign(&mut sk3, j, &pp, msg);
+        let res = Pixel::sign(&mut sk3, j, &pp, msg, seed);
         assert!(res.is_ok(), "error in signing algorithm");
         let sig = res.unwrap();
         assert!(Pixel::verify(&pk, &pp, msg, &sig), "verification failed");

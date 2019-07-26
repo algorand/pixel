@@ -122,10 +122,11 @@ fn test_sk_serialization() {
 
     // perform the same serialization/deserialization for the
     // keys from updating
+    let seed = "";
     for j in 2..16 {
         // update keys
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(
             res.is_ok(),
             "update failed\n\

@@ -12,8 +12,8 @@ pub const DOM_SEP_SIG: &str = "Pixel randomness for signing";
 // prefix of hash_to_field to generate the master key alpha
 pub const DOM_SEP_MASTER_KEY: &str = "Pixel master key";
 
-// // prefix of sha256 to update the seed
-// pub const DOM_SEP_SEED_UPDATE: &str = "Pixel prng seed update";
+// the salt to update the secret key's prng
+pub const DOM_SEP_SK_UPDATE: &str = "Pixel secret key update";
 
 // prefix of public key proof of possesion
 pub const DOM_SEP_POP: &str = "Pixel public key POP";

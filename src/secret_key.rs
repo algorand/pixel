@@ -1,5 +1,6 @@
 use crate::{PixelG1, PublicKey, SerDes, SubSecretKey};
 use clear_on_drop::ClearOnDrop;
+use domain_sep;
 use ff::Field;
 use pairing::bls12_381::Fr;
 use param::{PubParam, VALID_CIPHERSUITE};
@@ -152,7 +153,12 @@ impl SecretKey {
     ///  * the new time stamp is invalid (either smaller than
     /// current time or larger than maximum time stamp)
     ///  * serialization error
-    pub fn update<'a>(&'a mut self, pp: &PubParam, tar_time: TimeStamp) -> Result<(), String> {
+    pub fn update<'a>(
+        &'a mut self,
+        pp: &PubParam,
+        tar_time: TimeStamp,
+        seed: &[u8],
+    ) -> Result<(), String> {
         // check the ciphersuites match
         if self.get_ciphersuite() != pp.get_ciphersuite() {
             return Err(ERR_CIPHERSUITE.to_owned());
@@ -214,6 +220,8 @@ impl SecretKey {
         // as follows
         let delegator_time = self.find_ancestor(tar_time)?;
 
+        println!("sk prng {:?}", self.get_prng());
+
         // make a clone of self, in case an error is raised, we do not want to mutate the key
         // the new_sk has a same life time as the old key
         // note: since we will replace self with new_sk by the end of this function,
@@ -221,6 +229,10 @@ impl SecretKey {
         // to ensure only one copy lives in the memory
         let mut new_sk = self.clone();
 
+        // step 0 update new_sk's prng
+        let salt = domain_sep::DOM_SEP_SK_UPDATE;
+        new_sk.prng.rerandomize(seed, salt.as_ref());
+        println!("new sk prng {:?}", new_sk.get_prng());
         // step 1.1 update new_sk's time stamp
         // the current sk is ### new_sk = {9, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} ###
         new_sk.time = delegator_time;
@@ -477,6 +489,7 @@ impl SecretKey {
             "failed to clear old secret key"
         );
         *self = new_sk;
+        println!("self prng: {:?}", self.prng);
         Ok(())
     }
 

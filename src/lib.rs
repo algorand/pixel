@@ -106,22 +106,31 @@ pub trait PixelSignature {
 
     /// Input a secret key, the public parameter and a time stamp,
     /// update the key to that time stamp.
-    /// TODO: rerandomize the seed
-    fn sk_update(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam) -> Result<(), String> {
-        sk.update(&pp, tar_time)
+    fn sk_update<Blob: AsRef<[u8]>>(
+        sk: &mut SecretKey,
+        tar_time: TimeStamp,
+        pp: &PubParam,
+        seed: Blob,
+    ) -> Result<(), String> {
+        sk.update(&pp, tar_time, seed.as_ref())
     }
 
     /// Input a secret key, a time stamp (that is no less than secret key's time stamp),
     /// the public parameter, and a message in the form of a byte string,
     /// output a signature. If the time stamp is greater than that of the secret key,
     /// the key will be updated to the new time stamp.
+    /// Note: the seed is for sk updates, it is not for randomness generation for signing;
+    /// the seed will not be used if the sign algorithm actually signs for the
+    /// present -- the sk is not updated in this case. For this use case, we should
+    /// implicitly use `sign_present` function.
     fn sign<Blob: AsRef<[u8]>>(
         sk: &mut SecretKey,
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: Blob,
+        seed: Blob,
     ) -> Result<Signature, String> {
-        Signature::sign(sk, tar_time, &pp, msg.as_ref())
+        Signature::sign(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
     }
 
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
@@ -140,6 +149,7 @@ pub trait PixelSignature {
     /// Input a secret key, a time stamp that matches the timestamp of the secret key,
     /// the public parameter, and a message in the form of a byte string,
     /// output a signature, and advance to time stamp +1.
+    /// Note: the seed is for sk updates, it is not for randomness generation for signing.
     /// This feature may be useful to enforce one time signature for each time stamp.
     /// If the time stamp is not the same as the secret key,
     /// returns an error
@@ -148,8 +158,9 @@ pub trait PixelSignature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: Blob,
+        seed: Blob,
     ) -> Result<Signature, String> {
-        Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref())
+        Signature::sign_then_update(sk, tar_time, &pp, msg.as_ref(), seed.as_ref())
     }
 
     /// Input a public key, the public parameter, a message in the form of a byte string,

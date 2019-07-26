@@ -23,9 +23,11 @@ fn test_quick_signature_tests() {
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
 
+    let seed = "";
+
     for j in 2..16 {
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(res.is_ok(), "updating failed");
         let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg);
         assert!(res.is_ok(), "signing failed");
@@ -54,6 +56,7 @@ fn test_long_signature_tests() {
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
 
+    let seed = "";
     // this double loop
     // 1. performs key updates with all possible `start_time` and `finish_time`
     // 2. for each updated key, check the validity of its subkeys (with --long_tests flag)
@@ -61,14 +64,14 @@ fn test_long_signature_tests() {
     for j in 2..16 {
         println!("delegate to time {}", j);
         let mut sk2 = sk.clone();
-        let res = sk2.update(&pp, j);
+        let res = sk2.update(&pp, j, seed.as_ref());
         assert!(res.is_ok(), "updating failed");
         assert!(sk2.validate(&pk, &pp), "validation failed");
 
         for i in j + 1..16 {
             println!("from time {} to  time {}", j, i);
             let mut sk3 = sk2.clone();
-            let res = sk3.update(&pp, i);
+            let res = sk3.update(&pp, i, seed.as_ref());
             assert!(res.is_ok(), "updating failed");
             assert!(sk3.validate(&pk, &pp), "validation failed");
 
@@ -134,10 +137,11 @@ fn test_quick_aggregated_signature_tests() {
 
     assert!(res, "verifying aggregates signature failed.");
 
+    let seed = "";
     for j in 2..16 {
         let mut sklist2 = sklist.clone();
         for i in 0..10 {
-            let res = sklist2[i].update(&pp, j);
+            let res = sklist2[i].update(&pp, j, seed.as_ref());
             assert!(res.is_ok(), "updating failed");
 
             let res = Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg);
@@ -199,12 +203,12 @@ fn test_long_aggregated_signature_tests() {
     let res = sig_agg.verify_bytes_aggregated(&pklist, &pp, msg);
 
     assert!(res, "verifying aggregates signature failed.");
-
+    let seed = "";
     for j in 2..16 {
         println!("delegate to time {}", j);
         let mut sklist2 = sklist.clone();
         for i in 0..10 {
-            let res = sklist2[i].update(&pp, j);
+            let res = sklist2[i].update(&pp, j, seed.as_ref());
             assert!(res.is_ok(), "updating failed");
 
             let res = Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg);

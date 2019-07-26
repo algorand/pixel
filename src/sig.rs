@@ -73,6 +73,7 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
+        seed: &[u8],
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
@@ -89,7 +90,7 @@ impl Signature {
         }
         if cur_time < tar_time {
             // this is when we update the secret key to target time
-            sk.update(&pp, tar_time)?
+            sk.update(&pp, tar_time, seed)?
         }
 
         Signature::sign_bytes(&sk, tar_time, &pp, msg)
@@ -124,6 +125,7 @@ impl Signature {
 
     /// This function signs a message for current time stamp. It requires the
     /// time stamp to match the secret key.
+    /// It updates the key to time stamp + 1, and uses the seed to re-randomize the key.
     /// It returns an error if the time stamp is not the same as that of the secret key.
     /// The secret key is updated to next time stamp.
     pub fn sign_then_update(
@@ -131,6 +133,7 @@ impl Signature {
         tar_time: TimeStamp,
         pp: &PubParam,
         msg: &[u8],
+        seed: &[u8],
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
@@ -151,7 +154,7 @@ impl Signature {
             // update the key before returning the signature
             Err(e) => Err(e),
             Ok(p) => {
-                sk.update(&pp, tar_time + 1)?;
+                sk.update(&pp, tar_time + 1, seed)?;
                 Ok(p)
             }
         }

@@ -27,7 +27,7 @@ fn bench_sk_update_seq(c: &mut Criterion) {
         let (_, sk, _) = Pixel::key_gen(&seed, &param).unwrap();
         sklist.push(sk);
     }
-
+    let rngseed = "";
     for i in 0..64 {
         // clone sk and param for benchmarking
         let sklist_clone = sklist.clone();
@@ -43,7 +43,7 @@ fn bench_sk_update_seq(c: &mut Criterion) {
             b.iter(|| {
                 let mut sknew = sklist_clone[counter].clone();
                 let tar_time = sknew.get_time() + 1;
-                let res = Pixel::sk_update(&mut sknew, tar_time, &param_clone);
+                let res = Pixel::sk_update(&mut sknew, tar_time, &param_clone, rngseed);
                 assert!(res.is_ok(), res.err());
                 counter = (counter + 1) % SAMPLES;
             })
@@ -51,7 +51,7 @@ fn bench_sk_update_seq(c: &mut Criterion) {
         // update sk to next time stamp
         for mut e in sklist.iter_mut().take(SAMPLES) {
             let tar_time = e.get_time() + 1;
-            let res = Pixel::sk_update(&mut e, tar_time, &param);
+            let res = Pixel::sk_update(&mut e, tar_time, &param, rngseed);
             assert!(res.is_ok(), res.err());
         }
     }
@@ -68,7 +68,7 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
         .take(32)
         .collect::<String>();
     let param = Pixel::param_gen(&seed, 0).unwrap();
-
+    let rngseed = "";
     // sklist at time 31 -- one level above the leaf nodes
     let mut sklist: Vec<SecretKey> = vec![];
     for _i in 0..SAMPLES {
@@ -78,7 +78,7 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
             .collect::<String>();
         // generate a sk and update to time 31
         let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
-        let res = Pixel::sk_update(&mut sk, 31, &param);
+        let res = Pixel::sk_update(&mut sk, 31, &param, rngseed);
         assert!(res.is_ok(), res.err());
         sklist.push(sk);
     }
@@ -126,12 +126,13 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
         sklist[0].get_time(),
         sklist[0].get_time() + 1
     );
+    let rngseed = "";
     c.bench_function(&message, move |b| {
         let mut counter = 0;
         b.iter(|| {
             let mut sknew = sklist[counter].clone();
             let tar_time = sknew.get_time() + 1;
-            let res = Pixel::sk_update(&mut sknew, tar_time, &param);
+            let res = Pixel::sk_update(&mut sknew, tar_time, &param, rngseed);
             assert!(res.is_ok(), res.err());
             counter = (counter + 1) % SAMPLES;
         })

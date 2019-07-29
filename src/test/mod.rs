@@ -14,3 +14,6 @@ mod serdes;
 
 /// This module tests membership testing functions
 mod membership;
+
+/// This module tests prng fucntions
+mod prng;

@@ -1,24 +1,16 @@
+use crate::{PublicKey, SubSecretKey};
 use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
 use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};
 use param::PubParam;
-use subkeys::SubSecretKey;
-use PublicKey;
 
-#[test]
-fn test_keypair() {
-    let pp = PubParam::default();
-    let res = KeyPair::keygen(b"this is a very long seed for pixel tests", &pp);
-    assert!(
-        res.is_ok(),
-        "key gen failed\n\
-         error message {:?}",
-        res.err()
-    );
-    let _keypair = res.unwrap();
-}
-
+/// This test does the following:
+/// 1. generate a paring of public/secret keys, and the pop
+/// 2. verify the pop against the public key
+/// 3. for j in 2..16
+///     * update sk1 from time 1 to time j, and check the correctness
+///     * update from sk_{j-1} to sk_j, and check the correctness
 #[test]
 fn test_quick_key_update() {
     let pp = PubParam::init_without_seed();
@@ -67,6 +59,15 @@ fn test_quick_key_update() {
     }
 }
 
+/// This test does the following:
+/// 1. generate a paring of public/secret keys, and the pop
+/// 2. verify the pop against the public key
+/// 3. for j in 2..16
+///     * update sk1 from time 1 to time j, and check the correctness
+///     * update from sk_{j-1} to sk_j, and check the correctness
+///     * for i in j+1..16
+///         * update from sk_j to sk_i, and check the correctness
+///
 /// this test takes quite some time to finish
 /// enable this test with `cargo test -- --ignored`
 #[ignore]

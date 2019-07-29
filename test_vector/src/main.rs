@@ -21,6 +21,13 @@ fn main() -> std::io::Result<()> {
     let timestamp = 1;
     let (pk, mut sk, pop) = Pixel::key_gen(seed, &pp).unwrap();
 
+    let mut sk2to4 = sk.clone();
+    assert!(Pixel::sk_update(&mut sk2to4, 2u64, &pp, rngseed).is_ok() );
+    assert!(Pixel::sk_update(&mut sk2to4, 4u64, &pp, rngseed).is_ok() );
+    let mut file = File::create(format!("test_vector/sk_plain_2_to_4.txt"))?;
+    file.write_all(format!("{:?}", sk2to4).as_ref())?;
+
+
     let mut file = File::create("test_vector/pk_plain.txt")?;
     file.write_all(format!("{:?}", pk).as_ref())?;
     let mut file = File::create("test_vector/pk_bin.txt")?;

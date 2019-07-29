@@ -12,12 +12,12 @@ This will create a folder `test_vector`, and write the test vectors to this fold
 Parameters are the default parameters.
 Seed for the key generation is __tentatively__ set to the string
 ```rust
-    let seed = "this is a very long seed for pixel tests";
+  let seed = "this is a very long seed for pixel tests";
 ```
 We will then use the secret key to sign a message.
 The message is also __tentatively__ set to the string
 ```rust
-    let msg = "this is the message we want pixel to sign";
+  let msg = "this is the message we want pixel to sign";
 ```
 
 Then, the secret key is updated from the initial stage (time stamp = 1) to

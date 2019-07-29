@@ -13,7 +13,6 @@ env:
   - CARGO_FLAG=test -- --ignored
   - CARGO_FLAG=test --release
   - CARGO_FLAG=test --release -- --ignored
-  - CARGO_FLAG=bench
 script:
 
   - travis_wait 360 cargo $CARGO_FLAG

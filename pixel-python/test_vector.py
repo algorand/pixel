@@ -26,6 +26,18 @@ from sig import sign_present, serialize_sig, print_sig
 def test_vector():
 
     seed = b"this is a very long seed for pixel tests"
+    _, sk = key_gen(seed)
+
+    sk = sk_update(copy.deepcopy(sk), default_param, 2, b"")
+    sk = sk_update(copy.deepcopy(sk), default_param, 4, b"")
+    fname = "test_vector/sk_plain_2_to_4.txt"
+    t = sys.stdout
+    sys.stdout = open(fname, 'w')
+    print_sk(sk)
+    sys.stdout = t
+
+
+    seed = b"this is a very long seed for pixel tests"
     msg = b"this is the message we want pixel to sign";
 
     print("Initialization")

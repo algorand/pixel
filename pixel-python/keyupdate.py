@@ -31,25 +31,36 @@ def sk_update(sk, pp, tar_time, seed):
     tvec = time_to_vec(tar_time, d)
     gammalist = gammat(tvec, d)
 
-    # the left child is form by delegating to the first vector in the gamma list
-    ssk1 = delegate(copy.deepcopy(delegator), tar_time)
-    # the right child is form by delegating to the second vector in the gamma list
-    ssk2 = delegate(copy.deepcopy(delegator), copy.deepcopy(vec_to_time(gammalist[1],d)))
+    # new_ssk contains ssk-s that are delegated
+    new_ssk = []
+    for e in gammalist:
+        to_be_include = True
+        time = vec_to_time(e,d)
+        for ssk in sk_vec:
+            # ssk already in the vector
+            if ssk[0] == time:
+                to_be_include = False
 
+        # ssk is not in the list
+        if to_be_include == True:
+            ssk = delegate(copy.deepcopy(delegator), time)
+            new_ssk.append(ssk)
 
+    # now rerandomize all new_ssk except for the first one
     # re-randomize the prng
     salt = b"Pixel secret key rerandomize"
     new_seed = prng_rerandomize(sk[0], seed, salt)
-
-    # randomize the right child
+    # randomize the ssks
     info = b"Pixel secret key update"
-    r, new_seed = prng_sample_then_update(new_seed, info)
-    ssk2 = randomization(ssk2, pp, r)
+    for i in range(1,len(new_ssk)):
+        r, new_seed = prng_sample_then_update(new_seed, info)
+        new_ssk[i] = randomization(new_ssk[i], pp, r)
+
 
     # remove the delegator from sk_vec
-    # insert the left/right children instead
+    # insert the new_ssk instead
     del sk_vec[0]
-    sk_vec = [ssk1, ssk2] + sk_vec
+    sk_vec = new_ssk + sk_vec
 
     return (new_seed, sk_vec)
 
@@ -190,6 +201,7 @@ def key_update_test_vector_gen():
         fname2 = "../test_vector/test_vector/sk_bin_%02d.txt"%i
         assert filecmp.cmp(fname, fname2)
         sk = copy.deepcopy(sk2)
+
 
 
 if __name__ == "__main__":

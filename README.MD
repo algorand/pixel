@@ -13,41 +13,55 @@ CREDIT: http://patorjk.com/software/taag
 
 [![Build Status](https://travis-ci.com/algorand/pixel.svg?token=cs332z4omsgc9ykLW8pu&branch=master)](https://travis-ci.com/algorand/pixel)
 
-TODO: update readme:
-* A lot of the features are no longer supported.
-We want to use fixed generator, and want to hard code the public key in BLS G1.
-Related options will need to be removed from the code, and this file will need to be modified accordingly.
-* We have a separate folder to generate deterministic signatures, and for cross comparison with python code.
+This is Algorand's implementation of Pixel signature, over the BLS12-381 curve.
+Useful links:
 
+* [Paper](https://eprint.iacr.org/2019/514)
+* [Spec](https://github.com/algorand/pixel/blob/master/spec.md)
+* Rust code: this repo
+* [Python code](https://github.com/hoeteck/pixel/)
+* [Another python code](https://github.com/algorand/pixel/tree/master/pixel-python) <- This code is only for generating test
+vectors and cross comparing with Rust's output. It should not be used for any
+other purpose.
+
+## Dependencies
+* [Pairing library](https://github.com/algorand/pairing-fork)
+* [Pixel_param](https://github.com/algorand/pixel_param)
+* [BLS_SIG-fork](https://github.com/algorand/bls_sigs_ref-fork) To be removed.
 
 ## Build options
 
-* `cargo build` builds a debug version; with time depth parameter = 4;
-* `cargo build --release` builds the release version; with time depth parameter = 32
-* `cargo build --features=pk_in_g2` builds a version where the public key lies in `G2` or `bls12-381` curve; it is turned off by default.
-* `cargo build --features=use_rand_generators` uses randomized generators rather than the generator from `bls12-381` curve;
+* `cargo build` builds a debug version;
+* `cargo build --release` builds the release version;
 
 ## Test options
-* `cargo test [--features=[pk_in_g2],[use_rand_generators]] [--release]` runs basic tests;
-* `cargo test -- --ignored [--features=[pk_in_g2],[use_rand_generators]] [--release]` runs long tests;
-* `cargo bench [--features=[pk_in_g2],[use_rand_generators]] [--release]` runs benchmarks (TODO).
-* `cargo test --features=pk_in_g2 test_det` runs a deterministic test and compare the intermediate values against python implementation.
+* `cargo test [--release]` runs basic tests;
+* `cargo test -- --ignored [--release]` runs long tests;
+* `cargo bench` runs benchmarks.
 
-
-
+## Cross comparison with python code
+* `test_vector` is calls this rust library to generate a list of test vectors.
+* `pixel-python/test_vector.py` is a python script that generates a list of test vectors.
+* `test_vector.py` also compares the binary outputs of Rust and python match.
 
 ## Quality control
-Following the guidelines from [Facebooks source code](https://developers.libra.org/docs/community/coding-guidelines)
+Following the guidelines from [Facebook's libra source code](https://developers.libra.org/docs/community/coding-guidelines)
 * `cargo fmt` for coding style
 * `cargo clippy --all-targets --all-features -- -D warnings` for [lint](https://github.com/rust-lang/rust-clippy/blob/master/README.md)
-* `cargo fuzz` for [fuzzing](https://rust-fuzz.github.io/book/introduction.html) (TODO)
 * `cargo doc` for documentation.
+
+Exceptions:
+* [Facebooks guidelines](https://developers.libra.org/docs/community/coding-guidelines)
+suggests to have a test file along with the source code.
+Pixel has a separate test folder that contains all test codes.
 
 ## Handling secret data
 * Variables that storing secret data are named with a suffix `_sec`; always ensure this data get cleaned with `ClearOnDrop` crate;
 or get passed to the caller.
 * Avoiding using `clone()` function on secret data as possible - this will create two copies of the data. If `clone()`
 is used, always clean it after use.
+* Some data type, i.e., `[u8;64]` cannot be cleared with `ClearOnDrop` since the default trait is
+not implemented for it. We manually clear it by writing trivial data to it.
 
 ## Interfaces
 * Run `cargo doc --open`

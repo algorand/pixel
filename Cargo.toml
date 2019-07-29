@@ -8,14 +8,12 @@ authors = [
 license = "MIT/Apache-2.0"
 
 description = "Pixel: Algorand's consensus signature over curve BLS12-381"
-
-#[lib]
-#crate-type = ["staticlib"]
-
+homepage = "https://github.com/algorand/pixel"
+repository = "https://github.com/algorand/pixel"
 
 [dependencies]
 rand = "0.4"
-pairing = { version = "0.14.3", git = "ssh://git@github.com/algorand/pairing-fork-transmute", features = [ "transmutable" ] }
+pairing = { version = "0.14.3", git = "ssh://git@github.com/algorand/pairing-fork", features = [ "transmutable" ] }
 criterion = "0.2.11"
 walkdir = "2.2.7"
 hkdf = "0.7"

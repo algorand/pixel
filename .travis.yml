@@ -16,4 +16,4 @@ env:
   - CARGO_FLAG=bench
 script:
 
-  - travis_wait 60 cargo $CARGO_FLAG
+  - travis_wait 360 cargo $CARGO_FLAG

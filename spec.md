@@ -24,7 +24,7 @@ CREDIT: http://patorjk.com/software/taag
 
 ### Depth of time tree
   * `CONST_D`: A constant set to `32`. This allows for `780` years of time stamps if
-  we use a timestamp every `5` second.
+  we use a timestamp every `5` seconds.
 
 ### Public Parameter
 * Structure
@@ -38,12 +38,12 @@ CREDIT: http://patorjk.com/software/taag
   }
   ```
 * The parameters are defined and generated in a separate crate [pixel_param](https://github.com/algorand/pixel_param).
-Pixel will use the __default__ parameter set from pixel_param.
+Pixel will use the __default__, pre-computed parameter set from pixel_param.
 The default parameter set was generated with a seed = SHA512's initial vector.
 The parameter set can be accessed via
 
   ```rust
-  PubParam::default();  // access the fault parameter set
+  PubParam::default();    // access the fault parameter set
   ```
 
 ## Time
@@ -51,11 +51,11 @@ The parameter set can be accessed via
   ``` Rust
   type TimeStamp = u64;
   ```
-* structure  
+* Structure  
   ``` rust
   struct TimeVec {
       time: TimeStamp,    // the actual time stamp, for example 2
-      vec: Vec<u64>,      // the path the this time stamp, for example [1, 1]
+      vec: Vec<u64>,      // the path to this time stamp, for example [1, 1]
   }
   ```
 * Get various elements from the TimeVec
@@ -81,7 +81,7 @@ The parameter set can be accessed via
 
 * Structure
   ``` Rust
-  struct PRNG([u8; 64]);  // PRNG is a wrapper of 64 bytes array
+  struct PRNG([u8; 64]);  // PRNG is a wrapper of a 64 bytes array
   ```
 
 * Initialization
@@ -108,7 +108,7 @@ The parameter set can be accessed via
   * Output: update self's state
   * Steps:
     1. `tmp = HKDF-SHA512-expand(prng, info, 128)`
-    2. `prng = PRNG(tmp[64:128])`
+    2. update self: `prng = PRNG(tmp[64:128])`
     3.  return `OS2IP(tmp[0:64]) mod p`
 
 * Sample (without update)
@@ -126,14 +126,15 @@ The parameter set can be accessed via
 * Re-randomization
   ``` rust
   // re_randomize the prng with a new seed and some salt
-  fn re_randomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, salt: Blob);
+  fn re_randomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, salt: Blob, info: Blob);
   ```
   * Input: the prng
-  * Input: a seed and a salt for re-randomization
+  * Input: a seed, a salt, and a info for re-randomization
   * Output: update self's state
   * Steps:
-    1. `m = HKDF-SHA512-extract(prng|seed, salt)`
-    2. `return PRNG(m)`
+    1. `m1 = HKDF-SHA512-Expand(prng, info, 64)`
+    1. `m = HKDF-SHA512-Extract(m1|seed, salt)`
+    2. Updated self with `PRNG(m)`
 
 
 ## Master secret key
@@ -160,11 +161,11 @@ The parameter set can be accessed via
 
 ## Proof of possession
 
-* Struct
+* Structure
   ``` rust
   struct ProofOfPossession {
       ciphersuite: u8,  /// ciphersuite id
-      pop: PixelG1,     /// the actual public key element
+      pop: PixelG1,     /// the actual pop element
   }
   ```
 
@@ -186,7 +187,7 @@ The parameter set can be accessed via
   fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1, String>
   ```
   * Input: the exponent of the public key
-  * Input: public key
+  * Input: the actual public key group element
   * Input: ciphersuit id
   * Output: a proof of possession for the public key
   * Error: ERR_SERIAL
@@ -300,7 +301,7 @@ The parameter set can be accessed via
   * Error: ERR_CIPHERSUITE, ERR_SERIAL
   * Steps:
     1. returns an error is `pp.get_ciphersuite()` is not supported.
-    2. info = "Pixel secret key init"
+    2. `info = "Pixel secret key init"`
     3. `r = prng.sample_then_update(info)`
     4. `ssk = SubSecretKey::init(pp, alpha, r)`
     5. return `construct(pp.get_ciphersuite(), 1, [ssk], prng)`
@@ -575,13 +576,14 @@ This function does NOT handle re-randomizations.
 
 # Seed and rng
 
-This section describes how randomness and seed are handled. A tentative definition of domain separators are available in src/domain_sep.rs. `|` is the concatenation of the byte strings.
+This section describes how randomness and seed are handled in general. A tentative definition of domain separators are available in src/domain_sep.rs. `|` is the concatenation of the byte strings.
 We will be using the following functions
 
     * HKDF-Extract(salt , seed) -> secret
     * HKDF-Expand(secret, public_info, length_of_new_secret) -> new_secret
     * hash_to_group(input, ciphersuite) -> group element
 
+## Parameter generation
 * The parameter generation function takes a seed as one of the inputs. This seed is provided by the caller (our go library). The rust code checks if the seed is longer than 32 bytes.
 Rust code does not perform any extra checks over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc. We use SHA512's IV as the seed.
 Then, we generate the generators as follows:
@@ -608,7 +610,7 @@ Then, we generate the generators as follows:
 The `ctr` does not reset if when we generate generators for different groups. (It seems redundant to have a ciphersuite id in both `input` and `ciphersuite` fields. But this is only one byte and should not
   affect the performance in most cases. It is also consistent with the rest of the inputs for `hash_to_field`.) -->
 
-
+## Key Generation
 * The master key generation function also takes a seed as one of the inputs. This seed is also provided by the caller. Same check on the seed is done as in parameter generation.
 The field element is generated as follows:
   * Input: `seed`, parameter set
@@ -618,23 +620,35 @@ The field element is generated as follows:
     * `info = "key initialization"`
     * `t = HKDF-Expand(m, info, 128)`
     * `r = OS2IP(t[0..64]) mod p`
-    * initialize the rng seed as `rngseed = t[64..128]`
+    * initialize the prng seed as `rngseed = t[64..128]`
 
 <!--
   * A master secret (`x`, or `alpha`, i.e., the exponent for the pk) is generated from
   `hash_to_field(input, 0)`, where the input is `DOM_SEP_MASTER_KEY | ciphersuite | seed`.
   * A rngseed is generated from `sha256(DOM_SEP_SEED_INIT | ciphersuite | seed)`. This rngseed is part of the secret key, and will be used for deterministic updating and signing. -->
 
-
+## Key Updates
 * During a (fast) key updating, a random field element is generated
 as follows:
   * Input: `rngseed` from the secret key
+  * Input: `newseed` from the `key_update()` API to re-randomize the seed
   * Output: a field element `r`
+  * Output: update secret key's prng seed
   * Steps:
-    * `info = "key updating"`
+    * `salt = "Pixel secret key rerandomize"`
+    * `info = "Pixel secret key update"`
+    * `rngseed = prng_rerandomize(rngseed, newseed, salt, info)`
     * `t = HKDF-Expand(m, info, 128)`
     * `r = OS2IP(t[0..64]) mod p`
     * update the rngseed as `rngseed = t[64..128]`
+
+* The `prng_rerandomize` subrouting is as follows:
+  * Input: `rngseed`, `newseed`, `salt`, `info`
+  * Output: a new `rngseed`
+  * Steps:
+    * `m1 = HKDF-Expand(rngseed, info, 64)`
+    * return `rngseed = HKDF-Extract(m1 | newseed, salt)`
+
 
 
 <!-- from
@@ -645,12 +659,14 @@ as follows:
     * `extracted_seed = sha256(DOM_SEP_SEED_EXTRACT | rngseed)`
     * `rngseed = sha256(DOM_SEP_SEED_UPDATE | rngseed)`    -->
 
+## Signing
 * During the signing procedure, a random field element is generated as follows:
   * Input: `rngseed` from the secret key
+  * Input: the `message` blob
   * Output: a field element `r`
   * Steps:
-    * `info = "signing" | message`
-    * `t = HKDF-Expand(m, info, 64)`
+    * `info = "Pixel randomness for signing" | message`
+    * `t = HKDF-Expand(rngseed, info, 64)`
     * `r = OS2IP(t[0..64]) mod p`
 
 The rngseed is not updated, so that for a same message, we

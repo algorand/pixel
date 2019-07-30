@@ -13,8 +13,8 @@ pub type TimeStamp = u64;
 /// * the time stamp itself, for convenient access
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeVec {
-    time: TimeStamp,
-    vec: Vec<u64>,
+    time: TimeStamp, // the actual time stamp, for example 2
+    vec: Vec<u64>,   // the path to this time stamp, for example [1, 1]
 }
 
 impl TimeVec {

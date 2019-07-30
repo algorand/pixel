@@ -6,7 +6,7 @@ use PixelG1;
 pub struct ProofOfPossession {
     /// ciphersuite id
     ciphersuite: u8,
-    /// the actual public key element
+    /// the actual pop element
     pop: PixelG1,
 }
 
@@ -26,6 +26,7 @@ impl ProofOfPossession {
         self.pop
     }
 
-    // the actual pop generation and verification functions
-    // stay within the public key module
+    // the actual pop generation is within the master_key_gen function
+    // since the secret exponent is not available anywhere else
+    // the verification function is within the public key module
 }

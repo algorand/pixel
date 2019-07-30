@@ -40,7 +40,7 @@ other purpose.
 * `cargo bench` runs benchmarks.
 
 ## Cross comparison with python code
-* `test_vector` is calls this rust library to generate a list of test vectors.
+* `test_vector` calls this rust library to generate a list of test vectors.
 * `pixel-python/test_vector.py` is a python script that generates a list of test vectors.
 * `test_vector.py` also compares the binary outputs of Rust and python match.
 
@@ -60,7 +60,7 @@ Pixel has a separate test folder that contains all test codes.
 or get passed to the caller.
 * Avoiding using `clone()` function on secret data as possible - this will create two copies of the data. If `clone()`
 is used, always clean it after use.
-* Some data type, i.e., `[u8;64]` cannot be cleared with `ClearOnDrop` since the default trait is
+* Some data type, i.e., `[u8;64]` cannot be cleared with `ClearOnDrop` since the `Default` trait is
 not implemented for it. We manually clear it by writing trivial data to it.
 
 ## Interfaces

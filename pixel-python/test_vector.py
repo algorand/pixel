@@ -26,23 +26,13 @@ from sig import sign_present, serialize_sig, print_sig
 def test_vector():
 
     seed = b"this is a very long seed for pixel tests"
-    _, sk = key_gen(seed)
-
-    sk = sk_update(copy.deepcopy(sk), default_param, 2, b"")
-    sk = sk_update(copy.deepcopy(sk), default_param, 4, b"")
-    fname = "test_vector/sk_plain_2_to_4.txt"
-    t = sys.stdout
-    sys.stdout = open(fname, 'w')
-    print_sk(sk)
-    sys.stdout = t
-
-
-    seed = b"this is a very long seed for pixel tests"
     msg = b"this is the message we want pixel to sign";
 
     print("Initialization")
     pk, sk = key_gen(seed)
     sig = sign_present(sk, 1, default_param, msg)
+
+    sk_back_up = copy.deepcopy(sk)
 
     # output pk to a binary file
     pk_buf = b"\0" + serialize(pk, True)
@@ -123,6 +113,54 @@ def test_vector():
         assert filecmp.cmp(fname, fname2)
 
         sk = copy.deepcopy(sk2)
+
+    sk = copy.deepcopy(sk_back_up)
+    for i in range(2,64):
+
+        cur_time = sk[1][0][0]
+        tar_time = cur_time+i
+        print("updating from time %d to time %d"%(cur_time, tar_time))
+
+        # updated sk and signatures
+        sk2 = sk_update(copy.deepcopy(sk), default_param, tar_time, b"")
+        sig = sign_present(sk2, tar_time, default_param, msg)
+
+        # output sk to a human readable file
+        fname = "test_vector/sk_plain_ff_%04d_%04d.txt"%(cur_time,tar_time)
+        t = sys.stdout
+        sys.stdout = open(fname, 'w')
+        print_sk(sk2)
+        sys.stdout = t
+
+        # output sk to a binary file
+        sk_buf = serialize_sk(sk2)
+        fname = "test_vector/sk_bin_ff_%04d_%04d.txt"%(cur_time,tar_time)
+        f = open(fname, "wb")
+        f.write(sk_buf)
+        f.close()
+
+        # compare with rust's output
+        fname2 = "../test_vector/test_vector/sk_bin_ff_%04d_%04d.txt"%(cur_time,tar_time)
+        assert filecmp.cmp(fname, fname2)
+
+        # output sig to a human readable file
+        fname = "test_vector/sig_plain_ff_%04d_%04d.txt"%(cur_time,tar_time)
+        t = sys.stdout
+        sys.stdout = open(fname, 'w')
+        print_sig(sig)
+        sys.stdout = t
+
+        # output sig to a binary file
+        fname = "test_vector/sig_bin_ff_%04d_%04d.txt"%(cur_time,tar_time)
+        fname2 = "../test_vector/test_vector/sig_bin_ff_%04d_%04d.txt"%(cur_time,tar_time)
+        sig_buf = serialize_sig(sig)
+        f = open(fname, "wb")
+        f.write(sig_buf)
+        f.close()
+        assert filecmp.cmp(fname, fname2)
+
+        sk = copy.deepcopy(sk2)
+
 
 
 if __name__ == "__main__":

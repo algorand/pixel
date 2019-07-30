@@ -20,28 +20,24 @@ fn main() -> std::io::Result<()> {
     let rngseed = "";
     let timestamp = 1;
     let (pk, mut sk, pop) = Pixel::key_gen(seed, &pp).unwrap();
-
-    let mut sk2to4 = sk.clone();
-    assert!(Pixel::sk_update(&mut sk2to4, 2u64, &pp, rngseed).is_ok() );
-    assert!(Pixel::sk_update(&mut sk2to4, 4u64, &pp, rngseed).is_ok() );
-    let mut file = File::create(format!("test_vector/sk_plain_2_to_4.txt"))?;
-    file.write_all(format!("{:?}", sk2to4).as_ref())?;
-
+    let sk2 = sk.clone();
 
     let mut file = File::create("test_vector/pk_plain.txt")?;
     file.write_all(format!("{:?}", pk).as_ref())?;
     let mut file = File::create("test_vector/pk_bin.txt")?;
     pk.serialize(&mut file, true)?;
 
-    let mut file = File::create(format!("test_vector/sk_plain_{:02?}.txt", timestamp))?;
-    file.write_all(format!("{:?}", sk).as_ref())?;
-    let mut file = File::create(format!("test_vector/sk_bin_{:02?}.txt", timestamp))?;
-    sk.serialize(&mut file, true)?;
-
     let mut file = File::create("test_vector/pop_plain.txt")?;
     file.write_all(format!("{:?}", pop).as_ref())?;
     let mut file = File::create("test_vector/pop_bin.txt")?;
     pop.serialize(&mut file, true)?;
+
+    // generating test vectors for sk updates and signatures
+    // we start to generate a sequence of secret keys with an increment of 1
+    let mut file = File::create(format!("test_vector/sk_plain_{:02?}.txt", timestamp))?;
+    file.write_all(format!("{:?}", sk).as_ref())?;
+    let mut file = File::create(format!("test_vector/sk_bin_{:02?}.txt", timestamp))?;
+    sk.serialize(&mut file, true)?;
 
     // now, use the secret key to sign a message
     //  "this is the message we want pixel to sign"
@@ -57,7 +53,7 @@ fn main() -> std::io::Result<()> {
     // update the key from time 1 to time 64, sequentially
     // and use the key to sign the message
     for i in 2..64 {
-        assert!(Pixel::sk_update(&mut sk, i as u64, &pp, rngseed).is_ok() );
+        assert!(Pixel::sk_update(&mut sk, i as u64, &pp, rngseed).is_ok());
         let sig = Pixel::sign_present(&mut sk, i as u64, &pp, msg).unwrap();
         assert!(Pixel::verify(&pk, &pp, msg, &sig));
 
@@ -69,6 +65,30 @@ fn main() -> std::io::Result<()> {
         let mut file = File::create(format!("test_vector/sig_plain_{:02?}.txt", i))?;
         file.write_all(format!("{:?}", sig).as_ref())?;
         let mut file = File::create(format!("test_vector/sig_bin_{:02?}.txt", i))?;
+        sig.serialize(&mut file, true)?;
+    }
+
+    // next, we try some deterministic `fast forward` updates
+    // by jumping from current sk to sk+i
+    // and use the key to sign the message
+    let mut sk = sk2.clone();
+    for i in 2..64 {
+
+        let cur_time = sk.get_time();
+        let tar_time = cur_time + i as u64;
+
+        assert!(Pixel::sk_update(&mut sk, tar_time, &pp, rngseed).is_ok());
+        let sig = Pixel::sign_present(&mut sk, tar_time, &pp, msg).unwrap();
+        assert!(Pixel::verify(&pk, &pp, msg, &sig));
+
+        let mut file = File::create(format!("test_vector/sk_plain_ff_{:04?}_{:04}.txt", cur_time,tar_time))?;
+        file.write_all(format!("{:?}", sk).as_ref())?;
+        let mut file = File::create(format!("test_vector/sk_bin_ff_{:04?}_{:04}.txt", cur_time,tar_time))?;
+        sk.serialize(&mut file, true)?;
+
+        let mut file = File::create(format!("test_vector/sig_plain_ff_{:04?}_{:04}.txt", cur_time,tar_time))?;
+        file.write_all(format!("{:?}", sig).as_ref())?;
+        let mut file = File::create(format!("test_vector/sig_bin_ff_{:04?}_{:04}.txt", cur_time,tar_time))?;
         sig.serialize(&mut file, true)?;
     }
 

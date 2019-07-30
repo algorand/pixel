@@ -55,6 +55,7 @@ fn test_os2ip() {
     );
 }
 
+// the examples in this test are cross compared with python prng code
 #[test]
 fn test_prng() {
     // test sample then update function

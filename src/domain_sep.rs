@@ -15,8 +15,9 @@ pub const DOM_SEP_SK_INIT: &str = "Pixel secret key init";
 // the info to sample a field element during key update
 pub const DOM_SEP_SK_UPDATE: &str = "Pixel secret key update";
 
-// the salt to update the secret key's prng
-pub const DOM_SEP_SK_RERANDOMIZE: &str = "Pixel secret key rerandomize";
+// the salt and info to update the secret key's prng
+pub const DOM_SEP_SK_RERANDOMIZE_SALT: &str = "Pixel secret key rerandomize extract";
+pub const DOM_SEP_SK_RERANDOMIZE_INFO: &str = "Pixel secret key rerandomize expand";
 
 // prefix of public key proof of possesion
 pub const DOM_SEP_POP: &str = "Pixel public key POP";

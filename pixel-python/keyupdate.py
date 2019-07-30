@@ -13,6 +13,11 @@ from util import print_g1_hex, print_g2_hex
 # see the rust code for the detailed logic and examples
 def sk_update(sk, pp, tar_time, seed):
 
+    # re-randomize the prng
+    salt = b"Pixel secret key rerandomize extract"
+    info = b"Pixel secret key rerandomize expand"
+    new_seed = prng_rerandomize(sk[0], seed, salt, info)
+
     # find the ancestor node of the tar-time
     # if the ancestor happens to be the same as tar-time
     # then we have finished
@@ -23,7 +28,7 @@ def sk_update(sk, pp, tar_time, seed):
     #         e = []
     sk_vec = [x for x in sk_vec if x[0] >= delegator[0]]
     if sk_vec[0][0] == tar_time:
-        return (sk[0], sk_vec)
+        return (new_seed, sk_vec)
 
     # when ancestor is not for the tar-time,
     # we will use this ancestor (delegator) to delegate
@@ -47,9 +52,6 @@ def sk_update(sk, pp, tar_time, seed):
             new_ssk.append(ssk)
 
     # now rerandomize all new_ssk except for the first one
-    # re-randomize the prng
-    salt = b"Pixel secret key rerandomize"
-    new_seed = prng_rerandomize(sk[0], seed, salt)
     # randomize the ssks
     info = b"Pixel secret key update"
     for i in range(1,len(new_ssk)):

@@ -47,8 +47,9 @@ def prng_sample(prng_seed, info):
     r = OS2IP(hashinput) % q
     return r
 
-def prng_rerandomize(prng_seed, newseed, salt):
-    return hkdf.hkdf_extract(salt, input_key_material=(prng_seed+newseed), hash=hashlib.sha512);
+def prng_rerandomize(prng_seed, newseed, salt, info):
+    m1 = hkdf.hkdf_expand(prng_seed, info, 64)
+    return hkdf.hkdf_extract(salt, input_key_material=(m1+newseed), hash=hashlib.sha512);
 
 
 # basic functionality tests that matches Rust
@@ -74,9 +75,9 @@ def prng_test():
 
     assert r1 == 0x5fc61b25c385eefe94ee9c8f205eb575e43d41800be63d0f1dd41cab6950f572
     assert r2 == 0x30cdf80e28b7c7391a8a0c2ff8503944f808a1c0cc22efd2f217fe299b51645c
-    assert r3 == 0x30cdf80e28b7c7391a8a0c2ff8503944f808a1c0cc22efd2f217fe299b51645c
+    assert r2 == r3
 
-    new_prng_seed2 = prng_rerandomize(new_prng_seed, seed, salt)
+    new_prng_seed2 = prng_rerandomize(new_prng_seed, seed, salt, info)
     # for e in new_prng_seed2:
     #     print ("%s,"%hex(e))
     # print(prng.hex())
@@ -88,6 +89,7 @@ def prng_test():
     #     print ("%s,"%hex(e))
     # print(prng.hex())
     # print(new_prng_seed.hex())
+    assert r4 == 0x48b74ed11ca642bd3380373182f113c1fb0ac52bdd840c5fe9396d9e2f971e18
 
 if __name__ == "__main__":
     def main():

@@ -194,18 +194,43 @@ impl PRNG {
     }
 
     /// Mix new entropy into the PRNG.
-    pub fn rerandomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, salt: Blob) {
-        let mut m_sec = [&self.0.to_vec(), seed.as_ref()].concat();
-        let mut k_sec = Hkdf::<Sha512>::extract(Some(salt.as_ref()), m_sec.as_ref());
-        self.0.clone_from_slice(&k_sec.prk[0..64]);
+    pub fn rerandomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, salt: Blob, info: Blob) {
+        // expand self into a new 64 array
+        // m1 = hkdf-expand(info, 64)
+        // re-build the hkdf-sha512 from the PRNG seed
+        let mut hk1_sec = Hkdf::<Sha512> {
+            prk: generic_array::GenericArray::clone_from_slice(self.get_seed()),
+        };
+        // hkdf-expand(seed, info)
+        let mut m1_sec = vec![0u8; 64];
+        assert!(
+            hk1_sec.expand(info.as_ref(), &mut m1_sec).is_ok(),
+            "hkdf expand failed"
+        );
+
+        // extract the new prng seed
+        // m2 = hkdf-extract(salt, m1|seed)
+        let mut m2_sec = [m1_sec.as_ref(), seed.as_ref()].concat();
+        let mut hk2_sec = Hkdf::<Sha512>::extract(Some(salt.as_ref()), m2_sec.as_ref());
+
+        // update self with the new hkdf's key
+        self.0.clone_from_slice(&hk2_sec.prk[0..64]);
         // clean up m and k
         {
-            let _clear1 = ClearOnDrop::new(&mut m_sec);
-            let _clear2 = ClearOnDrop::new(&mut k_sec.prk);
+            let _clear1 = ClearOnDrop::new(&mut m1_sec);
+            let _clear2 = ClearOnDrop::new(&mut hk1_sec.prk);
+            let _clear3 = ClearOnDrop::new(&mut m2_sec);
+            let _clear3 = ClearOnDrop::new(&mut hk2_sec.prk);
         }
-        assert_eq!(m_sec, vec![], "Extracted secret not cleared");
+        assert_eq!(m1_sec, vec![], "Extracted secret not cleared");
         assert_eq!(
-            k_sec.prk,
+            hk1_sec.prk,
+            generic_array::GenericArray::default(),
+            "HKDF not cleared"
+        );
+        assert_eq!(m2_sec, vec![], "Extracted secret not cleared");
+        assert_eq!(
+            hk2_sec.prk,
             generic_array::GenericArray::default(),
             "HKDF not cleared"
         );

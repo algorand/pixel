@@ -319,18 +319,23 @@ The parameter set can be accessed via
   * Error: ERR_CIPHERSUITE, ERR_SERIAL, ERR_TIME_STAMP
   * Steps:
     1. If the time or ciphersuite is not correct, returns an error
+    4. Re-randomize sk's prng: `sk.prng.re-randomize(seed, salt, info)` where
+        * `salt = "Pixel secret key rerandomize extract"`
+        * `info = "Pixel secret key rerandomize expand"`
     2. Find the ancestor node `delegator = sk.find_ancestor(tar_time)`, returns an error if time is not correct
     3. Update self to an sk for delegator's time by removing SubSecretKeys whose time stamps are smaller than delegator's time, returns an error if no SubSecretKey is left after removal
+
+
     4. If delegator's time equals target time, return success
-    4. Update sk's prng before sampling `r`: `sk.prng.re-randomize(seed, salt)` where `salt = "Pixel secret key rerandomize"`
+
     5. Generate a gamma list from target time `GammaList = target_time.gamma_list(pp.get_d())`, returns an error if time stamp is invalid
     6. Use the first ssk to delegate `delegator_ssk = sk.get_first_ssk()`
     6. for (i, TimeStamp) in Gammalist
         1. if delegator's time is a prefix of TimeStamp
             * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.get_d())`
             * if `i!=0`
-              * info = "Pixel secret key update"
-              * `r = sk.sample_then_update(info)`
+              * `info = "Pixel secret key update"`
+              * `r = sk.prng.sample_then_update(info)`
               * re-randomize the ssk via `new_ssk.randomization(pp, r)`
             * `sk.ssk.insert(i + 1, new_ssk)` so that ssk remains sorted
     6. Remove the delegator's ssk via `sk.ssk.remove(0)`
@@ -420,6 +425,12 @@ The parameter set can be accessed via
   * Input: public parameters.
   * Input: a master secret `alpha`.
   * Output: root secret key `[g2^r, h^alpha*h0^r, h1^r, ..., hd^r]` at time stamp = 1.
+  * Steps:
+    1. `g2r = pp.get_g2()^r`
+    2. `hpoly = pp.get_h()^alpha * pp.get_hlist()[0]^r`
+    3. for i in `[1..=d]`:
+      * `hvector[i-1] = pp.get_hlist()[i]^r`
+    5. return `SubSecretKey{pp.ciphersuit, 1, g2r, hpoly, hvector}`
 
 * Delegation:
   ```Rust
@@ -428,10 +439,19 @@ The parameter set can be accessed via
   Delegate the key into TimeStamp time.
 This function does NOT handle re-randomizations.
   * Input: `sk = [g, hpoly, h_{|t|+1}, ..., h_D]`, and a target time `tn`,
-  * Output(mutate): `sk = [g, hpoly*\prod_{i=|t|}^|tn| hi^tn[i], h_{|tn|+1}, ..., h_D]`.
+  * Output: update sk to `sk = [g, hpoly*\prod_{i=|t|}^|tn| hi^tn[i], h_{|tn|+1}, ..., h_D]`.
   * Error: ERR_TIME_STAMP if
     * the ssk's time vector is not a prefix of the target time,  
     * the ssk's or target time stamp is invalid w.r.t. depth.
+  * Steps:
+    1. `cur_tv = time_to_vec(sk.get_time, depth)`
+    2. `tar_tv = time_to_vec(tar_time, depth)`
+    2. if `cur_tv` is not a prefix of `tar_tv`, return `ERR_TIME_STAMP`
+    3. for i in `0..tar_tv.len()-cur_tv.len()`  
+        * `sk.hpoly *= sk.hlist[i]^tar_tv[i+cur_tv.len()]`
+    4. for i in `0..tar_tv.len()-cur_tv.len()`  
+        * del `sk.hlist[0]`
+
 
 * Randomization:
 
@@ -442,7 +462,18 @@ This function does NOT handle re-randomizations.
   * Input: re-randomization field element `r`,
   * Output(mutate): `g^r, (h_0 prod hj^tj)^r, h_{|t|+1}^r, ..., h_D^r`.
   * Error: ERR_TIME_STAMP if the ssk's time stamp is invalid w.r.t the depth in the public parameter.
+  * Steps:
 
+    1. `tv = ssk.get_time_vec()`
+    1. `hlist = pp.get_hlist()`
+    1. `sk.g2r *= pp.get_g2()^r`
+    2. `hpoly_base =  hlist[0]`
+    2. for i in range(tv.len())
+        * `hpoly_base *= hlist[i+1]^tv[i]`
+    3 `sk.hpoly *= hpoly_base^r`
+    4. for i in range(sk.hvector.len())
+          * `sk.hvector[i] *= hlsit[i+tv.len()+1]^r`
+    5. mutate self to `SubSecretKey{pp.ciphersuite, sk.time, sk.g2r, sk.hpoly, sk.hvector}`    
 
 * Additional functionalities:
   ``` Rust

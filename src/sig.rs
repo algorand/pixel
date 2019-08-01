@@ -113,7 +113,7 @@ impl Signature {
         if cur_time != tar_time {
             #[cfg(debug_assertions)]
             println!(
-                "Cannot sign for a previous time stamp, current time {} is greater than target time {}",
+                "Cannot sign for a non-current time stamp, current time {} is not the same as target time {}",
                 cur_time,
                 tar_time,
             );

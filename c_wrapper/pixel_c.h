@@ -11,11 +11,26 @@
 
 #define SIG_LEN 149
 
+typedef struct pixel_sk {
+  const uint8_t *sk;
+  size_t sk_len;
+} pixel_sk;
+
+/**
+ * A wrapper that holds the output of key generation function.
+ */
 typedef struct pixel_keys {
-  void *pk;
-  void *sk;
-  void *pop;
+  const uint8_t *pk;
+  pixel_sk sk;
+  const uint8_t *pop;
 } pixel_keys;
+
+/**
+ * This function aggregates the signatures without checking if a signature is valid or not.
+ * It does check that all the signatures are for the same time stamp.
+ * It panics if ciphersuite fails or time stamp is not consistent.
+ */
+const uint8_t *c_aggregation(const uint8_t *sig_list, size_t sig_num);
 
 /**
  * Input a pointer to the seed, and its length.
@@ -24,7 +39,7 @@ typedef struct pixel_keys {
  * Generate a pair of public keys and secret keys,
  * and a proof of possession of the public key.
  */
-pixel_keys c_keygen(const uint8_t *seed, size_t seedlen);
+pixel_keys c_keygen(const uint8_t *seed, size_t seed_len);
 
 /**
  * Input a secret key, a time stamp that matches the timestamp of the secret key,
@@ -32,17 +47,25 @@ pixel_keys c_keygen(const uint8_t *seed, size_t seedlen);
  * output a signature. If the time stamp is not the same as the secret key,
  * returns an error
  */
-void *c_sign_present(void *sk, const uint8_t *msg, size_t msglen, uint64_t tar_time);
+const uint8_t *c_sign_present(const uint8_t *sk,
+                              size_t sk_len,
+                              const uint8_t *msg,
+                              size_t msg_len,
+                              uint64_t tar_time);
 
 /**
  * Input a secret key, and a time stamp,
  * return an updated key for that time stamp.
  * Requires a seed for re-randomization.
  */
-void *c_sk_update(void *sk, const uint8_t *seed, size_t seedlen, uint64_t tar_time);
+pixel_sk c_sk_update(const uint8_t *sk,
+                     size_t sk_len,
+                     const uint8_t *seed,
+                     size_t seed_len,
+                     uint64_t tar_time);
 
 /**
  * Input a public key, the public parameter, a message in the form of a byte string,
  * and a signature, outputs true if signature is valid w.r.t. the inputs.
  */
-bool c_verify(const void *pk, const uint8_t *msg, size_t msglen, const void *sig);
+bool c_verify(const uint8_t *pk, const uint8_t *msg, size_t msglen, const uint8_t *sig);

@@ -5,3 +5,4 @@ src/keys2.rs
 *.txt
 fuzz/
 __pycache__
+c_example

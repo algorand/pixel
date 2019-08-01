@@ -1,7 +1,8 @@
 all:
-#	cargo build --release
-#	gcc c_wrapper/example/*.c c_wrapper/*.c -L./target/release -lpixel_signature -lpthread -ldl -o c_example
-	gcc c_wrapper/*.c -L./target/debug -lpixel -lpthread -ldl -o c_example
+	cargo build
+	cbindgen --config cbindgen.toml --crate pixel --output c_wrapper/pixel_c.h
+	gcc c_wrapper/*.c -L./target/debug -lpixel -lpthread -ldl -o c_wrapper/c_example
+	c_wrapper/c_example
 
 lib:
 #	cargo build --release

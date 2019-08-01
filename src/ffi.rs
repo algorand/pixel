@@ -5,6 +5,8 @@ use std::ffi;
 use Pixel;
 use PixelSignature;
 use SerDes;
+
+// A wrapper that holds the output of key generation function.
 #[repr(C)]
 pub struct pixel_keys {
     pk: *mut ffi::c_void,
@@ -25,9 +27,10 @@ pub unsafe extern "C" fn c_keygen(seed: *const u8, seedlen: libc::size_t) -> pix
     let s: &[u8] = std::slice::from_raw_parts(seed, seedlen as usize);
 
     // generate the keys
-    let res = Pixel::key_gen(s, &pp);
-    assert!(res.is_ok(), "C wrapper error: keygen function");
-    let (pk, sk, pop) = res.unwrap();
+    let (pk, sk, pop) = match Pixel::key_gen(s, &pp) {
+        Ok(p) => p,
+        Err(_e) => panic!("C wrapper error: keygen function"),
+    };
 
     // serialize the keys
     let mut pk_buf: Vec<u8> = vec![];
@@ -35,8 +38,6 @@ pub unsafe extern "C" fn c_keygen(seed: *const u8, seedlen: libc::size_t) -> pix
         pk.serialize(&mut pk_buf, true).is_ok(),
         "C wrapper error: keygen function"
     );
-
-    println!("pk with in rust: {:02x?}", pk_buf[..].as_ref());
 
     let mut sk_buf: Vec<u8> = vec![];
     assert!(
@@ -76,7 +77,10 @@ pub unsafe extern "C" fn c_sign_present(
 
     // decompress the secret key
     let k_buf = &mut *(sk as *mut Vec<u8>);
-    let mut k = SecretKey::deserialize(&mut k_buf[..].as_ref()).unwrap();
+    let mut k = match SecretKey::deserialize(&mut k_buf[..].as_ref()) {
+        Ok(p) => p,
+        Err(_e) => panic!("C wrapper error: key update function"),
+    };
 
     // generate the siganture, and return the pointer
     let sig = match Pixel::sign_present(&mut k, tar_time, &pp, m) {
@@ -107,8 +111,6 @@ pub unsafe extern "C" fn c_verify(
 
     // decompress the secret key
     let k_buf = &mut *(pk as *mut Vec<u8>);
-    println!("pk with in rust: {:02x?}", k_buf[..].as_ref());
-
     let k = match PublicKey::deserialize(&mut k_buf[..].as_ref()) {
         Ok(p) => p,
         Err(_e) => panic!("C wrapper error: verification function"),
@@ -123,25 +125,40 @@ pub unsafe extern "C" fn c_verify(
     Pixel::verify(&k, &pp, m, &s)
 }
 
+/// Input a secret key, and a time stamp,
+/// return an updated key for that time stamp.
+/// Requires a seed for re-randomization.
 #[no_mangle]
 pub unsafe extern "C" fn c_sk_update(
-    mut sk: *mut ffi::c_void,
+    sk: *mut libc::c_void,
     seed: *const u8,
     seedlen: libc::size_t,
     tar_time: u64,
-) {
+) -> *mut libc::c_void {
     let pp = PubParam::default();
     // convert a C array `seed` to a rust string `s`
     let s: &[u8] = std::slice::from_raw_parts(seed, seedlen as usize);
 
     // decompress the secret key
     let k_buf = &mut *(sk as *mut Vec<u8>);
-    let mut k = SecretKey::deserialize(&mut k_buf[..].as_ref()).unwrap();
+    let mut k = match SecretKey::deserialize(&mut k_buf[..].as_ref()) {
+        Ok(p) => p,
+        Err(_e) => panic!("C wrapper error: key update function"),
+    };
 
+    // manage the update
     assert!(
         k.update(&pp, tar_time, s).is_ok(),
         "C wrapper error: key update function"
     );
-    
-    sk = Box::into_raw(Box::new(k)) as *mut ffi::c_void;
+    let mut k_buf: Vec<u8> = vec![];
+
+    // serialize the updated sk
+    assert!(
+        k.serialize(&mut k_buf, true).is_ok(),
+        "C wrapper error: key update function"
+    );
+
+    // return the updated sk
+    Box::into_raw(Box::new(k_buf)) as *mut ffi::c_void
 }

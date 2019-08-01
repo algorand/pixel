@@ -34,7 +34,12 @@ pixel_keys c_keygen(const uint8_t *seed, size_t seedlen);
  */
 void *c_sign_present(void *sk, const uint8_t *msg, size_t msglen, uint64_t tar_time);
 
-void c_sk_update(void **sk, const uint8_t *seed, size_t seedlen, uint64_t tar_time);
+/**
+ * Input a secret key, and a time stamp,
+ * return an updated key for that time stamp.
+ * Requires a seed for re-randomization.
+ */
+void *c_sk_update(void *sk, const uint8_t *seed, size_t seedlen, uint64_t tar_time);
 
 /**
  * Input a public key, the public parameter, a message in the form of a byte string,

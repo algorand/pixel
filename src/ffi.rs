@@ -4,6 +4,8 @@ use Pixel;
 use PixelSignature;
 use SerDes;
 
+
+
 /// A wrapper of sk
 #[repr(C)]
 pub struct pixel_sk {
@@ -236,9 +238,9 @@ pub unsafe extern "C" fn c_aggregation(
 
     let mut sig_vec: Vec<Signature> = vec![];
 
-    for i in 0..sig_num {
+    for sig in sig_list.iter().take(sig_num) {
         // decompress the signature
-        let s = match Signature::deserialize(&mut sig_list[i].data.as_ref()) {
+        let s = match Signature::deserialize(&mut sig.data.as_ref()) {
             Ok(p) => p,
             Err(e) => panic!(
                 "C wrapper error: signature aggregation function: deserialize signature: {}",
@@ -281,9 +283,9 @@ pub unsafe extern "C" fn c_verify_agg(
     let pk_list: &[pixel_pk] = std::slice::from_raw_parts(pk_list as *mut pixel_pk, pk_num);
     let mut pk_vec: Vec<PublicKey> = vec![];
 
-    for i in 0..pk_num {
+    for pk in pk_list.iter().take(pk_num){
         // decompress the signature
-        let s = match PublicKey::deserialize(&mut pk_list[i].data.as_ref()) {
+        let s = match PublicKey::deserialize(&mut pk.data.as_ref()) {
             Ok(p) => p,
             Err(e) => panic!(
                 "C wrapper error: signature aggregation function: deserialize signature: {}",

@@ -44,13 +44,13 @@ int test()
   pixel_sk sk2 = c_sk_update(key.sk, (void*)rngseed, sizeof(rngseed)-1, 2);
 
   // sign the message with the key
-  sig = c_sign_present(sk2, (void*)msg, sizeof(msg), 2);
+  sig = c_sign_present(sk2, (void*)msg, sizeof(msg)-1, 2);
 
   // dump the output
   hexDump ("sig", sig.data, SIG_LEN);
 
   // verifies the signature
-  assert(c_verify(key.pk, (void*)msg, sizeof(msg), sig) == true);
+  assert(c_verify(key.pk, (void*)msg, sizeof(msg)-1, sig) == true);
 
   int num_agg =5;
   pixel_sig sig_list[num_agg];
@@ -64,21 +64,25 @@ int test()
     key = c_keygen((void*)seed, 32+i);
     pk_list[i] = key.pk;
 
+    // dump the output
+    hexDump ("pk", key.pk.data, PK_LEN);
+
+
     // generate the signature list
-    sig_list[i] = c_sign_present(key.sk, (void*)msg, sizeof(msg), 1);
+    sig_list[i] = c_sign_present(key.sk, (void*)msg, sizeof(msg)-1, 1);
 
     // dump the output
-    hexDump ("sig", sig.data, SIG_LEN);
+    hexDump ("sig", sig_list[i].data, SIG_LEN);
 
     // verifies the signature
-    assert(c_verify(key.pk, (void*)msg, sizeof(msg), sig_list[i]) == true);
+    assert(c_verify(key.pk, (void*)msg, sizeof(msg)-1, sig_list[i]) == true);
   }
 
   pixel_sig agg_sig =  c_aggregation(sig_list, num_agg);
   hexDump("aggregated signature", agg_sig.data, SIG_LEN);
 
   // verifies the aggregated signature
-  assert(c_verify_agg(pk_list, num_agg, (void*)msg, sizeof(msg), agg_sig) == true);
+  assert(c_verify_agg(pk_list, num_agg, (void*)msg, sizeof(msg)-1, agg_sig) == true);
 
   return 0;
 }

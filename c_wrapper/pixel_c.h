@@ -99,7 +99,7 @@ pixel_sk c_sk_update(pixel_sk sk, uint8_t *seed, size_t seed_len, uint64_t tar_t
 bool c_verify(pixel_pk pk, const uint8_t *msg, size_t msglen, pixel_sig sig);
 
 /**
- * This function verifies the aggregates signature
+ * This function verifies the aggregated signature
  */
 bool c_verify_agg(pixel_pk *pk_list,
                   size_t pk_num,

@@ -34,4 +34,6 @@ harness = false
 
 
 [lib]
-crate-type = ["staticlib"]
+# we need a rust lib for cargo bench
+# and a static lib for c-binder
+crate-type = ["lib", "staticlib"]

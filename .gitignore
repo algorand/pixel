@@ -1,7 +1,6 @@
 .DS_Store
 target/
 Cargo.lock
-src/keys2.rs
 *.txt
 fuzz/
 __pycache__

@@ -118,7 +118,7 @@ int test_vector()
   sk = key.sk;
   for (i=2;i<64;i++)
   {
-    printf("generation %02d-th signature\n", i);
+    printf("generating %02d-th signature\n", i);
     sk2 = c_sk_update(sk, (void*)rngseed, sizeof(rngseed)-1, i);
     sig = c_sign_present(sk2, (uint8_t*)msg, sizeof(msg)-1, i);
     sk = sk2;

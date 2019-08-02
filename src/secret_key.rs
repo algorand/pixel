@@ -648,7 +648,7 @@ impl SecretKey {
         len
     }
 
-    /// This function returns the storage requirement for this secret key. Recall that
+    /// This function estimates the storage requirement for this secret key. Recall that
     /// each sk is a blob:
     ///
     /// `|ciphersuite id| prng_seed | number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
@@ -662,7 +662,7 @@ impl SecretKey {
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
     ///
     /// So the output will be 66 + size of eash ssk.
-    pub fn estimate_size(&self, time: u64, depth: usize) -> Result<usize, String> {
+    pub fn estimate_size(time: u64, depth: usize) -> Result<usize, String> {
         let time_vec = TimeVec::init(time, depth)?;
         let gamma_list = time_vec.gamma_list(depth)?;
         // * ciphersuite is 1 byte

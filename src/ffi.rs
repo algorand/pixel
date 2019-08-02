@@ -314,7 +314,7 @@ pub unsafe extern "C" fn c_verify_agg(
 #[no_mangle]
 pub extern "C" fn c_estimate_sk_size(time: u64, depth: libc::size_t) -> libc::size_t {
     match SecretKey::estimate_size(time, depth as usize) {
-        Ok(p) => return p,
+        Ok(p) => p,
         Err(e) => panic!("C wrapper error: estimating sk size: {}", e),
     }
 }

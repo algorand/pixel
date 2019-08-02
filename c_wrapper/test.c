@@ -18,7 +18,6 @@ int test()
   char msg[] = "this is the message we want pixel to sign";
 
   pixel_keys key;
-  pixel_pk pk;
   pixel_sig sig;
 
   int i;
@@ -88,10 +87,55 @@ int test()
 }
 
 
+int test_vector()
+{
+  char seed[] = "this is a very long seed for pixel tests";
+  char rngseed[] = "";
+  char msg[] = "this is the message we want pixel to sign";
+
+  pixel_keys key;
+  pixel_sig sig;
+  pixel_sk sk, sk2;
+
+  int i;
+
+  // generate a tuple of keys
+  // always remove the last byte of the string so that the inputs
+  // matches rust's
+  key = c_keygen((uint8_t*)seed, sizeof(seed)-1);
+  sig = c_sign_present(key.sk, (uint8_t*)msg, sizeof(msg)-1, 1);
+
+
+  char* a = "test_buf/sig_bin_";
+  char* extension = ".txt";
+  char fileSpec[strlen(a)+strlen(extension)+3];
+  FILE *out;
+  snprintf( fileSpec, sizeof( fileSpec ), "%s%02d%s", a, 1, extension );
+  out = fopen( fileSpec, "wb" );
+  fwrite(sig.data, sizeof(sig.data), 1, out);
+  fclose(out);
+
+  sk = key.sk;
+  for (i=2;i<64;i++)
+  {
+    printf("generation %02d-th signature\n", i);
+    sk2 = c_sk_update(sk, (void*)rngseed, sizeof(rngseed)-1, i);
+    sig = c_sign_present(sk2, (uint8_t*)msg, sizeof(msg)-1, i);
+    sk = sk2;
+    snprintf( fileSpec, sizeof( fileSpec ), "%s%02d%s", a, i, extension );
+    out = fopen( fileSpec, "wb" );
+    fwrite(sig.data, sizeof(sig.data), 1, out);
+    fclose(out);
+  }
+
+  return 0;
+}
+
 
 int main(){
 
   test();
+  test_vector();
   printf("Hello Algorand\n");
 }
 

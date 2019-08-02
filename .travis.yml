@@ -7,7 +7,7 @@ rust:
 before_script:
   - rustup component add clippy
   - cargo install --force cbindgen
-  
+
 env:
   - CARGO_FLAG=clippy --all-targets --all-features -- -D warnings
   - CARGO_FLAG=test
@@ -20,3 +20,4 @@ script:
   # make will build the library, compile the C wrapper
   # and run a simple test on the wrapper
   - make
+  - make test

@@ -8,8 +8,15 @@ all:
 	# this is an example of how the APIs can be called in c
 	# for released version of the library, change into
 	# 	`gcc c_wrapper/*.c -L./target/release -lpixel -lpthread -ldl -o c_wrapper/c_example`
+
+
+test:
+	cargo build
+	cbindgen --config cbindgen.toml --crate pixel --output c_wrapper/pixel_c.h
+	mkdir test_buf
 	gcc c_wrapper/*.c -L./target/debug -lpixel -lpthread -ldl -o c_wrapper/c_example
 	c_wrapper/c_example
+	python test_buf/test_vector.py
 
 lib:
 #	cargo build --release

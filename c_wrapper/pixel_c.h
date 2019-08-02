@@ -90,7 +90,7 @@ pixel_sig c_sign_present(pixel_sk sk, const uint8_t *msg, size_t msg_len, uint64
  * return an updated key for that time stamp.
  * Requires a seed for re-randomization.
  */
-pixel_sk c_sk_update(pixel_sk sk, uint8_t *seed, size_t seed_len, uint64_t tar_time);
+pixel_sk c_sk_update(pixel_sk sk, const uint8_t *seed, size_t seed_len, uint64_t tar_time);
 
 /**
  * Input a public key, the public parameter, a message in the form of a byte string,

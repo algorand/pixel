@@ -182,7 +182,7 @@ pub unsafe extern "C" fn c_verify(
 #[no_mangle]
 pub unsafe extern "C" fn c_sk_update(
     sk: pixel_sk,
-    seed: *mut u8,
+    seed: *const u8,
     seed_len: libc::size_t,
     tar_time: u64,
 ) -> pixel_sk {

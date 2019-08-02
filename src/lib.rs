@@ -26,6 +26,7 @@ extern crate bls_sigs_ref_rs;
 extern crate clear_on_drop;
 extern crate ff;
 extern crate hkdf;
+extern crate libc;
 extern crate pairing;
 extern crate pixel_param as param;
 extern crate sha2;
@@ -52,6 +53,8 @@ mod pop;
 mod public_key;
 mod secret_key;
 
+mod ffi;
+
 /// The size of pk is 49 when PK is in G1. 1 byte for ciphersuite ID
 /// and 48 byte for group element.
 pub const PK_LEN: usize = 49;
@@ -60,6 +63,10 @@ pub const PK_LEN: usize = 49;
 /// 1 byte for ciphersuite ID, 4 bytes for time stamp,
 /// 48+96 bytes for two group elements.
 pub const SIG_LEN: usize = 149;
+
+/// The size of pop is 97: 1 byte for ciphersuite ID
+/// and 96 byte for bls signature in G2.
+pub const POP_LEN: usize = 97;
 
 // Expose this constant.
 pub use param::{PixelG1, PixelG2, PubParam, CONST_D, VALID_CIPHERSUITE};

@@ -647,6 +647,42 @@ impl SecretKey {
         }
         len
     }
+
+    /// This function estimates the storage requirement for this secret key. Recall that
+    /// each sk is a blob:
+    ///
+    /// `|ciphersuite id| prng_seed | number_of_ssk-s | serial(first ssk) | serial(second ssk)| ...`,
+    ///
+    /// where ...
+    /// * ciphersuite is 1 byte
+    /// * prng_seed is 64 bytes
+    /// * number of ssk-s is 1 byte - there cannot be more than const_d number of ssk-s
+    /// * each ssk is
+    ///
+    /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
+    ///
+    /// So the output will be 66 + size of eash ssk.
+    pub fn estimate_size(time: u64, depth: usize) -> Result<usize, String> {
+        let time_vec = TimeVec::init(time, depth)?;
+        let gamma_list = time_vec.gamma_list(depth)?;
+        // * ciphersuite is 1 byte
+        // * prng_seed is 64 bytes
+        // * number of ssk-s is 1 byte - there cannot be more than const_d number of ssk-s
+        let mut res = 66;
+        for e in gamma_list {
+            // * each ssk is
+            //
+            // `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
+            //
+            // that is
+            //     * 4 bytes for time stamp
+            //     * 1 byte for hvlength
+            //     * 144 bytes for g2r and hpoly
+            //     * (d + 1 - |tmp+time+vec|) * 48 for h_|tmp+time+vec| ... h_d
+            res = res + 149 + (depth - e.get_vector_len()) * 96;
+        }
+        Ok(res)
+    }
 }
 
 /// convenient function to output a secret key object

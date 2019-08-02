@@ -23,9 +23,15 @@ bls_sigs_ref-rs = {git = "ssh://git@github.com/algorand/bls_sigs_ref-fork"}
 clear_on_drop = "0.2.3"
 pixel_param = { git = "ssh://git@github.com/algorand/pixel_param"}
 bigint = { version = "4", default-features = false }
+libc = { version = "0.2", features = ["align"] }
 
 [[bench]]
 name = "pixel_bench"
 harness = false
 
 [features]
+
+
+
+[lib]
+crate-type = ["staticlib"]

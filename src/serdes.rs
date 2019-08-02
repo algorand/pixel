@@ -273,7 +273,7 @@ impl SerDes for SubSecretKey {
         let time = self.get_time();
 
         // the first 4 bytes stores the time stamp,
-        // the time stamp cannot exceed 2^30
+        // the time stamp cannot exceed 2^32
         if time > (1 << 32) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_SERIAL));
         }

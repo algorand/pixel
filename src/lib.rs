@@ -64,6 +64,10 @@ pub const PK_LEN: usize = 49;
 /// 48+96 bytes for two group elements.
 pub const SIG_LEN: usize = 149;
 
+/// The size of pop is 97: 1 byte for ciphersuite ID
+/// and 96 byte for bls signature in G2.
+pub const POP_LEN: usize = 97;
+
 // Expose this constant.
 pub use param::{PixelG1, PixelG2, PubParam, CONST_D, VALID_CIPHERSUITE};
 pub use pop::ProofOfPossession;

@@ -55,7 +55,11 @@ fn test_sk_serialization() {
 
     let bufsize = sk.get_size();
     let estsize = SecretKey::estimate_size(1, pp.get_d());
-    assert_eq!(bufsize, estsize.unwrap(), "estimated size doesn't match the actual size");
+    assert_eq!(
+        bufsize,
+        estsize.unwrap(),
+        "estimated size doesn't match the actual size"
+    );
 
     // buffer space
     let mut buf: Vec<u8> = vec![];
@@ -85,7 +89,11 @@ fn test_sk_serialization() {
         // serialize the updated key
         let bufsize = sk2.get_size();
         let estsize = SecretKey::estimate_size(j, pp.get_d());
-        assert_eq!(bufsize, estsize.unwrap(), "estimated size doesn't match the actual size");
+        assert_eq!(
+            bufsize,
+            estsize.unwrap(),
+            "estimated size doesn't match the actual size"
+        );
 
         // buffer space
         let mut buf: Vec<u8> = vec![];

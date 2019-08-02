@@ -20,4 +20,3 @@ script:
   # make will build the library, compile the C wrapper
   # and run a simple test on the wrapper
   - make
-  - make test

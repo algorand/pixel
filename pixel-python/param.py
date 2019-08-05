@@ -29,16 +29,16 @@ DOM_SEP_PARAM_GEN  = bytes("Pixel public parameter generation", "ascii")
 #      9b05688c2b3e6c1f
 #      1f83d9abfb41bd6b
 #      5be0cd19137e2179
-# "Throughout this specification, the “big-endian” convention is used when
+# "Throughout this specification, the "big-endian" convention is used when
 #  expressing both 32- and 64-bit words, so that within each word, the most
 #  significant bit is stored in the left-most bit position."
 # For example, the 32-bit string
 #               1010 0001 0000 0011 1111 1110 0010 0011
-# can be expressed as “a103fe23”,
+# can be expressed as "a103fe23",
 # and the 64-bit string
 #               1010 0001 0000 0011 1111 1110 0010 0011
 #               0011 0010 1110 1111 0011 0000 0001 1010
-# can be expressed as “a103fe2332ef301a”.
+# can be expressed as "a103fe2332ef301a".
 
 seed = bytes([
     0x6a, 0x09, 0xe6, 0x67, 0xf3, 0xbc, 0xc9, 0x08, 0xbb, 0x67, 0xae, 0x85, 0x84, 0xca, 0xa7, 0x3b,

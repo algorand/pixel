@@ -84,10 +84,10 @@ impl PixelSerDes for PixelG1 {
             };
             Ok(g)
         } else {
-            return Err(Error::new(
+            Err(Error::new(
                 ErrorKind::InvalidData,
                 "Should never reach here. Something is wrong",
-            ));
+            ))
         }
     }
 }
@@ -147,10 +147,10 @@ impl PixelSerDes for PixelG2 {
             };
             Ok(g)
         } else {
-            return Err(Error::new(
+            Err(Error::new(
                 ErrorKind::InvalidData,
                 "Should never reach here. Something is wrong",
-            ));
+            ))
         }
     }
 }

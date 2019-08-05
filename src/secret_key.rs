@@ -102,7 +102,7 @@ impl SecretKey {
     /// Clone the first sub secret key on the list.
     /// Returns an error if the list is empty.
     /// Warning!!!
-    /// There will be two copies of the ssk[0] in the
+    /// There will be two copies of the ssk\[0\] in the
     /// memory once this function is called.
     /// Make sure it is handled properly.
     pub fn get_first_ssk(&self) -> Result<SubSecretKey, String> {

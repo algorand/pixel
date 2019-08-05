@@ -13,9 +13,8 @@
 #![deny(missing_docs)]
 
 //! This crate implements the Pixel signature scheme.
-//! * Use `pk_in_g2` flag to identify which which group we would like to have public keys lie in.
-//! By default the groups are switched so that
-//! the public key lies in `G2` over BLS12-381 curve.
+//! * By default the groups are switched so that
+//! the public key lies in `G1` over BLS12-381 curve.
 //! This yields smaller public keys.
 //! * The depth is set to 32 by default. This gives 700 years of life time for the secret keys,
 //! assuming each key lasts for 5 second. This parameter is defined by `CONST_D` in pixel_param.
@@ -39,7 +38,7 @@ mod pixel_err;
 
 // We may upstream this mod to pairing library.
 /// This module defines memebership tests for Pixel Groups
-pub mod membership;
+mod membership;
 
 mod prng;
 mod serdes;
@@ -54,7 +53,8 @@ mod pop;
 mod public_key;
 mod secret_key;
 
-mod ffi;
+/// This module defines interfaces to C.
+pub mod ffi;
 
 /// The size of pk is 49 when PK is in G1. 1 byte for ciphersuite ID
 /// and 48 byte for group element.

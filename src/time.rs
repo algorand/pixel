@@ -35,13 +35,13 @@ impl TimeVec {
 
     /// init() initialize a TimeVec from a TimeStamp
     /// example with depth = 3
-    /// assert_eq!(TimeVec::init(1,3).get_time_vec(), vec![]);
-    /// assert_eq!(TimeVec::init(2,3).get_time_vec(), vec![1]);
-    /// assert_eq!(TimeVec::init(3,3).get_time_vec(), vec![1,1]);
-    /// assert_eq!(TimeVec::init(4,3).get_time_vec(), vec![1,2]);
-    /// assert_eq!(TimeVec::init(5,3).get_time_vec(), vec![2]);
-    /// assert_eq!(TimeVec::init(6,3).get_time_vec(), vec![2,1]);
-    /// assert_eq!(TimeVec::init(7,3).get_time_vec(), vec![2,2]);
+    /// assert_eq!(TimeVec::init(1,3).get_time_vec(), vec!\[\]);
+    /// assert_eq!(TimeVec::init(2,3).get_time_vec(), vec!\[1\]);
+    /// assert_eq!(TimeVec::init(3,3).get_time_vec(), vec!\[1,1\]);
+    /// assert_eq!(TimeVec::init(4,3).get_time_vec(), vec!\[1,2\]);
+    /// assert_eq!(TimeVec::init(5,3).get_time_vec(), vec!\[2\]);
+    /// assert_eq!(TimeVec::init(6,3).get_time_vec(), vec!\[2,1\]);
+    /// assert_eq!(TimeVec::init(7,3).get_time_vec(), vec!\[2,2\]);
     /// Returns an error if the time stamp or the depth is invalid
     pub fn init(time: TimeStamp, depth: usize) -> Result<Self, String> {
         let vec = time_to_vec(time, depth)?;

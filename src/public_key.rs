@@ -1,4 +1,4 @@
-use crate::{PixelG2, ProofOfPossession, PixelSerDes, PK_LEN};
+use crate::{PixelG2, PixelSerDes, ProofOfPossession, PK_LEN};
 use bls_sigs_ref_rs::BLSSignature;
 use domain_sep;
 use param::{PubParam, VALID_CIPHERSUITE};

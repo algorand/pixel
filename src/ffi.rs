@@ -1,5 +1,7 @@
 //! This is pixel's foreign function interface.
-use crate::{PubParam, PublicKey, SecretKey, Signature, CONST_D, PK_LEN, POP_LEN, SIG_LEN};
+use crate::{
+    ProofOfPossession, PubParam, PublicKey, SecretKey, Signature, CONST_D, PK_LEN, POP_LEN, SIG_LEN,
+};
 use Pixel;
 use PixelSerDes;
 use PixelSignature;
@@ -306,6 +308,34 @@ pub extern "C" fn c_verify_agg(
     };
 
     Pixel::verify_aggregated(pk_vec[..].as_ref(), &pp, m, &sig)
+}
+
+/// This function verifies the public key against the proof of possession
+#[no_mangle]
+pub extern "C" fn c_verify_pop(pk: pixel_pk, pop: pixel_pop) -> bool {
+    // decompress the public key
+    let mut k_buf = pk.data.to_vec();
+
+    let k = match PublicKey::deserialize(&mut k_buf[..].as_ref()) {
+        Ok(p) => p,
+        Err(e) => panic!(
+            "C wrapper error: PoP verification function: deserialize pk: {}",
+            e
+        ),
+    };
+
+    // decompress the pop
+    let mut pop_buf = pop.data.to_vec();
+
+    let p = match ProofOfPossession::deserialize(&mut pop_buf[..].as_ref()) {
+        Ok(p) => p,
+        Err(e) => panic!(
+            "C wrapper error: PoP verification function: deserialize pop: {}",
+            e
+        ),
+    };
+
+    Pixel::verify_pop(&k, &p)
 }
 
 /// This function returns the storage requirement for the secret key

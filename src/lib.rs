@@ -202,6 +202,11 @@ pub trait PixelSignature {
     ) -> bool {
         sig.verify_bytes_aggregated(pk_list, pp, msg.as_ref())
     }
+
+    /// Input a public key and a Pop, verify the pop use BLS signature scheme.
+    fn verify_pop(pk: &PublicKey, pop: &ProofOfPossession) -> bool {
+        pk.validate(pop)
+    }
 }
 
 /// Pixel is an abstract structure that holds related functionalities

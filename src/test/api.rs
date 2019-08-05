@@ -12,7 +12,8 @@ fn test_pixel_api() {
 
     let res = Pixel::key_gen("this is a very very long seed for key gen testing", &pp);
     assert!(res.is_ok(), "pixel key gen failed");
-    let (pk, mut sk, _pop) = res.unwrap();
+    let (pk, mut sk, pop) = res.unwrap();
+    assert!(Pixel::verify_pop(&pk, &pop), "pop verification failed");
 
     let sk2 = sk.clone();
 

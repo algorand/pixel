@@ -30,6 +30,9 @@ int test()
   // dump the output
   hexDump ("pk", key.pk.data, PK_LEN);
 
+  // verify the pop
+  assert(c_verify_pop(key.pk, key.pop) == true);
+
   // sign the message with the key
   printf("\nSigning a message: %s\n", msg);
   sig = c_sign_present(key.sk, (uint8_t*)msg, sizeof(msg)-1, 1);
@@ -104,7 +107,7 @@ int test_vector()
   // matches rust's
   key = c_keygen((uint8_t*)seed, sizeof(seed)-1);
   sig = c_sign_present(key.sk, (uint8_t*)msg, sizeof(msg)-1, 1);
-
+  assert(c_verify_pop(key.pk, key.pop) == true);
 
   char* a = "test_buf/sig_bin_";
   char* extension = ".txt";

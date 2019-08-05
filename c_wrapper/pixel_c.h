@@ -106,3 +106,8 @@ bool c_verify_agg(pixel_pk *pk_list,
                   const uint8_t *msg,
                   size_t msglen,
                   pixel_sig agg_sig);
+
+/**
+ * This function verifies the public key against the proof of possession
+ */
+bool c_verify_pop(pixel_pk pk, pixel_pop pop);

@@ -20,7 +20,7 @@ test_vector_rust:
 	cd test_vector; cargo run
 
 test_vector_python:
-	cd pixel_python; python test_vector.py
+	cd pixel-python; python test_vector.py
 
 test: test_vector_rust test_vector_python test_vector_c
 

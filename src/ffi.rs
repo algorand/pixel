@@ -1,8 +1,8 @@
 //! This is pixel's foreign function interface.
 use crate::{PubParam, PublicKey, SecretKey, Signature, CONST_D, PK_LEN, POP_LEN, SIG_LEN};
 use Pixel;
+use PixelSerDes;
 use PixelSignature;
-use SerDes;
 
 /// A wrapper of sk
 #[repr(C)]

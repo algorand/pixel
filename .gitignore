@@ -2,6 +2,6 @@
 target/
 Cargo.lock
 *.txt
-fuzz/
+*.pyc
 __pycache__
 c_example

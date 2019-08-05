@@ -1,10 +1,13 @@
-use bls_sigs_ref_rs::SerDes;
+//use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
 use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};
 use param::PubParam;
 use sig::Signature;
 use subkeys::SubSecretKey;
+use PixelG1;
+use PixelG2;
+use PixelSerDes;
 use PublicKey;
 use SecretKey;
 
@@ -176,4 +179,87 @@ fn test_signature_serialization() {
     println!("{:?}", sig_recover);
     // makes sure that the keys match
     assert_eq!(sig, sig_recover);
+}
+
+#[test]
+fn test_group_serialization() {
+    // PixelG1::zero, compressed
+    let g1_zero = PixelG1::zero();
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g1_zero.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), 96, "length of blob is incorrect");
+    let g1_zero_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+    println!("g1: zero {:02x?}", buf);
+    assert_eq!(g1_zero, g1_zero_recover);
+
+    // PixelG1::one, compressed
+    let g1_one = PixelG1::one();
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g1_one.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), 96, "length of blob is incorrect");
+    let g1_one_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+
+    println!("g1: one {:02x?}", buf);
+    assert_eq!(g1_one, g1_one_recover);
+
+    // PixelG1::zero, uncompressed
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g1_zero.serialize(&mut buf, false).is_ok());
+    assert_eq!(buf.len(), 192, "length of blob is incorrect");
+    let g1_zero_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+    println!("g1: zero {:02x?}", buf);
+    assert_eq!(g1_zero, g1_zero_recover);
+
+    // PixelG1::one, uncompressed
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g1_one.serialize(&mut buf, false).is_ok());
+    assert_eq!(buf.len(), 192, "length of blob is incorrect");
+    let g1_one_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+
+    println!("g1: one {:02x?}", buf);
+    assert_eq!(g1_one, g1_one_recover);
+
+    // PixelG2::zero, compressed
+    let g2_zero = PixelG2::zero();
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g2_zero.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), 48, "length of blob is incorrect");
+    let g2_zero_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+    println!("g2: zero {:02x?}", buf);
+    assert_eq!(g2_zero, g2_zero_recover);
+
+    // PixelG2::one, compressed
+    let g2_one = PixelG2::one();
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g2_one.serialize(&mut buf, true).is_ok());
+    assert_eq!(buf.len(), 48, "length of blob is incorrect");
+    let g2_one_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+
+    println!("g2: one {:02x?}", buf);
+    assert_eq!(g2_one, g2_one_recover);
+
+    // PixelG2::zero, uncompressed
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g2_zero.serialize(&mut buf, false).is_ok());
+    assert_eq!(buf.len(), 96, "length of blob is incorrect");
+    let g2_zero_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+    println!("g2: zero {:02x?}", buf);
+    assert_eq!(g2_zero, g2_zero_recover);
+
+    // PixelG2::one, uncompressed
+    let mut buf: Vec<u8> = vec![];
+    // serializae a PixelG1 element into buffer
+    assert!(g2_one.serialize(&mut buf, false).is_ok());
+    assert_eq!(buf.len(), 96, "length of blob is incorrect");
+    let g2_one_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+
+    println!("g2: one {:02x?}", buf);
+    assert_eq!(g2_one, g2_one_recover);
 }

@@ -31,8 +31,9 @@ pub trait PixelSerDes: Sized {
 impl PixelSerDes for PixelG1 {
     /// Convert a PixelG1 point to a blob.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
-        // convert element into a compressed byte string
         let t = self.into_affine();
+
+        // convert element into an (un)compressed byte string
         let buf = {
             if compressed {
                 let tmp = pairing::bls12_381::G2Compressed::from_affine(t);
@@ -48,6 +49,7 @@ impl PixelSerDes for PixelG1 {
         Ok(())
     }
 
+    /// Deserialize a PixelG1 element from a blob.
     /// Returns an error if deserialization fails.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // read into buf of compressed size
@@ -58,7 +60,7 @@ impl PixelSerDes for PixelG1 {
         // or not
         if (buf[0] & 0x80) == 0x80 {
             // first bit is 1 => compressed mode
-            // convert the pop into a group element
+            // convert the blob into a group element
             let mut g_buf = G2Compressed::empty();
             g_buf.as_mut().copy_from_slice(&buf);
             let g = match g_buf.into_affine() {
@@ -73,7 +75,7 @@ impl PixelSerDes for PixelG1 {
             reader.read_exact(&mut buf2)?;
             // now buf holds the whole uncompressed bytes
             buf.append(&mut buf2);
-            // convert the pop into a group element
+            // convert the buf into a group element
             let mut g_buf = G2Uncompressed::empty();
             g_buf.as_mut().copy_from_slice(&buf);
             let g = match g_buf.into_affine() {
@@ -93,8 +95,8 @@ impl PixelSerDes for PixelG1 {
 impl PixelSerDes for PixelG2 {
     /// Convert a PixelG1 point to a blob.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
-        // convert element into a compressed byte string
         let t = self.into_affine();
+        // convert element into an (un)compressed byte string
         let buf = {
             if compressed {
                 let tmp = pairing::bls12_381::G1Compressed::from_affine(t);
@@ -110,6 +112,7 @@ impl PixelSerDes for PixelG2 {
         Ok(())
     }
 
+    /// Deserialize a PixelG2 element from a blob.
     /// Returns an error if deserialization fails.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
         // read into buf of compressed size
@@ -120,7 +123,7 @@ impl PixelSerDes for PixelG2 {
         // or not
         if (buf[0] & 0x80) == 0x80 {
             // first bit is 1 => compressed mode
-            // convert the pop into a group element
+            // convert the buf into a group element
             let mut g_buf = G1Compressed::empty();
             g_buf.as_mut().copy_from_slice(&buf);
             let g = match g_buf.into_affine() {
@@ -135,7 +138,7 @@ impl PixelSerDes for PixelG2 {
             reader.read_exact(&mut buf2)?;
             // now buf holds the whole uncompressed bytes
             buf.append(&mut buf2);
-            // convert the pop into a group element
+            // convert the buf into a group element
             let mut g_buf = G1Uncompressed::empty();
             g_buf.as_mut().copy_from_slice(&buf);
             let g = match g_buf.into_affine() {

@@ -1,4 +1,4 @@
-pub use bls_sigs_ref_rs::SerDes;
+//pub use bls_sigs_ref_rs::SerDes;
 use clear_on_drop::ClearOnDrop;
 use param::VALID_CIPHERSUITE;
 use pixel_err::*;
@@ -11,8 +11,91 @@ use ProofOfPossession;
 use PublicKey;
 use SecretKey;
 use Signature;
+use pairing::{CurveProjective,EncodedPoint,bls12_381::*, CurveAffine};
 
-impl SerDes for ProofOfPossession {
+/// Serialization support for pixel structures
+pub trait PixelSerDes: Sized {
+    /// Serialize a struct to a writer
+    /// Whether a point is compressed or not is implicit for the structure:
+    /// * public parameters: uncompressed
+    /// * public keys: compressed
+    /// * proof of possessions: compressed
+    /// * secret keys: uncompressed
+    /// * signatures: compressed
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
+
+    /// Deserialize a struct
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self>;
+}
+
+impl PixelSerDes for PixelG1 {
+
+    /// Convert a PixelG1 point to a blob.
+    fn serialize<W: Write>(&self, writer: &mut W, _compressed: bool) -> Result<()> {
+
+        // convert element into a compressed byte string
+        let t = self.into_affine();
+        let tmp = pairing::bls12_381::G2Compressed::from_affine(t);
+        let buf = tmp.as_ref().to_vec();
+
+        // format the output
+        writer.write_all(&buf)?;
+        Ok(())
+    }
+
+    /// Returns an error if deserialization fails.
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+        // TODO: handle uncompressed mode
+        // read into pop
+        let mut buf = vec![0u8; G2Compressed::size()];
+        reader.read_exact(&mut buf)?;
+
+        // convert the pop into a group element
+        let mut g_buf = G2Compressed::empty();
+        g_buf.as_mut().copy_from_slice(&buf);
+        let g = match g_buf.into_affine() {
+            Ok(p) => p.into_projective(),
+            Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
+        };
+        Ok(g)
+    }
+}
+
+impl PixelSerDes for PixelG2 {
+
+    /// Convert a PixelG1 point to a blob.
+    fn serialize<W: Write>(&self, writer: &mut W, _compressed: bool) -> Result<()> {
+
+        // convert element into a compressed byte string
+        let t = self.into_affine();
+        let tmp = pairing::bls12_381::G1Compressed::from_affine(t);
+        let buf = tmp.as_ref().to_vec();
+
+        // format the output
+        writer.write_all(&buf)?;
+        Ok(())
+    }
+
+    /// Returns an error if deserialization fails.
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+        // TODO: handle uncompressed mode
+        // read into pop
+        let mut buf = vec![0u8; G1Compressed::size()];
+        reader.read_exact(&mut buf)?;
+
+        // convert the pop into a group element
+        let mut g_buf = G1Compressed::empty();
+        g_buf.as_mut().copy_from_slice(&buf);
+        let g = match g_buf.into_affine() {
+            Ok(p) => p.into_projective(),
+            Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
+        };
+        Ok(g)
+    }
+}
+
+
+impl PixelSerDes for ProofOfPossession {
     /// Convert a pop into a blob:
     ///
     /// `|ciphersuite id| pop |` => bytes
@@ -56,7 +139,7 @@ impl SerDes for ProofOfPossession {
     }
 }
 
-impl SerDes for Signature {
+impl PixelSerDes for Signature {
     /// Convert a signature into a blob:
     ///
     /// `|ciphersuite id| time | sigma1 | sigma2 |` => bytes
@@ -131,7 +214,7 @@ impl SerDes for Signature {
     }
 }
 
-impl SerDes for PublicKey {
+impl PixelSerDes for PublicKey {
     /// Convert pk into a blob:
     ///
     /// bytes => `|ciphersuite id| PixelG2 element |`
@@ -173,7 +256,7 @@ impl SerDes for PublicKey {
     }
 }
 
-impl SerDes for SecretKey {
+impl PixelSerDes for SecretKey {
     /// Convert sk into a blob:
     ///
     /// `|ciphersuite id| number_of_ssk-s | seed | serial(first ssk) | serial(second ssk)| ...`,
@@ -263,7 +346,7 @@ impl SerDes for SecretKey {
     }
 }
 
-impl SerDes for SubSecretKey {
+impl PixelSerDes for SubSecretKey {
     /// Conver ssk into a blob:
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if serialization fails or time stamp is greater than 2^32-1
@@ -328,14 +411,14 @@ impl SerDes for SubSecretKey {
         }
 
         // the next chunck of data stores g2r
-        let g2r: PixelG2 = SerDes::deserialize(reader)?;
+        let g2r: PixelG2 = PixelSerDes::deserialize(reader)?;
 
         // the next chunck of data stores hpoly
-        let hpoly: PixelG1 = SerDes::deserialize(reader)?;
+        let hpoly: PixelG1 = PixelSerDes::deserialize(reader)?;
         // the next chunck of data stores hvector
         let mut hv: Vec<PixelG1> = vec![];
         for _i in 0..hvlen[0] {
-            let tmp: PixelG1 = SerDes::deserialize(reader)?;
+            let tmp: PixelG1 = PixelSerDes::deserialize(reader)?;
             hv.push(tmp)
         }
 

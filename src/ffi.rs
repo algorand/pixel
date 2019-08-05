@@ -2,7 +2,7 @@
 use crate::{PubParam, PublicKey, SecretKey, Signature, CONST_D, PK_LEN, POP_LEN, SIG_LEN};
 use Pixel;
 use PixelSignature;
-use SerDes;
+use PixelSerDes;
 
 /// A wrapper of sk
 #[repr(C)]

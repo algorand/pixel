@@ -1,5 +1,5 @@
-use crate::{PublicKey, SubSecretKey};
-use bls_sigs_ref_rs::SerDes;
+use crate::{PublicKey, SubSecretKey, PixelSerDes};
+//use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
 use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};

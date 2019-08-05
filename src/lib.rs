@@ -74,7 +74,7 @@ pub use param::{PixelG1, PixelG2, PubParam, CONST_D, VALID_CIPHERSUITE};
 pub use pop::ProofOfPossession;
 pub use public_key::PublicKey;
 pub use secret_key::SecretKey;
-pub use serdes::SerDes;
+pub use serdes::PixelSerDes;
 pub use sig::Signature;
 pub use subkeys::SubSecretKey;
 pub use time::{TimeStamp, TimeVec};

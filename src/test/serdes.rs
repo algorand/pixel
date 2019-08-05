@@ -1,4 +1,4 @@
-use bls_sigs_ref_rs::SerDes;
+//use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
 use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};
@@ -7,7 +7,7 @@ use sig::Signature;
 use subkeys::SubSecretKey;
 use PublicKey;
 use SecretKey;
-
+use PixelSerDes;
 #[test]
 fn test_ssk_serialization() {
     // a random field element

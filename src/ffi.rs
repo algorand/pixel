@@ -4,8 +4,6 @@ use Pixel;
 use PixelSignature;
 use SerDes;
 
-
-
 /// A wrapper of sk
 #[repr(C)]
 pub struct pixel_sk {
@@ -44,11 +42,11 @@ pub struct pixel_sig {
 /// Generate a pair of public keys and secret keys,
 /// and a proof of possession of the public key.
 #[no_mangle]
-pub unsafe extern "C" fn c_keygen(seed: *const u8, seed_len: libc::size_t) -> pixel_keys {
+pub extern "C" fn c_keygen(seed: *const u8, seed_len: libc::size_t) -> pixel_keys {
     let pp = PubParam::default();
 
     // convert a C array `seed` to a rust string `s`
-    let s: &[u8] = std::slice::from_raw_parts(seed, seed_len as usize);
+    let s: &[u8] = unsafe { std::slice::from_raw_parts(seed, seed_len as usize) };
 
     // generate the keys
     let (pk, sk, pop) = match Pixel::key_gen(s, &pp) {
@@ -96,7 +94,7 @@ pub unsafe extern "C" fn c_keygen(seed: *const u8, seed_len: libc::size_t) -> pi
 /// output a signature. If the time stamp is not the same as the secret key,
 /// returns an error
 #[no_mangle]
-pub unsafe extern "C" fn c_sign_present(
+pub extern "C" fn c_sign_present(
     sk: pixel_sk,
     msg: *const u8,
     msg_len: libc::size_t,
@@ -105,10 +103,10 @@ pub unsafe extern "C" fn c_sign_present(
     let pp = PubParam::default();
 
     // convert a C array `msg` to a rust string `m`
-    let m: &[u8] = std::slice::from_raw_parts(msg, msg_len as usize);
+    let m: &[u8] = unsafe { std::slice::from_raw_parts(msg, msg_len as usize) };
 
     // load the secret key
-    let sk_local = &mut *(sk.data as *mut Vec<u8>);
+    let sk_local = unsafe { &mut *(sk.data as *mut Vec<u8>) };
 
     // println!("sk in signature");
     // for i in 0..128 {
@@ -143,7 +141,7 @@ pub unsafe extern "C" fn c_sign_present(
 /// Input a public key, the public parameter, a message in the form of a byte string,
 /// and a signature, outputs true if signature is valid w.r.t. the inputs.
 #[no_mangle]
-pub unsafe extern "C" fn c_verify(
+pub extern "C" fn c_verify(
     pk: pixel_pk,
     msg: *const u8,
     msglen: libc::size_t,
@@ -152,7 +150,7 @@ pub unsafe extern "C" fn c_verify(
     let pp = PubParam::default();
 
     // convert a C array `msg` to a rust string `m`
-    let m: &[u8] = std::slice::from_raw_parts(msg, msglen as usize);
+    let m: &[u8] = unsafe { std::slice::from_raw_parts(msg, msglen as usize) };
 
     // decompress the public key
     let mut k_buf = pk.data.to_vec();
@@ -182,7 +180,7 @@ pub unsafe extern "C" fn c_verify(
 /// Requires a seed for re-randomization.
 //
 #[no_mangle]
-pub unsafe extern "C" fn c_sk_update(
+pub extern "C" fn c_sk_update(
     sk: pixel_sk,
     seed: *const u8,
     seed_len: libc::size_t,
@@ -190,10 +188,10 @@ pub unsafe extern "C" fn c_sk_update(
 ) -> pixel_sk {
     let pp = PubParam::default();
     // convert a C array `seed` to a rust string `s`
-    let s: &[u8] = std::slice::from_raw_parts(seed, seed_len as usize);
+    let s: &[u8] = unsafe { std::slice::from_raw_parts(seed, seed_len as usize) };
 
     // decompress the secret key
-    let sk_local = &mut *(sk.data as *mut Vec<u8>);
+    let sk_local = unsafe { &mut *(sk.data as *mut Vec<u8>) };
     let mut k = match SecretKey::deserialize(&mut sk_local[..].as_ref()) {
         Ok(p) => p,
         Err(e) => panic!(
@@ -230,11 +228,9 @@ pub unsafe extern "C" fn c_sk_update(
 /// It does check that all the signatures are for the same time stamp.
 /// It panics if ciphersuite fails or time stamp is not consistent.
 #[no_mangle]
-pub unsafe extern "C" fn c_aggregation(
-    sig_list: *mut pixel_sig,
-    sig_num: libc::size_t,
-) -> pixel_sig {
-    let sig_list: &[pixel_sig] = std::slice::from_raw_parts(sig_list as *mut pixel_sig, sig_num);
+pub extern "C" fn c_aggregation(sig_list: *mut pixel_sig, sig_num: libc::size_t) -> pixel_sig {
+    let sig_list: &[pixel_sig] =
+        unsafe { std::slice::from_raw_parts(sig_list as *mut pixel_sig, sig_num) };
 
     let mut sig_vec: Vec<Signature> = vec![];
 
@@ -272,7 +268,7 @@ pub unsafe extern "C" fn c_aggregation(
 
 /// This function verifies the aggregated signature
 #[no_mangle]
-pub unsafe extern "C" fn c_verify_agg(
+pub extern "C" fn c_verify_agg(
     pk_list: *mut pixel_pk,
     pk_num: libc::size_t,
     msg: *const u8,
@@ -280,10 +276,11 @@ pub unsafe extern "C" fn c_verify_agg(
     agg_sig: pixel_sig,
 ) -> bool {
     let pp = PubParam::default();
-    let pk_list: &[pixel_pk] = std::slice::from_raw_parts(pk_list as *mut pixel_pk, pk_num);
+    let pk_list: &[pixel_pk] =
+        unsafe { std::slice::from_raw_parts(pk_list as *mut pixel_pk, pk_num) };
     let mut pk_vec: Vec<PublicKey> = vec![];
 
-    for pk in pk_list.iter().take(pk_num){
+    for pk in pk_list.iter().take(pk_num) {
         // decompress the signature
         let s = match PublicKey::deserialize(&mut pk.data.as_ref()) {
             Ok(p) => p,
@@ -296,7 +293,7 @@ pub unsafe extern "C" fn c_verify_agg(
         pk_vec.push(s);
     }
     // convert a C array `msg` to a rust string `m`
-    let m: &[u8] = std::slice::from_raw_parts(msg, msglen as usize);
+    let m: &[u8] = unsafe { std::slice::from_raw_parts(msg, msglen as usize) };
 
     // decompress the signature
     let mut s_buf = agg_sig.data.to_vec();

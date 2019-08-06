@@ -12,7 +12,7 @@ from curve_ops import g1gen, point_mul, point_add
 from hashlib import sha512, sha256
 from hash_to_field import Hr, OS2IP
 from util import print_g1_hex, print_g2_hex
-from serdes import serialize
+from serdesZ import serialize
 from consts import q
 
 

@@ -15,7 +15,7 @@ import copy
 from param import default_param
 from keyupdate import sk_update
 from keygen import key_gen, serialize_sk, print_sk
-from serdes import serialize
+from serdesZ import serialize
 from sig import sign_present, serialize_sig, print_sig
 
 # The following function generates the test vectors.

@@ -26,8 +26,9 @@ pub trait PixelSerDes: Sized {
     /// * signatures: compressed
     fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
 
-    /// Deserialize a struct
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self>;
+    /// Deserialize a struct; also returns a flag
+    /// if the struct was compressed or not.
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)>;
 }
 
 impl PixelSerDes for PixelG1 {
@@ -53,7 +54,7 @@ impl PixelSerDes for PixelG1 {
 
     /// Deserialize a PixelG1 element from a blob.
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
         // read into buf of compressed size
         let mut buf = vec![0u8; G2Compressed::size()];
         reader.read_exact(&mut buf)?;
@@ -69,7 +70,7 @@ impl PixelSerDes for PixelG1 {
                 Ok(p) => p.into_projective(),
                 Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
             };
-            Ok(g)
+            Ok((g, true))
         } else if (buf[0] & 0x80) == 0x00 {
             // first bit is 0 => compressed mode
             // read the next uncompressed - compressed size
@@ -84,7 +85,7 @@ impl PixelSerDes for PixelG1 {
                 Ok(p) => p.into_projective(),
                 Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
             };
-            Ok(g)
+            Ok((g, false))
         } else {
             Err(Error::new(
                 ErrorKind::InvalidData,
@@ -116,7 +117,7 @@ impl PixelSerDes for PixelG2 {
 
     /// Deserialize a PixelG2 element from a blob.
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
         // read into buf of compressed size
         let mut buf = vec![0u8; G1Compressed::size()];
         reader.read_exact(&mut buf)?;
@@ -132,7 +133,7 @@ impl PixelSerDes for PixelG2 {
                 Ok(p) => p.into_projective(),
                 Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
             };
-            Ok(g)
+            Ok((g, true))
         } else if (buf[0] & 0x80) == 0x00 {
             // first bit is 0 => compressed mode
             // read the next uncompressed - compressed size
@@ -147,7 +148,7 @@ impl PixelSerDes for PixelG2 {
                 Ok(p) => p.into_projective(),
                 Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
             };
-            Ok(g)
+            Ok((g, false))
         } else {
             Err(Error::new(
                 ErrorKind::InvalidData,
@@ -182,7 +183,7 @@ impl PixelSerDes for ProofOfPossession {
     /// bytes => `|ciphersuite id | pop |`
     ///
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -194,10 +195,10 @@ impl PixelSerDes for ProofOfPossession {
         }
 
         // read into pop
-        let pop = PixelG1::deserialize(reader)?;
+        let (pop, compressed) = PixelG1::deserialize(reader)?;
 
         // finished
-        Ok(ProofOfPossession::construct(constants[0], pop))
+        Ok((ProofOfPossession::construct(constants[0], pop), compressed))
     }
 }
 
@@ -245,7 +246,7 @@ impl PixelSerDes for Signature {
     /// bytes => `|ciphersuite id | time | sigma1 | sigma2 |`
     ///
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -266,17 +267,18 @@ impl PixelSerDes for Signature {
         }
 
         // read into sigma1
-        let sigma1 = PixelG2::deserialize(reader)?;
+        let (sigma1, compressed1) = PixelG2::deserialize(reader)?;
 
         // read into sigma2
-        let sigma2 = PixelG1::deserialize(reader)?;
+        let (sigma2, compressed2) = PixelG1::deserialize(reader)?;
+        if compressed1 != compressed2 {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
+        }
 
         // finished
-        Ok(Signature::construct(
-            constants[0],
-            u64::from(time),
-            sigma1,
-            sigma2,
+        Ok((
+            Signature::construct(constants[0], u64::from(time), sigma1, sigma2),
+            compressed1,
         ))
     }
 }
@@ -305,7 +307,7 @@ impl PixelSerDes for PublicKey {
     /// `|ciphersuite id| PixelG2 element |` => bytes
     ///
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -316,10 +318,10 @@ impl PixelSerDes for PublicKey {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
         // read into pk
-        let pk = PixelG2::deserialize(reader)?;
+        let (pk, compressed) = PixelG2::deserialize(reader)?;
 
         // finished
-        Ok(PublicKey::construct(constants[0], pk))
+        Ok((PublicKey::construct(constants[0], pk), compressed))
     }
 }
 
@@ -380,7 +382,7 @@ impl PixelSerDes for SecretKey {
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
     ///
     /// Return an error if deserialization fails
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
         // constants stores id, the number of ssk-s, and the seed
         let mut constants: [u8; 2] = [0u8; 2];
         let mut rngseed: [u8; 64] = [0u8; 64];
@@ -399,16 +401,25 @@ impl PixelSerDes for SecretKey {
 
         // deserialize the individual ssk
         let mut ssk_vec: Vec<SubSecretKey> = vec![];
-        for _i in 0..constants[1] {
-            ssk_vec.push(SubSecretKey::deserialize(reader)?);
+        let (ssk, compressed1) = SubSecretKey::deserialize(reader)?;
+        ssk_vec.push(ssk);
+        for _i in 1..constants[1] {
+            let (ssk, compressed2) = SubSecretKey::deserialize(reader)?;
+            if compressed1 != compressed2 {
+                return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
+            }
+            ssk_vec.push(ssk);
         }
 
         // finished
-        Ok(SecretKey::construct(
-            constants[0],
-            ssk_vec[0].get_time(),
-            ssk_vec,
-            PRNG::construct(rngseed),
+        Ok((
+            SecretKey::construct(
+                constants[0],
+                ssk_vec[0].get_time(),
+                ssk_vec,
+                PRNG::construct(rngseed),
+            ),
+            compressed1,
         ))
     }
 }
@@ -463,7 +474,7 @@ impl PixelSerDes for SubSecretKey {
     /// Conver a blob into a ssk:
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if deserialization fails or invalid ciphersuite
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
         // the first 4 bytes stores the time stamp
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;
@@ -481,17 +492,27 @@ impl PixelSerDes for SubSecretKey {
         }
 
         // the next chunck of data stores g2r
-        let g2r: PixelG2 = PixelSerDes::deserialize(reader)?;
+        let (g2r, compressed1) = PixelSerDes::deserialize(reader)?;
 
         // the next chunck of data stores hpoly
-        let hpoly: PixelG1 = PixelSerDes::deserialize(reader)?;
+        let (hpoly, compressed2) = PixelSerDes::deserialize(reader)?;
+        if compressed1 != compressed2 {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
+        }
+
         // the next chunck of data stores hvector
         let mut hv: Vec<PixelG1> = vec![];
         for _i in 0..hvlen[0] {
-            let tmp: PixelG1 = PixelSerDes::deserialize(reader)?;
+            let (tmp, compressed2) = PixelSerDes::deserialize(reader)?;
+            if compressed1 != compressed2 {
+                return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
+            }
             hv.push(tmp)
         }
 
-        Ok(SubSecretKey::construct(u64::from(time), g2r, hpoly, hv))
+        Ok((
+            SubSecretKey::construct(u64::from(time), g2r, hpoly, hv),
+            compressed1,
+        ))
     }
 }

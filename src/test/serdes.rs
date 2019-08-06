@@ -36,12 +36,12 @@ fn test_ssk_serialization_rand() {
 
     // buffer space
     let mut buf: Vec<u8> = vec![];
-    // serializae a ssk into buffer
+    // serialize a ssk into buffer
     assert!(t.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let s = SubSecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
-
+    let (s, compressed) = SubSecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     // makes sure that the keys match
     assert_eq!(t, s);
 }
@@ -69,11 +69,12 @@ fn test_sk_serialization_rand() {
 
     // buffer space
     let mut buf: Vec<u8> = vec![];
-    // serializae a ssk into buffer
+    // serialize a ssk into buffer
     assert!(sk.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let sk_recover = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
+    let (sk_recover, compressed) = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     // makes sure that the keys match
     assert_eq!(sk, sk_recover);
 
@@ -106,7 +107,8 @@ fn test_sk_serialization_rand() {
         assert!(sk2.serialize(&mut buf, true).is_ok());
         assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
         // deserialize a buffer into ssk
-        let sk_recover = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
+        let (sk_recover, compressed) = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
+        assert_eq!(compressed, true);
         assert_eq!(sk_recover, sk2);
     }
 }
@@ -128,33 +130,16 @@ fn test_pk_serialization_rand() {
 
     // buffer space
     let mut buf: Vec<u8> = vec![];
-    // serializae a ssk into buffer
+    // serialize a ssk into buffer
     assert!(pk.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), PK_LEN, "length of blob is incorrect");
 
     // deserialize a buffer into ssk
-    let pk_recover = PublicKey::deserialize(&mut buf[..].as_ref()).unwrap();
+    let (pk_recover, compressed) = PublicKey::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     // makes sure that the keys match
     assert_eq!(pk, pk_recover);
 }
-
-// #[test]
-// fn test_param_serialization() {
-//     use PP_LEN;
-//     let pp = PubParam::init_without_seed();
-//
-//     // buffer space
-//     let mut buf: Vec<u8> = vec![];
-//
-//     // serializae a ssk into buffer
-//     assert!(pp.serialize(&mut buf, true).is_ok());
-//     assert_eq!(buf.len(), PP_LEN, "length of blob is incorrect");
-//
-//     // deserialize a buffer into ssk
-//     let pp_recover = PubParam::deserialize(&mut buf[..].as_ref()).unwrap();
-//     // makes sure that the keys match
-//     assert_eq!(pp, pp_recover);
-// }
 
 #[test]
 fn test_signature_serialization_rand() {
@@ -165,7 +150,6 @@ fn test_signature_serialization_rand() {
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
 
-    //    let seedr = b"this is also a very very long seed for testing";
     let msg = b"message to sign";
     let res = Signature::sign_bytes(&sk, 1, &pp, msg);
     assert!(res.is_ok(), "signing failed");
@@ -174,99 +158,100 @@ fn test_signature_serialization_rand() {
 
     // buffer space
     let mut buf: Vec<u8> = vec![];
-    // serializae a ssk into buffer
+    // serialize a ssk into buffer
     assert!(sig.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), SIG_LEN, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let sig_recover = Signature::deserialize(&mut buf[..].as_ref()).unwrap();
-    println!("{:?}", sig_recover);
+    let (sig_recover, compressed) = Signature::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     // makes sure that the keys match
     assert_eq!(sig, sig_recover);
 }
 
 #[test]
-fn test_group_serialization_rand() {
+fn test_g1_serialization_rand() {
     // PixelG1::zero, compressed
     let g1_zero = PixelG1::zero();
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG1 element into buffer
     assert!(g1_zero.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let g1_zero_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-    println!("g1: zero {:02x?}", buf);
+    let (g1_zero_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     assert_eq!(g1_zero, g1_zero_recover);
 
     // PixelG1::one, compressed
     let g1_one = PixelG1::one();
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG1 element into buffer
     assert!(g1_one.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let g1_one_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-
-    println!("g1: one {:02x?}", buf);
+    let (g1_one_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     assert_eq!(g1_one, g1_one_recover);
 
     // PixelG1::zero, uncompressed
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG1 element into buffer
     assert!(g1_zero.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 192, "length of blob is incorrect");
-    let g1_zero_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-    println!("g1: zero {:02x?}", buf);
+    let (g1_zero_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, false);
     assert_eq!(g1_zero, g1_zero_recover);
 
     // PixelG1::one, uncompressed
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG1 element into buffer
     assert!(g1_one.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 192, "length of blob is incorrect");
-    let g1_one_recover = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-
-    println!("g1: one {:02x?}", buf);
+    let (g1_one_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, false);
     assert_eq!(g1_one, g1_one_recover);
+}
 
+#[test]
+fn test_g2_serialization_rand() {
     // PixelG2::zero, compressed
     let g2_zero = PixelG2::zero();
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG2 element into buffer
     assert!(g2_zero.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 48, "length of blob is incorrect");
-    let g2_zero_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
-    println!("g2: zero {:02x?}", buf);
+    let (g2_zero_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     assert_eq!(g2_zero, g2_zero_recover);
 
     // PixelG2::one, compressed
     let g2_one = PixelG2::one();
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG2 element into buffer
     assert!(g2_one.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 48, "length of blob is incorrect");
-    let g2_one_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
-
-    println!("g2: one {:02x?}", buf);
+    let (g2_one_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, true);
     assert_eq!(g2_one, g2_one_recover);
 
     // PixelG2::zero, uncompressed
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG2 element into buffer
     assert!(g2_zero.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let g2_zero_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
-    println!("g2: zero {:02x?}", buf);
+    let (g2_zero_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+    assert_eq!(compressed, false);
     assert_eq!(g2_zero, g2_zero_recover);
 
     // PixelG2::one, uncompressed
     let mut buf: Vec<u8> = vec![];
-    // serializae a PixelG1 element into buffer
+    // serialize a PixelG2 element into buffer
     assert!(g2_one.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let g2_one_recover = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+    let (g2_one_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
 
-    println!("g2: one {:02x?}", buf);
+    assert_eq!(compressed, false);
     assert_eq!(g2_one, g2_one_recover);
 }
 
+// the encoding of a 0 element in G1 in compressed mode
 #[cfg(test)]
 const VALID_G1_ZERO_COM: &[u8] = &hex!(
     "c0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -274,6 +259,7 @@ const VALID_G1_ZERO_COM: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the encoding of a 0 element in G1 in uncompressed mode
 #[cfg(test)]
 const VALID_G1_ZERO_UNCOM: &[u8] = &hex!(
     "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -284,6 +270,7 @@ const VALID_G1_ZERO_UNCOM: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the encoding of a random element in G1 in compressed mode
 #[cfg(test)]
 const VALID_G1_COM: &[u8] = &hex!(
     "b8 d2 c4 1d 7a e7 d3 53 9d 81 52 82 85 28 50 60
@@ -292,8 +279,9 @@ const VALID_G1_COM: &[u8] = &hex!(
 );
 
 #[cfg(test)]
-const VALID_G1_POINTS: [&[u8]; 3] = [VALID_G1_ZERO_COM, VALID_G1_ZERO_UNCOM, VALID_G1_COM];
+const VALID_G1_POINTS: [&[u8]; 3] = [VALID_G1_ZERO_COM, VALID_G1_COM, VALID_G1_ZERO_UNCOM];
 
+// the 2-nd byte is changed
 #[cfg(test)]
 const INVALID_G1_ZERO_DATA_1: &[u8] = &hex!(
     "c0 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -301,6 +289,7 @@ const INVALID_G1_ZERO_DATA_1: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the 5-th byte is modified
 #[cfg(test)]
 const INVALID_G1_ZERO_DATA_2: &[u8] = &hex!(
     "40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
@@ -311,6 +300,7 @@ const INVALID_G1_ZERO_DATA_2: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the compressed flag is unset
 #[cfg(test)]
 const INVALID_G1_ZERO_COM: &[u8] = &hex!(
     "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -318,6 +308,7 @@ const INVALID_G1_ZERO_COM: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the length is not correct
 #[cfg(test)]
 const INVALID_G1_ZERO_COM_LEN: &[u8] = &hex!(
     "c0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -325,6 +316,7 @@ const INVALID_G1_ZERO_COM_LEN: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the length is not correct
 #[cfg(test)]
 const INVALID_G1_ZERO_UNCOM_LEN: &[u8] = &hex!(
     "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -335,6 +327,7 @@ const INVALID_G1_ZERO_UNCOM_LEN: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// modified one byte
 #[cfg(test)]
 const INVALID_G1_DATA: &[u8] = &hex!(
     "b8 d2 c4 1d 7a e7 d3 53 9d 81 52 82 85 28 50 60
@@ -342,6 +335,7 @@ const INVALID_G1_DATA: &[u8] = &hex!(
     d7 92 b5 e1 85 b4 be 72 e9 ad d9 e5 77 c1 76 66"
 );
 
+// the length is not correct
 #[cfg(test)]
 const INVALID_G1_LEN: &[u8] = &hex!(
     "b8 d2 c4 1d 7a e7 d3 53 9d 81 52 82 85 28 50 60
@@ -349,6 +343,7 @@ const INVALID_G1_LEN: &[u8] = &hex!(
     d7 92 b5 e1 85 b4 be 72 e9 ad d9 e5 77 c1 76"
 );
 
+// the compressed flag is unset
 #[cfg(test)]
 const INVALID_G1_COM: &[u8] = &hex!(
     "28 d2 c4 1d 7a e7 d3 53 9d 81 52 82 85 28 50 60
@@ -401,6 +396,7 @@ fn test_pk_serialization_kat() {
     }
 }
 
+// the encoding of a 0 element in G2 in compressed mode
 #[cfg(test)]
 const VALID_G2_ZERO_COM: &[u8] = &hex!(
     "c0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -410,6 +406,7 @@ const VALID_G2_ZERO_COM: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
+// the encoding of a 0 element in G2 in uncompressed mode
 #[cfg(test)]
 const VALID_G2_ZERO_UNCOM: &[u8] = &hex!(
     "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -425,6 +422,8 @@ const VALID_G2_ZERO_UNCOM: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
+
+// the encoding of a random element in G2 in compressed mode
 #[cfg(test)]
 const VALID_G2_COM: &[u8] = &hex!(
     "90 9c d3 34 a9 d0 cc 8e 7b 30 04 98 2b 92 8a ce
@@ -436,8 +435,9 @@ const VALID_G2_COM: &[u8] = &hex!(
 );
 
 #[cfg(test)]
-const VALID_G2_POINTS: [&[u8]; 3] = [VALID_G2_ZERO_COM, VALID_G2_ZERO_UNCOM, VALID_G2_COM];
+const VALID_G2_POINTS: [&[u8]; 3] = [VALID_G2_ZERO_COM, VALID_G2_COM, VALID_G2_ZERO_UNCOM];
 
+// the 2-nd byte is modified
 #[cfg(test)]
 const INVALID_G2_ZERO_DATA_1: &[u8] = &hex!(
     "c0 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -448,6 +448,7 @@ const INVALID_G2_ZERO_DATA_1: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the 55-th byte is modified
 #[cfg(test)]
 const INVALID_G2_ZERO_DATA_2: &[u8] = &hex!(
     "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -464,6 +465,7 @@ const INVALID_G2_ZERO_DATA_2: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the compressed flag is unset
 #[cfg(test)]
 const INVALID_G2_ZERO_COM: &[u8] = &hex!(
     "40 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -474,6 +476,7 @@ const INVALID_G2_ZERO_COM: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the length is not correct
 #[cfg(test)]
 const INVALID_G2_ZERO_COM_LEN: &[u8] = &hex!(
     "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -490,6 +493,7 @@ const INVALID_G2_ZERO_COM_LEN: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// the length is not correct
 #[cfg(test)]
 const INVALID_G2_ZERO_UNCOM_LEN: &[u8] = &hex!(
     "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -500,6 +504,7 @@ const INVALID_G2_ZERO_UNCOM_LEN: &[u8] = &hex!(
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 );
 
+// one byte is altered
 #[cfg(test)]
 const INVALID_G2_DATA: &[u8] = &hex!(
     "90 9c d3 34 a9 d0 cc 8e 7b 30 04 98 2b 92 8a ce
@@ -510,6 +515,7 @@ const INVALID_G2_DATA: &[u8] = &hex!(
     dc ae 56 8b 7f 1a 55 41 1b da 7b 2e 4b 66 b3 9d"
 );
 
+// the length is not correct
 #[cfg(test)]
 const INVALID_G2_LEN: &[u8] = &hex!(
     "90 9c d3 34 a9 d0 cc 8e 7b 30 04 98 2b 92 8a ce
@@ -520,6 +526,7 @@ const INVALID_G2_LEN: &[u8] = &hex!(
     dc ae 56 8b 7f 1a 55 41 1b da 7b 2e 4b 66 b3"
 );
 
+// the compressed flag is unset
 #[cfg(test)]
 const INVALID_G2_COM: &[u8] = &hex!(
     "10 9c d3 34 a9 d0 cc 8e 7b 30 04 98 2b 92 8a ce
@@ -575,8 +582,8 @@ fn test_pop_serialization_kat() {
 #[test]
 fn test_sig_serialization_kat_valid() {
     // correct format of signatures
-    for &val1 in &VALID_G1_POINTS[..] {
-        for &val2 in &VALID_G2_POINTS[..] {
+    for &val1 in &VALID_G1_POINTS[0..2] {
+        for &val2 in &VALID_G2_POINTS[0..2] {
             for &csid in &VALID_CIPHERSUITE {
                 let time: [u8; 4] = [1, 2, 3, 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
@@ -585,7 +592,10 @@ fn test_sig_serialization_kat_valid() {
             }
         }
     }
+}
 
+#[test]
+fn test_sig_serialization_kat_invalid_const() {
     // mix-match the compressness
     // TODO: decide if we allow for mix-match of compressness
     for &csid in &VALID_CIPHERSUITE {
@@ -594,7 +604,7 @@ fn test_sig_serialization_kat_valid() {
         let time: [u8; 4] = [1, 2, 3, 4];
         let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
         let res = Signature::deserialize(&mut Cursor::new(tmp));
-        assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
+        assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }
     for &csid in &VALID_CIPHERSUITE {
         let val1 = VALID_G1_ZERO_UNCOM;
@@ -602,12 +612,9 @@ fn test_sig_serialization_kat_valid() {
         let time: [u8; 4] = [1, 2, 3, 4];
         let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
         let res = Signature::deserialize(&mut Cursor::new(tmp));
-        assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
+        assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }
-}
 
-#[test]
-fn test_sig_serialization_kat_invalid() {
     // incorrect csid
     for &val1 in &VALID_G1_POINTS[..] {
         for &val2 in &VALID_G2_POINTS[..] {
@@ -630,6 +637,10 @@ fn test_sig_serialization_kat_invalid() {
             }
         }
     }
+}
+
+#[test]
+fn test_sig_serialization_kat_invalid_points() {
     // incorrect G1 points
     for &inval1 in &INVALID_G1_POINTS[..] {
         for &val2 in &VALID_G2_POINTS[..] {

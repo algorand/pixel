@@ -12,7 +12,6 @@ homepage = "https://github.com/algorand/pixel"
 repository = "https://github.com/algorand/pixel"
 
 [dependencies]
-rand = "0.4"
 pairing = { version = "0.14.3", git = "ssh://git@github.com/algorand/pairing-fork", features = [ "transmutable" ] }
 criterion = "0.2.11"
 walkdir = "2.2.7"
@@ -24,6 +23,12 @@ clear_on_drop = "0.2.3"
 pixel_param = { git = "ssh://git@github.com/algorand/pixel_param"}
 bigint = { version = "4", default-features = false }
 libc = { version = "0.2", features = ["align"] }
+
+
+[dev-dependencies]
+hex-literal = "0.1"
+rand = "0.4"
+
 
 [[bench]]
 name = "pixel_bench"

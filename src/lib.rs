@@ -31,6 +31,10 @@ extern crate pairing;
 extern crate pixel_param as param;
 extern crate sha2;
 
+#[cfg(test)]
+#[macro_use]
+extern crate hex_literal;
+
 /// Domain separators are defined here.
 mod domain_sep;
 /// Error messages are defined here.
@@ -38,7 +42,7 @@ mod pixel_err;
 
 // We may upstream this mod to pairing library.
 /// This module defines memebership tests for Pixel Groups
-mod membership;
+pub mod membership;
 
 mod prng;
 mod serdes;

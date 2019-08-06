@@ -13,7 +13,9 @@ use PublicKey;
 use SecretKey;
 use Signature;
 
-/// Serialization support for pixel structures
+/// Serialization support for pixel structures.
+/// This trait is the same as pixel_param::serdes::PixelSerDes.
+/// We should think of merge those two traits rather than defining them twice.
 pub trait PixelSerDes: Sized {
     /// Serialize a struct to a writer
     /// Whether a point is compressed or not is implicit for the structure:
@@ -253,6 +255,11 @@ impl PixelSerDes for Signature {
         reader.read_exact(&mut time)?;
         let time = u32::from_le_bytes(time);
 
+        // the time stamp has to be at least 1
+        if time == 0 {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_TIME_STAMP));
+        }
+
         // check the ciphersuite id in the blob
         if !VALID_CIPHERSUITE.contains(&constants[0]) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
@@ -457,11 +464,14 @@ impl PixelSerDes for SubSecretKey {
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if deserialization fails or invalid ciphersuite
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self> {
-        // the first 4 bytes stores the time stamp,
-        // the time stamp cannot exceed 2^30
+        // the first 4 bytes stores the time stamp
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;
         let time = u32::from_le_bytes(time);
+        // the time stamp has to be at least 1
+        if time == 0 {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_TIME_STAMP));
+        }
 
         // the next byte is the length of hvector
         let mut hvlen = [0u8; 1];

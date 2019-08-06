@@ -13,6 +13,8 @@ use PublicKey;
 use SecretKey;
 use Signature;
 
+type Compressed = bool;
+
 /// Serialization support for pixel structures.
 /// This trait is the same as pixel_param::serdes::PixelSerDes.
 /// We should think of merge those two traits rather than defining them twice.
@@ -24,16 +26,16 @@ pub trait PixelSerDes: Sized {
     /// * proof of possessions: compressed
     /// * secret keys: uncompressed
     /// * signatures: compressed
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()>;
 
     /// Deserialize a struct; also returns a flag
     /// if the struct was compressed or not.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)>;
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)>;
 }
 
 impl PixelSerDes for PixelG1 {
     /// Convert a PixelG1 point to a blob.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         let t = self.into_affine();
 
         // convert element into an (un)compressed byte string
@@ -54,7 +56,7 @@ impl PixelSerDes for PixelG1 {
 
     /// Deserialize a PixelG1 element from a blob.
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // read into buf of compressed size
         let mut buf = vec![0u8; G2Compressed::size()];
         reader.read_exact(&mut buf)?;
@@ -72,7 +74,7 @@ impl PixelSerDes for PixelG1 {
             };
             Ok((g, true))
         } else if (buf[0] & 0x80) == 0x00 {
-            // first bit is 0 => compressed mode
+            // first bit is 0 => uncompressed mode
             // read the next uncompressed - compressed size
             let mut buf2 = vec![0u8; G2Uncompressed::size() - G2Compressed::size()];
             reader.read_exact(&mut buf2)?;
@@ -97,7 +99,7 @@ impl PixelSerDes for PixelG1 {
 
 impl PixelSerDes for PixelG2 {
     /// Convert a PixelG1 point to a blob.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         let t = self.into_affine();
         // convert element into an (un)compressed byte string
         let buf = {
@@ -117,7 +119,7 @@ impl PixelSerDes for PixelG2 {
 
     /// Deserialize a PixelG2 element from a blob.
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // read into buf of compressed size
         let mut buf = vec![0u8; G1Compressed::size()];
         reader.read_exact(&mut buf)?;
@@ -135,7 +137,7 @@ impl PixelSerDes for PixelG2 {
             };
             Ok((g, true))
         } else if (buf[0] & 0x80) == 0x00 {
-            // first bit is 0 => compressed mode
+            // first bit is 0 => uncompressed mode
             // read the next uncompressed - compressed size
             let mut buf2 = vec![0u8; G1Uncompressed::size() - G1Compressed::size()];
             reader.read_exact(&mut buf2)?;
@@ -165,7 +167,7 @@ impl PixelSerDes for ProofOfPossession {
     ///
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     /// Does not check if the pop is verified or not.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
         if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
@@ -183,7 +185,7 @@ impl PixelSerDes for ProofOfPossession {
     /// bytes => `|ciphersuite id | pop |`
     ///
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -209,7 +211,7 @@ impl PixelSerDes for Signature {
     ///
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     /// Does not check if the signature is verified or not.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
         if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
@@ -246,7 +248,7 @@ impl PixelSerDes for Signature {
     /// bytes => `|ciphersuite id | time | sigma1 | sigma2 |`
     ///
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -289,7 +291,7 @@ impl PixelSerDes for PublicKey {
     /// bytes => `|ciphersuite id| PixelG2 element |`
     ///
     /// Returns an error if ciphersuite id is invalid or serialization fails.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
         if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
@@ -307,7 +309,7 @@ impl PixelSerDes for PublicKey {
     /// `|ciphersuite id| PixelG2 element |` => bytes
     ///
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -339,7 +341,7 @@ impl PixelSerDes for SecretKey {
     ///
     /// Return an error if ssk serialization fails
     /// or invalid ciphersuite.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
         if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
@@ -382,7 +384,7 @@ impl PixelSerDes for SecretKey {
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
     ///
     /// Return an error if deserialization fails
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // constants stores id, the number of ssk-s, and the seed
         let mut constants: [u8; 2] = [0u8; 2];
         let mut rngseed: [u8; 64] = [0u8; 64];
@@ -428,7 +430,7 @@ impl PixelSerDes for SubSecretKey {
     /// Conver ssk into a blob:
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if serialization fails or time stamp is greater than 2^32-1
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()> {
+    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         let hvector = self.get_hvector();
         let hvlen = hvector.len();
         let time = self.get_time();
@@ -474,7 +476,7 @@ impl PixelSerDes for SubSecretKey {
     /// Conver a blob into a ssk:
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if deserialization fails or invalid ciphersuite
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, bool)> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // the first 4 bytes stores the time stamp
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;

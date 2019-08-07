@@ -73,7 +73,7 @@ fn main() -> std::io::Result<()> {
     let mut sk = sk2.clone();
     for i in 2..64 {
 
-        let cur_time = sk.get_time();
+        let cur_time = sk.time();
         let tar_time = cur_time + i as u64;
 
         assert!(Pixel::sk_update(&mut sk, tar_time, &pp, rngseed).is_ok());

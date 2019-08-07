@@ -40,22 +40,22 @@ impl Signature {
     }
 
     /// Returns the ciphersuite of a signature.
-    pub fn get_ciphersuite(&self) -> u8 {
+    pub fn ciphersuite(&self) -> u8 {
         self.ciphersuite
     }
 
     /// Returns the time stamp of a signature.
-    pub fn get_time(&self) -> TimeStamp {
+    pub fn time(&self) -> TimeStamp {
         self.time
     }
 
     /// Returns the first component of the signature.
-    pub fn get_sigma1(&self) -> PixelG2 {
+    pub fn sigma1(&self) -> PixelG2 {
         self.sigma1
     }
 
     /// Returns the second component of the signature.
-    pub fn get_sigma2(&self) -> PixelG1 {
+    pub fn sigma2(&self) -> PixelG1 {
         self.sigma2
     }
 
@@ -77,7 +77,7 @@ impl Signature {
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
-        let cur_time = sk.get_time();
+        let cur_time = sk.time();
 
         if cur_time > tar_time {
             #[cfg(debug_assertions)]
@@ -108,7 +108,7 @@ impl Signature {
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
-        let cur_time = sk.get_time();
+        let cur_time = sk.time();
 
         if cur_time != tar_time {
             #[cfg(debug_assertions)]
@@ -137,7 +137,7 @@ impl Signature {
     ) -> Result<Self, String> {
         // update the sk to the target time;
         // if the target time is in future, update self to the future.
-        let cur_time = sk.get_time();
+        let cur_time = sk.time();
 
         if cur_time != tar_time {
             #[cfg(debug_assertions)]
@@ -169,18 +169,18 @@ impl Signature {
         msg: &[u8],
     ) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
-        let ciphersuite = pp.get_ciphersuite();
+        let ciphersuite = pp.ciphersuite();
         if !VALID_CIPHERSUITE.contains(&ciphersuite) {
             #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            println!("Incorrect ciphersuite id: {}", pp.ciphersuite());
             return Err(ERR_CIPHERSUITE.to_owned());
         }
-        if sk.get_ciphersuite() != ciphersuite {
+        if sk.ciphersuite() != ciphersuite {
             #[cfg(debug_assertions)]
             println!(
                 "Inconsistant ciphersuite ids. pp: {} sk: {}",
                 ciphersuite,
-                sk.get_ciphersuite()
+                sk.ciphersuite()
             );
             return Err(ERR_CIPHERSUITE.to_owned());
         }
@@ -189,17 +189,17 @@ impl Signature {
         // the upper layer has already checked the tar_time is correct
         // so if the tar_time is incorrect, we should panic here instead of
         // recovering from the error
-        assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
+        assert_eq!(sk.time(), tar_time, "The time stamps does not match!");
 
         // We generate a random field element from the prng; the prng is not updated.
         // Within sample():
         //  m = HKDF-Expand(prng_seed, info, 64)
         //  r = OS2IP(m) % p
         let info = [DOM_SEP_SIG.as_bytes(), msg].concat();
-        let mut r_sec = sk.get_prng().sample(info);
+        let mut r_sec = sk.prng().sample(info);
 
         // hash the message into a field element
-        let m = hash_msg_into_fr(msg, pp.get_ciphersuite());
+        let m = hash_msg_into_fr(msg, pp.ciphersuite());
         // calls the sign_fr subroutine
         let sig = Signature::sign_fr(&sk, tar_time, &pp, m, r_sec);
         // clear the secret data
@@ -223,15 +223,15 @@ impl Signature {
         // the upper layer has already checked the tar_time is correct
         // so if the tar_time is incorrect, we should panic here instead of
         // recovering from the error
-        assert_eq!(sk.get_time(), tar_time, "The time stamps does not match!");
+        assert_eq!(sk.time(), tar_time, "The time stamps does not match!");
         // we only use the first sub secret key to sign
         // this creates a copy of ssk and therefore needs to be destroyed
-        let mut ssk_sec = sk.get_first_ssk()?;
+        let mut ssk_sec = sk.first_ssk()?;
 
         // get all neccessary variables
-        let depth = pp.get_d();
-        let hlist = pp.get_hlist();
-        let timevec = match ssk_sec.get_time_vec(depth) {
+        let depth = pp.depth();
+        let hlist = pp.hlist();
+        let timevec = match ssk_sec.time_vec(depth) {
             // clear ssk_sec before returing the error
             Err(e) => {
                 {
@@ -242,14 +242,14 @@ impl Signature {
             }
             Ok(p) => p,
         };
-        let tlen = timevec.get_vector_len();
-        let tv = timevec.get_vector();
+        let tlen = timevec.vector_len();
+        let tv = timevec.vector();
 
         // re-randomizing sigma1
         // sig1 = ssk.g2r + g2^r
         // sig1 is returned to the caller, so it does not need to be cleared
-        let mut sig1 = ssk_sec.get_g2r();
-        let mut tmp_sec = pp.get_g2();
+        let mut sig1 = ssk_sec.g2r();
+        let mut tmp_sec = pp.g2();
         tmp_sec.mul_assign(r);
         sig1.add_assign(&tmp_sec);
         {
@@ -277,8 +277,8 @@ impl Signature {
         // re-randomizing sigma2
         // sig2 = ssk.hpoly * hv[d]^m * tmp3^r
         tmp3_sec.mul_assign(r);
-        let mut sig2 = ssk_sec.get_hpoly();
-        let mut hv_last_sec = match ssk_sec.get_last_hvector_coeff() {
+        let mut sig2 = ssk_sec.hpoly();
+        let mut hv_last_sec = match ssk_sec.last_hvector_coeff() {
             // clear buffer before returing the error
             Err(e) => {
                 {
@@ -316,7 +316,7 @@ impl Signature {
         assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
 
         Ok(Signature {
-            ciphersuite: pp.get_ciphersuite(),
+            ciphersuite: pp.ciphersuite(),
             time: tar_time,
             sigma1: sig1,
             sigma2: sig2,
@@ -329,32 +329,32 @@ impl Signature {
     /// It returns true if the signature is valid.
     pub fn verify_bytes(&self, pk: &PublicKey, pp: &PubParam, msg: &[u8]) -> bool {
         // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&pp.ciphersuite()) {
             #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            println!("Incorrect ciphersuite id: {}", pp.ciphersuite());
             return false;
         }
         // check that the ciphersuite identifier is correct
-        if self.ciphersuite != pp.get_ciphersuite() {
+        if self.ciphersuite != pp.ciphersuite() {
             #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            println!("Incorrect ciphersuite id: {}", pp.ciphersuite());
             return false;
         }
 
         // membership testing
-        if !self.get_sigma1().is_in_prime_group() || !self.get_sigma2().is_in_prime_group() {
+        if !self.sigma1().is_in_prime_group() || !self.sigma2().is_in_prime_group() {
             #[cfg(debug_assertions)]
             println!(
                 "Signature not it the correct subgroup\n\
                  sigma1: {}, sigma2: {}",
-                self.get_sigma1().is_in_prime_group(),
-                self.get_sigma2().is_in_prime_group()
+                self.sigma1().is_in_prime_group(),
+                self.sigma2().is_in_prime_group()
             );
             return false;
         }
 
         // hash the message into a field element
-        let m = hash_msg_into_fr(msg, pp.get_ciphersuite());
+        let m = hash_msg_into_fr(msg, pp.ciphersuite());
 
         Signature::verify_fr(&self, &pk, &pp, m)
     }
@@ -364,16 +364,16 @@ impl Signature {
     /// It assumes that the signature is well formed (in the right subgroup) already.
     /// It returns true if the signature is valid.
     pub fn verify_fr(&self, pk: &PublicKey, pp: &PubParam, msg: Fr) -> bool {
-        let depth = pp.get_d();
+        let depth = pp.depth();
 
         // extract the group element in pk
-        let pke = pk.get_pk();
+        let pke = pk.pk();
 
         // extract the target time
-        let tar_time = self.get_time();
+        let tar_time = self.time();
 
         // hfx = h0 + h_i * t_i + h_d * m
-        let list = pp.get_hlist();
+        let list = pp.hlist();
         let mut hfx = list[0];
         let timevec = match TimeVec::init(tar_time, depth) {
             Err(_e) => {
@@ -383,7 +383,7 @@ impl Signature {
             }
             Ok(p) => p,
         }
-        .get_vector();
+        .vector();
 
         // if timevec[i] == 1 -> hfx += list[i+1]
         // if timevec[i] == 2 -> hfx += list[i+1]*2
@@ -406,7 +406,7 @@ impl Signature {
         //  e(1/g2, sigma2) * e(sigma1, hv^{time_vec}) * e(pk, h)
         // we negate g2 rather than sigma2, since it is slightly faster
         // to compute the nagete in PixelG2 (a.k.a. BLS G1)
-        let mut neg_g2 = pp.get_g2();
+        let mut neg_g2 = pp.g2();
         neg_g2.negate();
 
         let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
@@ -421,7 +421,7 @@ impl Signature {
                 ),
                 (
                     &(pke.into_affine().prepare()),
-                    &(pp.get_h().into_affine().prepare()),
+                    &(pp.h().into_affine().prepare()),
                 ),
             ]
             .iter(),
@@ -437,12 +437,12 @@ impl Signature {
         let mut res = sig_list[0].clone();
         // check the time and the ciphersuite match
         for e in sig_list.iter().skip(1) {
-            if res.get_ciphersuite() != e.get_ciphersuite() {
+            if res.ciphersuite() != e.ciphersuite() {
                 #[cfg(debug_assertions)]
                 println!("ciphersuite do not match");
                 return Err(ERR_CIPHERSUITE.to_owned());
             }
-            if res.get_time() != e.get_time() {
+            if res.time() != e.time() {
                 #[cfg(debug_assertions)]
                 println!("ciphersuite do not match");
                 return Err(ERR_TIME_STAMP.to_owned());
@@ -469,23 +469,23 @@ impl Signature {
         msg: &[u8],
     ) -> bool {
         // checks the ciphersuite ids match
-        let ciphersuite = pp.get_ciphersuite();
+        let ciphersuite = pp.ciphersuite();
         for e in pk_list {
-            if ciphersuite != e.get_ciphersuite() {
+            if ciphersuite != e.ciphersuite() {
                 #[cfg(debug_assertions)]
                 println!("ciphersuite do not match");
                 return false;
             }
         }
-        if self.get_ciphersuite() != ciphersuite {
+        if self.ciphersuite() != ciphersuite {
             #[cfg(debug_assertions)]
             println!("ciphersuite do not match");
             return false;
         }
 
-        let mut agg_pke = pk_list[0].get_pk();
+        let mut agg_pke = pk_list[0].pk();
         for e in pk_list.iter().skip(1) {
-            agg_pke.add_assign(&e.get_pk());
+            agg_pke.add_assign(&e.pk());
         }
         let pk = PublicKey::construct(ciphersuite, agg_pke);
         Signature::verify_bytes(&self, &pk, &pp, msg)

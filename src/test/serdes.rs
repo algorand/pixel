@@ -23,7 +23,7 @@ fn test_ssk_serialization_rand() {
     .unwrap();
     let pp = PubParam::init_without_seed();
     // a random master secret key
-    let mut alpha = pp.get_h();
+    let mut alpha = pp.h();
     let msk = Fr::from_str(
         "8010751325124863419913799848205334820481433752958938231164954555440305541353",
     )
@@ -32,7 +32,7 @@ fn test_ssk_serialization_rand() {
 
     // generate a sub secret key
     let t = SubSecretKey::init(&pp, alpha, r);
-    let bufsize = t.get_size();
+    let bufsize = t.size();
 
     // buffer space
     let mut buf: Vec<u8> = vec![];
@@ -59,8 +59,8 @@ fn test_sk_serialization_rand() {
     let (pk, sk, pop) = res.unwrap();
     assert!(pk.validate(&pop));
 
-    let bufsize = sk.get_size();
-    let estsize = SecretKey::estimate_size(1, pp.get_d());
+    let bufsize = sk.size();
+    let estsize = SecretKey::estimate_size(1, pp.depth());
     assert_eq!(
         bufsize,
         estsize.unwrap(),
@@ -94,8 +94,8 @@ fn test_sk_serialization_rand() {
         assert!(sk2.validate(&pk, &pp), "invalid sk");
 
         // serialize the updated key
-        let bufsize = sk2.get_size();
-        let estsize = SecretKey::estimate_size(j, pp.get_d());
+        let bufsize = sk2.size();
+        let estsize = SecretKey::estimate_size(j, pp.depth());
         assert_eq!(
             bufsize,
             estsize.unwrap(),

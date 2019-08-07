@@ -92,11 +92,7 @@ impl KeyPair {
         );
 
         // return the keys and the proof of possession
-        Ok((
-            pk,
-            sk,
-            ProofOfPossession::construct(pp.get_ciphersuite(), pop),
-        ))
+        Ok((pk, sk, ProofOfPossession::construct(pp.ciphersuite(), pop)))
     }
 }
 
@@ -125,7 +121,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     }
 
     // check that the ciphersuite identifier is correct
-    let ciphersuite = pp.get_ciphersuite();
+    let ciphersuite = pp.ciphersuite();
     if !VALID_CIPHERSUITE.contains(&ciphersuite) {
         #[cfg(debug_assertions)]
         println!("Incorrect ciphersuite id: {}", ciphersuite);
@@ -150,9 +146,9 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
 
     // pk = g2^x
     // sk = h^x
-    let mut pk = pp.get_g2();
+    let mut pk = pp.g2();
     pk.mul_assign(x_sec);
-    let pop = match proof_of_possession(x_sec, pk, pp.get_ciphersuite()) {
+    let pop = match proof_of_possession(x_sec, pk, pp.ciphersuite()) {
         Err(e) => {
             {
                 let _clear1 = ClearOnDrop::new(&mut x_sec);
@@ -163,7 +159,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
         Ok(p) => p,
     };
 
-    let mut sk = pp.get_h();
+    let mut sk = pp.h();
     sk.mul_assign(x_sec);
     // clear temporary data
     {
@@ -196,9 +192,9 @@ fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1,
 fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
     use pairing::{bls12_381::*, CurveAffine, Engine};
 
-    let mut g2 = pp.get_g2();
+    let mut g2 = pp.g2();
     g2.negate();
-    let h = pp.get_h();
+    let h = pp.h();
 
     // check e(pk, h) ?= e(g2, sk)
     // which is e(pk,h) * e(-g2,sk) == 1

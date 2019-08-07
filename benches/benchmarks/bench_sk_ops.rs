@@ -34,15 +34,15 @@ fn bench_sk_update_seq(c: &mut Criterion) {
         let param_clone = param.clone();
         let message = format!(
             "sk update from {} to {}",
-            sklist_clone[i].get_time(),
-            sklist_clone[i].get_time() + 1
+            sklist_clone[i].time(),
+            sklist_clone[i].time() + 1
         );
         // benchmark sk update
         c.bench_function(&message, move |b| {
             let mut counter = 0;
             b.iter(|| {
                 let mut sknew = sklist_clone[counter].clone();
-                let tar_time = sknew.get_time() + 1;
+                let tar_time = sknew.time() + 1;
                 let res = Pixel::sk_update(&mut sknew, tar_time, &param_clone, rngseed);
                 assert!(res.is_ok(), res.err());
                 counter = (counter + 1) % SAMPLES;
@@ -50,7 +50,7 @@ fn bench_sk_update_seq(c: &mut Criterion) {
         });
         // update sk to next time stamp
         for mut e in sklist.iter_mut().take(SAMPLES) {
-            let tar_time = e.get_time() + 1;
+            let tar_time = e.time() + 1;
             let res = Pixel::sk_update(&mut e, tar_time, &param, rngseed);
             assert!(res.is_ok(), res.err());
         }
@@ -84,19 +84,19 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
     }
 
     // // benchmark time of to_byte function for ssk
-    // let message = format!("ssk to bytes for ssk at time {}", sklist[0].get_time());
+    // let message = format!("ssk to bytes for ssk at time {}", sklist[0].time());
     // let sklist_clone = sklist.clone();
     // c.bench_function(&message, move |b| {
     //     let mut counter = 0;
     //     b.iter(|| {
     //         let sknew = sklist_clone[counter].clone();
-    //         let _res = sknew.get_first_ssk().unwrap().to_bytes();
+    //         let _res = sknew.first_ssk().unwrap().to_bytes();
     //         counter = (counter + 1) % SAMPLES;
     //     })
     // });
     //
     // // benchmark time of to_byte function for sk
-    // let message = format!("sk to bytes for sk at time {}", sklist[0].get_time(),);
+    // let message = format!("sk to bytes for sk at time {}", sklist[0].time(),);
     // let sklist_clone = sklist.clone();
     // c.bench_function(&message, move |b| {
     //     let mut counter = 0;
@@ -108,7 +108,7 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
     // });
 
     // benchmark time to generate a digest
-    let message = format!("sk digest for sk at time {}", sklist[0].get_time(),);
+    let message = format!("sk digest for sk at time {}", sklist[0].time(),);
     let sklist_clone = sklist.clone();
     c.bench_function(&message, move |b| {
         let mut counter = 0;
@@ -123,15 +123,15 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
     // benchmark sk update to next time slot
     let message = format!(
         "sk update from {} to {}",
-        sklist[0].get_time(),
-        sklist[0].get_time() + 1
+        sklist[0].time(),
+        sklist[0].time() + 1
     );
     let rngseed = "";
     c.bench_function(&message, move |b| {
         let mut counter = 0;
         b.iter(|| {
             let mut sknew = sklist[counter].clone();
-            let tar_time = sknew.get_time() + 1;
+            let tar_time = sknew.time() + 1;
             let res = Pixel::sk_update(&mut sknew, tar_time, &param, rngseed);
             assert!(res.is_ok(), res.err());
             counter = (counter + 1) % SAMPLES;

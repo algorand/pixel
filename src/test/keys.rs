@@ -36,8 +36,8 @@ fn test_quick_key_update() {
             res.err()
         );
         // makes sure the seed is mutated in after the delegation
-        assert_ne!(sk.get_prng(), sk2.get_prng());
-        for ssk in sk2.get_ssk_vec() {
+        assert_ne!(sk.prng(), sk2.prng());
+        for ssk in sk2.ssk_vec() {
             assert!(ssk.validate(&pk, &pp), "validation failed");
         }
     }
@@ -52,7 +52,7 @@ fn test_quick_key_update() {
              error message {:?}",
             res.err()
         );
-        for ssk in sk2.get_ssk_vec() {
+        for ssk in sk2.ssk_vec() {
             assert!(ssk.validate(&pk, &pp), "validation failed");
         }
         sk = sk2;
@@ -109,11 +109,11 @@ fn test_long_key_update() {
                  error message {:?}",
                 res.err()
             );
-            for ssk in sk3.get_ssk_vec() {
+            for ssk in sk3.ssk_vec() {
                 assert!(ssk.validate(&pk, &pp), "validation failed");
             }
         }
-        for ssk in sk2.get_ssk_vec() {
+        for ssk in sk2.ssk_vec() {
             assert!(ssk.validate(&pk, &pp), "validation failed");
         }
     }
@@ -202,7 +202,7 @@ fn test_key_gen() {
     .unwrap();
     let pp = PubParam::init_without_seed();
     // a random master secret key
-    let mut alpha = pp.get_h();
+    let mut alpha = pp.h();
     let msk = Fr::from_str(
         "8010751325124863419913799848205334820481433752958938231164954555440305541353",
     )
@@ -219,19 +219,19 @@ fn test_key_gen() {
     );
     let t1 = res.unwrap();
     // make sure the sub secret keys are the same
-    assert_eq!(t.get_g2r(), t1.get_g2r(), "g1r incorrect");
+    assert_eq!(t.g2r(), t1.g2r(), "g1r incorrect");
     assert_eq!(
-        t.get_hpoly().into_affine(),
-        t1.get_hpoly().into_affine(),
+        t.hpoly().into_affine(),
+        t1.hpoly().into_affine(),
         "hpoly incorrect"
     );
     // buffer space -- this needs to be adquate for large parameters
-    let mut buf = vec![0u8; t.get_size()];
+    let mut buf = vec![0u8; t.size()];
     // serializae a ssk into buffer
     assert!(t.serialize(&mut buf, true).is_ok());
 
     // buffer space -- this needs to be adquate for large parameters
-    let mut buf2 = vec![0u8; t.get_size()];
+    let mut buf2 = vec![0u8; t.size()];
     // serializae a ssk into buffer);
     assert!(t1.serialize(&mut buf2, true).is_ok());
 
@@ -249,7 +249,7 @@ fn test_randomization() {
     .unwrap();
 
     // a random master secret key
-    let mut alpha = pp.get_h();
+    let mut alpha = pp.h();
     let msk = Fr::from_str(
         "8010751325124863419913799848205334820481433752958938231164954555440305541353",
     )
@@ -257,7 +257,7 @@ fn test_randomization() {
     alpha.mul_assign(msk);
 
     // a random public key
-    let mut pke = pp.get_g2();
+    let mut pke = pp.g2();
     pke.mul_assign(msk);
     let res = PublicKey::init(&pp, pke);
     assert!(
@@ -293,7 +293,7 @@ fn test_randomization() {
 #[test]
 fn test_delegate() {
     let pp = PubParam::init_without_seed();
-    let depth = pp.get_d();
+    let depth = pp.depth();
     // a random field element
     let r = Fr::from_str(
         "5902757315117623225217061455046442114914317855835382236847240262163311537283",
@@ -301,7 +301,7 @@ fn test_delegate() {
     .unwrap();
 
     // a random master secret key
-    let mut alpha = pp.get_h();
+    let mut alpha = pp.h();
     let msk = Fr::from_str(
         "8010751325124863419913799848205334820481433752958938231164954555440305541353",
     )
@@ -309,7 +309,7 @@ fn test_delegate() {
     alpha.mul_assign(msk);
 
     // a random public key
-    let mut pke = pp.get_g2();
+    let mut pke = pp.g2();
     pke.mul_assign(msk);
     let res = PublicKey::init(&pp, pke);
     assert!(

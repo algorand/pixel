@@ -55,7 +55,7 @@ impl std::cmp::PartialEq for PRNG {
 
 impl PRNG {
     /// Expose the seed.
-    pub fn get_seed(&self) -> &[u8; 64] {
+    pub fn seed(&self) -> &[u8; 64] {
         &self.0
     }
 
@@ -90,7 +90,7 @@ impl PRNG {
     pub fn sample_then_update<Blob: AsRef<[u8]>>(&mut self, info: Blob) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
         let mut hk_sec = Hkdf::<Sha512> {
-            prk: generic_array::GenericArray::clone_from_slice(self.get_seed()),
+            prk: generic_array::GenericArray::clone_from_slice(self.seed()),
         };
 
         // hkdf-expand(seed, info)
@@ -153,7 +153,7 @@ impl PRNG {
     pub fn sample<Blob: AsRef<[u8]>>(&mut self, info: Blob) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
         let mut hk_sec = Hkdf::<Sha512> {
-            prk: generic_array::GenericArray::clone_from_slice(self.get_seed()),
+            prk: generic_array::GenericArray::clone_from_slice(self.seed()),
         };
 
         // hkdf-expand(seed, info)
@@ -199,7 +199,7 @@ impl PRNG {
         // m1 = hkdf-expand(info, 64)
         // re-build the hkdf-sha512 from the PRNG seed
         let mut hk1_sec = Hkdf::<Sha512> {
-            prk: generic_array::GenericArray::clone_from_slice(self.get_seed()),
+            prk: generic_array::GenericArray::clone_from_slice(self.seed()),
         };
         // hkdf-expand(seed, info)
         let mut m1_sec = vec![0u8; 64];

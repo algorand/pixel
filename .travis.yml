@@ -8,15 +8,13 @@ before_script:
   - rustup component add clippy
   - cargo install --force cbindgen
 
-env:
-  - CARGO_FLAG=clippy --all-targets --all-features -- -D warnings
-  - CARGO_FLAG=test
-  - CARGO_FLAG=test -- --ignored
-  - CARGO_FLAG=test --release
-  - CARGO_FLAG=test --release -- --ignored
 script:
+  - cargo clippy --all-targets --all-features -- -D warnings
+  - travis_wait 360 cargo test
+  - travis_wait 360 cargo test -- --ignored
+  - travis_wait 360 cargo test --release
+  - travis_wait 360 cargo test --release -- --ignored
 
-  - travis_wait 360 cargo $CARGO_FLAG
   # make will build the library, compile the C wrapper
   # and run a simple test on the wrapper
   - make

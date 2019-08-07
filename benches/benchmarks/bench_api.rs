@@ -52,7 +52,7 @@ fn bench_key_update_next(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
 
-    let max_time = (1 << param.get_d()) - 1;
+    let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -72,7 +72,7 @@ fn bench_key_update_next(c: &mut Criterion) {
     c.bench_function("sk update to next time stamp", move |b| {
         b.iter(|| {
             let mut sknew = sklist[counter].clone();
-            let tar_time = sknew.get_time() + 1;
+            let tar_time = sknew.time() + 1;
             let res = Pixel::sk_update(&mut sknew, tar_time, &param, rngseed);
             assert!(res.is_ok(), res.err());
             counter = (counter + 1) % SAMPLES;
@@ -91,7 +91,7 @@ fn bench_key_update_random(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
 
-    let max_time = (1 << param.get_d()) - 1;
+    let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -112,7 +112,7 @@ fn bench_key_update_random(c: &mut Criterion) {
         b.iter(|| {
             let mut sknew = sklist[counter].clone();
             // the target time will be random between current time + 1 and max time
-            let tar_time = rand::thread_rng().gen_range(sknew.get_time() + 1, max_time - 1);
+            let tar_time = rand::thread_rng().gen_range(sknew.time() + 1, max_time - 1);
             let res = Pixel::sk_update(&mut sknew, tar_time, &param, rngseed);
             assert!(res.is_ok(), res.err());
             counter = (counter + 1) % SAMPLES;
@@ -132,7 +132,7 @@ fn bench_sign(c: &mut Criterion) {
     let mut sklist: Vec<SecretKey> = vec![];
 
     let msg = "the message to be signed in benchmarking";
-    let max_time = (1 << param.get_d()) - 1;
+    let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -153,7 +153,7 @@ fn bench_sign(c: &mut Criterion) {
         b.iter(|| {
             let mut sknew = sklist[counter].clone();
             // the target time will be random between current time + 1 and max time
-            let tar_time = rand::thread_rng().gen_range(sknew.get_time() + 1, max_time - 1);
+            let tar_time = rand::thread_rng().gen_range(sknew.time() + 1, max_time - 1);
             assert!(Pixel::sign(&mut sknew, tar_time, &param, msg, rngseed).is_ok());
             counter = (counter + 1) % SAMPLES;
         })
@@ -171,7 +171,7 @@ fn bench_sign_present(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
     let msg = "the message to be signed in benchmarking";
-    let max_time = (1 << param.get_d()) - 1;
+    let max_time = (1 << param.depth()) - 1;
     let rngseed = b"";
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -191,7 +191,7 @@ fn bench_sign_present(c: &mut Criterion) {
     c.bench_function("sk at random time, sign for present", move |b| {
         b.iter(|| {
             let mut sknew = sklist[counter].clone();
-            let tar_time = sknew.get_time();
+            let tar_time = sknew.time();
             let res = Pixel::sign_present(&mut sknew, tar_time, &param, msg);
             assert!(res.is_ok(), res.err());
             counter = (counter + 1) % SAMPLES;
@@ -210,7 +210,7 @@ fn bench_sign_then_update(c: &mut Criterion) {
     // get a list of secret keys, as random time
     let mut sklist: Vec<SecretKey> = vec![];
     let msg = "the message to be signed in benchmarking";
-    let max_time = (1 << param.get_d()) - 1;
+    let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -230,12 +230,12 @@ fn bench_sign_then_update(c: &mut Criterion) {
     c.bench_function("sk at random time, sign then update", move |b| {
         b.iter(|| {
             let mut sknew = sklist[counter].clone();
-            let tar_time = sknew.get_time();
+            let tar_time = sknew.time();
             let res = Pixel::sign_then_update(&mut sknew, tar_time, &param, msg, rngseed);
             assert!(res.is_ok(), res.err());
             counter = (counter + 1) % SAMPLES;
             // check that the time stamp has advanced by 1
-            assert_eq!(sknew.get_time(), tar_time + 1);
+            assert_eq!(sknew.time(), tar_time + 1);
         })
     });
 }
@@ -253,7 +253,7 @@ fn bench_verify(c: &mut Criterion) {
     let mut poplist: Vec<ProofOfPossession> = vec![];
     let mut siglist: Vec<Signature> = vec![];
     let msg = "the message to be signed in benchmarking";
-    let max_time = (1 << param.get_d()) - 1;
+    let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
     for _i in 0..SAMPLES {
         let seed = rand::thread_rng()
@@ -308,7 +308,7 @@ fn bench_aggregation(c: &mut Criterion) {
     let msg = "the message to be signed in benchmarking";
     let rngseed = "";
     // sign at time 1 for all signatures, for fast benchmarking
-    // let max_time = (1 << param.get_d()) - 1;
+    // let max_time = (1 << param.depth()) - 1;
     // let time = rand::thread_rng().gen_range(0u64, max_time - 2);
     let time = 1;
     for _i in 0..SAMPLES {

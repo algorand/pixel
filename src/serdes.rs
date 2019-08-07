@@ -169,11 +169,11 @@ impl PixelSerDes for ProofOfPossession {
     /// Does not check if the pop is verified or not.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
-        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&self.ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
-        let mut buf: Vec<u8> = vec![self.get_ciphersuite()];
-        self.get_pop().serialize(&mut buf, compressed)?;
+        let mut buf: Vec<u8> = vec![self.ciphersuite()];
+        self.pop().serialize(&mut buf, compressed)?;
 
         // format the output
         writer.write_all(&buf)?;
@@ -213,12 +213,12 @@ impl PixelSerDes for Signature {
     /// Does not check if the signature is verified or not.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
-        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&self.ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
 
         // the time stamp cannot exceed 2^30
-        let time = self.get_time();
+        let time = self.time();
         if time > (1 << 32) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_SERIAL));
         }
@@ -227,7 +227,7 @@ impl PixelSerDes for Signature {
         // the next 4 bytes stores the time stamp,
 
         let mut buf: Vec<u8> = vec![
-            self.get_ciphersuite(),
+            self.ciphersuite(),
             (time & 0xFF) as u8,
             (time >> 8 & 0xFF) as u8,
             (time >> 16 & 0xFF) as u8,
@@ -235,9 +235,9 @@ impl PixelSerDes for Signature {
         ];
 
         // serialize sigma1
-        self.get_sigma1().serialize(&mut buf, compressed)?;
+        self.sigma1().serialize(&mut buf, compressed)?;
         // serialize sigma2
-        self.get_sigma2().serialize(&mut buf, compressed)?;
+        self.sigma2().serialize(&mut buf, compressed)?;
         // format the output
         writer.write_all(&buf)?;
         Ok(())
@@ -293,12 +293,12 @@ impl PixelSerDes for PublicKey {
     /// Returns an error if ciphersuite id is invalid or serialization fails.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
-        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&self.ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
         // first byte is the ciphersuite id
-        let mut buf: Vec<u8> = vec![self.get_ciphersuite()];
-        self.get_pk().serialize(&mut buf, compressed)?;
+        let mut buf: Vec<u8> = vec![self.ciphersuite()];
+        self.pk().serialize(&mut buf, compressed)?;
 
         // finished
         writer.write_all(&buf)?;
@@ -343,20 +343,20 @@ impl PixelSerDes for SecretKey {
     /// or invalid ciphersuite.
     fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
         // check the cipher suite id
-        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&self.ciphersuite()) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
         // first byte is the ciphersuite id
-        let mut buf: Vec<u8> = vec![self.get_ciphersuite()];
+        let mut buf: Vec<u8> = vec![self.ciphersuite()];
 
         // next byte is the number of ssk-s
-        buf.push(self.get_ssk_number() as u8);
+        buf.push(self.ssk_number() as u8);
 
         // next 64 bytes is the seed for rng
-        buf.extend(self.get_prng().get_seed().as_ref());
+        buf.extend(self.prng().seed().as_ref());
 
         // followed by serialization of the ssk-s
-        for e in &self.get_ssk_vec() {
+        for e in &self.ssk_vec() {
             e.serialize(&mut buf, compressed)?;
         }
 
@@ -417,7 +417,7 @@ impl PixelSerDes for SecretKey {
         Ok((
             SecretKey::construct(
                 constants[0],
-                ssk_vec[0].get_time(),
+                ssk_vec[0].time(),
                 ssk_vec,
                 PRNG::construct(rngseed),
             ),
@@ -431,9 +431,9 @@ impl PixelSerDes for SubSecretKey {
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if serialization fails or time stamp is greater than 2^32-1
     fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
-        let hvector = self.get_hvector();
+        let hvector = self.hvector();
         let hvlen = hvector.len();
-        let time = self.get_time();
+        let time = self.time();
 
         // the first 4 bytes stores the time stamp,
         // the time stamp cannot exceed 2^32
@@ -453,10 +453,10 @@ impl PixelSerDes for SubSecretKey {
         buf.push(hvlen as u8);
 
         // the next chunck of data stores g2r
-        self.get_g2r().serialize(&mut buf, compressed)?;
+        self.g2r().serialize(&mut buf, compressed)?;
 
         // the next chunk of data stores hpoly
-        self.get_hpoly().serialize(&mut buf, compressed)?;
+        self.hpoly().serialize(&mut buf, compressed)?;
 
         // the next chunk of data stores hvector
         for e in &hvector {

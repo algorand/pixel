@@ -17,12 +17,12 @@ impl ProofOfPossession {
     }
 
     /// Access the ciphersuite id
-    pub fn get_ciphersuite(&self) -> u8 {
+    pub fn ciphersuite(&self) -> u8 {
         self.ciphersuite
     }
 
     /// Access the signature element of pop.
-    pub fn get_pop(&self) -> PixelG1 {
+    pub fn pop(&self) -> PixelG1 {
         self.pop
     }
 

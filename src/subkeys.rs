@@ -43,25 +43,25 @@ impl SubSecretKey {
     }
 
     /// Returns the time stamp of the sub secret key.
-    pub fn get_time(&self) -> TimeStamp {
+    pub fn time(&self) -> TimeStamp {
         self.time
     }
 
     /// Returns the time vector associated with the time stamp.
     /// for the current sub secret key.
     /// Returns an error if the depth or time stamp is invalid.
-    pub fn get_time_vec(&self, depth: usize) -> Result<TimeVec, String> {
+    pub fn time_vec(&self, depth: usize) -> Result<TimeVec, String> {
         TimeVec::init(self.time, depth)
     }
 
     /// Returns the first element `g^r` in a sub secret key.
-    pub fn get_g2r(&self) -> PixelG2 {
+    pub fn g2r(&self) -> PixelG2 {
         self.g2r
     }
 
     /// Returns the second element `(h0 \prod h_i^t_i )^r`
     /// in a sub secret key.
-    pub fn get_hpoly(&self) -> PixelG1 {
+    pub fn hpoly(&self) -> PixelG1 {
         self.hpoly
     }
 
@@ -69,19 +69,19 @@ impl SubSecretKey {
     /// in a sub secret key.
     /// The hvector is cloned - there will be two copies in the memory.
     /// Remember to clear the local copy after use.
-    pub fn get_hvector(&self) -> Vec<PixelG1> {
+    pub fn hvector(&self) -> Vec<PixelG1> {
         self.hvector.clone()
     }
 
     /// Returns the length of the second element `(h0 \prod h_i^t_i )^r`
     /// in a sub secret key.
-    pub fn get_hvector_len(&self) -> usize {
+    pub fn hvector_len(&self) -> usize {
         self.hvector.len()
     }
 
     /// Returns the last coefficient of the h_vector;
     /// a short cut used by signing algorithm.
-    pub fn get_last_hvector_coeff(&self) -> Result<PixelG1, String> {
+    pub fn last_hvector_coeff(&self) -> Result<PixelG1, String> {
         if self.hvector.is_empty() {
             return Err(ERR_SSK_EMPTY.to_owned());
         }
@@ -96,11 +96,11 @@ impl SubSecretKey {
         // this fuction's local private variables are all to be passed to the caller
         // so no clearence is required
 
-        let mut hlist = pp.get_hlist();
-        let depth = pp.get_d();
+        let mut hlist = pp.hlist();
+        let depth = pp.depth();
 
         // g2^r
-        let mut g2r = pp.get_g2();
+        let mut g2r = pp.g2();
         g2r.mul_assign(r);
 
         // h^msk * h0^r
@@ -130,18 +130,18 @@ impl SubSecretKey {
     /// An error is returned if the ssk's time stamp is invalid w.r.t the
     /// depth in the public parameter.
     pub fn randomization(&mut self, pp: &PubParam, r: Fr) -> Result<(), String> {
-        let depth = pp.get_d();
+        let depth = pp.depth();
 
         // randomize g2r
-        let mut tmp_sec = pp.get_g2();
+        let mut tmp_sec = pp.g2();
         tmp_sec.mul_assign(r);
         self.g2r.add_assign(&tmp_sec);
 
         // compute tmp = hv[0] * prod_i h[i]^time_vec[i]
-        let hlist = pp.get_hlist();
-        let timevec = self.get_time_vec(depth)?;
-        let tlen = timevec.get_vector_len();
-        let tv = timevec.get_vector();
+        let hlist = pp.hlist();
+        let timevec = self.time_vec(depth)?;
+        let tlen = timevec.vector_len();
+        let tv = timevec.vector();
         let mut tmp3_sec = hlist[0];
         for i in 0..tlen {
             // tmp2 stores with public infomation only
@@ -202,9 +202,9 @@ impl SubSecretKey {
             return Err(ERR_TIME_NONE_PREFIX.to_owned());
         }
 
-        let tv = tar_time_vec.get_vector();
-        let cur_vec_length = cur_time_vec.get_vector_len();
-        let tar_vec_length = tar_time_vec.get_vector_len();
+        let tv = tar_time_vec.vector();
+        let cur_vec_length = cur_time_vec.vector_len();
+        let tar_vec_length = tar_time_vec.vector_len();
 
         // hpoly *= h_i ^ t_i
         for i in 0..tar_vec_length - cur_vec_length {
@@ -248,9 +248,9 @@ impl SubSecretKey {
     pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
         // local variables are all public infomation
 
-        let pke = pk.get_pk();
-        let depth = pp.get_d();
-        let list = pp.get_hlist();
+        let pke = pk.pk();
+        let depth = pp.depth();
+        let list = pp.hlist();
         let t = match TimeVec::init(self.time, depth) {
             Err(_e) => {
                 #[cfg(debug_assertions)]
@@ -260,11 +260,11 @@ impl SubSecretKey {
             Ok(p) => p,
         };
 
-        let timevec = t.get_vector();
+        let timevec = t.vector();
 
         // h2fx = h0 * \prod hi^ti
         let mut h2fx = list[0];
-        for i in 0..t.get_vector_len() {
+        for i in 0..t.vector_len() {
             let mut tmp = list[i + 1];
             tmp.mul_assign(timevec[i]);
             h2fx.add_assign(&tmp);
@@ -273,7 +273,7 @@ impl SubSecretKey {
         // we want to check if
         //   e(hpoly, g2) == e(h, pk) * e(h0*hi^ti, g2r)
         // we first negate g2
-        let mut g2 = pp.get_g2();
+        let mut g2 = pp.g2();
         g2.negate();
 
         // and then use sim-pairing for faster computation
@@ -289,7 +289,7 @@ impl SubSecretKey {
                 ),
                 (
                     &(pke.into_affine().prepare()),
-                    &(pp.get_h().into_affine().prepare()),
+                    &(pp.h().into_affine().prepare()),
                 ),
             ]
             .iter(),
@@ -308,7 +308,7 @@ impl SubSecretKey {
     ///
     /// where time stamp is 4 bytes and hv_length is 1 byte.
     /// Return 5 + serial ...
-    pub fn get_size(&self) -> usize {
+    pub fn size(&self) -> usize {
         let mut len = 5;
 
         let pixel_g1_size = 96;
@@ -318,7 +318,7 @@ impl SubSecretKey {
         // so switching group does not change the result
         len += 144;
         // hv length = |hv| * pixel g1 size
-        len += self.get_hvector_len() * pixel_g1_size;
+        len += self.hvector_len() * pixel_g1_size;
 
         len
     }
@@ -354,14 +354,13 @@ impl SubSecretKey {
     /// see `test_key_gen()`.
     pub fn init_from_randomization(pp: &PubParam, alpha: PixelG1, r: Fr) -> Result<Self, String> {
         // rust needs to know the size of the array at compile time
-        // hence we use a const here rather than param.get_d()
-        use param::CONST_D;
+        // hence we use a const here rather than param.d()
         let mut s = SubSecretKey {
             // time stamp is 1 since this is the root key
             time: 1,
             g2r: PixelG2::zero(),
             hpoly: alpha,
-            hvector: [PixelG1::zero(); CONST_D].to_vec(),
+            hvector: vec![PixelG1::zero(); pp.depth()],
         };
         s.randomization(pp, r)?;
         Ok(s)

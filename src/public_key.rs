@@ -19,13 +19,13 @@ impl PublicKey {
     /// Returns an error if the ciphersuite id (in parameter) is not valid
     pub fn init(pp: &PubParam, pk: PixelG2) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&pp.ciphersuite()) {
             #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            println!("Incorrect ciphersuite id: {}", pp.ciphersuite());
             return Err(ERR_CIPHERSUITE.to_owned());
         }
         Ok(PublicKey {
-            ciphersuite: pp.get_ciphersuite(),
+            ciphersuite: pp.ciphersuite(),
             pk,
         })
     }
@@ -36,17 +36,17 @@ impl PublicKey {
     }
 
     /// This function returns the storage requirement for this Public Key
-    pub fn get_size(&self) -> usize {
+    pub fn size(&self) -> usize {
         PK_LEN
     }
 
     /// Returns the public key element this structure contains.
-    pub fn get_pk(&self) -> PixelG2 {
+    pub fn pk(&self) -> PixelG2 {
         self.pk
     }
 
     /// Returns the public key element this structure contains.
-    pub fn get_ciphersuite(&self) -> u8 {
+    pub fn ciphersuite(&self) -> u8 {
         self.ciphersuite
     }
 
@@ -54,26 +54,26 @@ impl PublicKey {
     /// proof_of_possession using BLS verification algorithm.
     pub fn validate(&self, pop: &ProofOfPossession) -> bool {
         // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&self.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&self.ciphersuite()) {
             #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", self.get_ciphersuite());
+            println!("Incorrect ciphersuite id: {}", self.ciphersuite());
             return false;
         }
-        if self.get_ciphersuite() != pop.get_ciphersuite() {
+        if self.ciphersuite() != pop.ciphersuite() {
             #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", self.get_ciphersuite());
+            println!("Incorrect ciphersuite id: {}", self.ciphersuite());
             return false;
         }
 
         // buf = DOM_SEP_POP | serial (PK)
         let mut buf = domain_sep::DOM_SEP_POP.as_bytes().to_vec();
-        if self.get_pk().serialize(&mut buf, true).is_err() {
+        if self.pk().serialize(&mut buf, true).is_err() {
             #[cfg(debug_assertions)]
             println!("Serialization failure on public key");
             return false;
         };
         // return the output of verification
-        BLSSignature::verify(self.get_pk(), pop.get_pop(), buf, self.get_ciphersuite())
+        BLSSignature::verify(self.pk(), pop.pop(), buf, self.ciphersuite())
     }
 }
 

@@ -46,9 +46,9 @@ impl SecretKey {
     /// It may returns an error if the ciphersuite is not supported.
     pub fn init(pp: &PubParam, alpha: PixelG1, mut prng: PRNG) -> Result<Self, String> {
         // check that the ciphersuite identifier is correct
-        if !VALID_CIPHERSUITE.contains(&pp.get_ciphersuite()) {
+        if !VALID_CIPHERSUITE.contains(&pp.ciphersuite()) {
             #[cfg(debug_assertions)]
-            println!("Incorrect ciphersuite id: {}", pp.get_ciphersuite());
+            println!("Incorrect ciphersuite id: {}", pp.ciphersuite());
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
@@ -72,7 +72,7 @@ impl SecretKey {
         );
 
         Ok(SecretKey {
-            ciphersuite: pp.get_ciphersuite(),
+            ciphersuite: pp.ciphersuite(),
             time: 1,
             ssk: vec![ssk],
             prng,
@@ -80,22 +80,22 @@ impl SecretKey {
     }
 
     /// Returns the ciphersuite id of the secret key
-    pub fn get_ciphersuite(&self) -> u8 {
+    pub fn ciphersuite(&self) -> u8 {
         self.ciphersuite
     }
 
     /// Returns the current time stamp for the key.
-    pub fn get_time(&self) -> TimeStamp {
+    pub fn time(&self) -> TimeStamp {
         self.time
     }
 
     /// Returns the number of sub_secret_keys.
-    pub fn get_ssk_number(&self) -> usize {
+    pub fn ssk_number(&self) -> usize {
         self.ssk.len()
     }
 
     /// Returns the prng seed.
-    pub fn get_prng(&self) -> PRNG {
+    pub fn prng(&self) -> PRNG {
         self.prng
     }
 
@@ -105,7 +105,7 @@ impl SecretKey {
     /// There will be two copies of the ssk\[0\] in the
     /// memory once this function is called.
     /// Make sure it is handled properly.
-    pub fn get_first_ssk(&self) -> Result<SubSecretKey, String> {
+    pub fn first_ssk(&self) -> Result<SubSecretKey, String> {
         if self.ssk.is_empty() {
             #[cfg(debug_assertions)]
             println!("Error to find the first key: {}", ERR_SSK_EMPTY);
@@ -120,7 +120,7 @@ impl SecretKey {
     /// There will be two copies of the ssk vector in the
     /// memory once this function is called.
     /// Make sure it is handled properly.
-    pub fn get_ssk_vec(&self) -> Vec<SubSecretKey> {
+    pub fn ssk_vec(&self) -> Vec<SubSecretKey> {
         self.ssk.clone()
     }
 
@@ -134,7 +134,7 @@ impl SecretKey {
     /// will have quite a lot of iterations.
     /// This function is not used by any pixel interal calls.
     pub fn digest(&self) -> Result<Vec<u8>, String> {
-        let mut hashinput = vec![0u8; self.get_size()];
+        let mut hashinput = vec![0u8; self.size()];
         // serializae a sk into buffer
         if self.serialize(&mut hashinput, true).is_err() {
             return Err(ERR_SERIAL.to_owned());
@@ -160,14 +160,14 @@ impl SecretKey {
         seed: &[u8],
     ) -> Result<(), String> {
         // check the ciphersuites match
-        if self.get_ciphersuite() != pp.get_ciphersuite() {
+        if self.ciphersuite() != pp.ciphersuite() {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
         // max time = 2^d - 1
-        let depth = pp.get_d();
+        let depth = pp.depth();
         let max_time = (1u64 << depth) - 1;
-        let cur_time = self.get_time();
+        let cur_time = self.time();
         if cur_time >= tar_time || tar_time > max_time {
             #[cfg(debug_assertions)]
             println!("the input time {} is invalid", tar_time);
@@ -240,7 +240,7 @@ impl SecretKey {
         #[cfg(test)]
         println!(
             "delegating from {} to {} using delegator time {}",
-            new_sk.get_time(),
+            new_sk.time(),
             tar_time,
             delegator_time
         );
@@ -254,7 +254,7 @@ impl SecretKey {
         // ### new_sk = {9, [ssk_for_t_9]} ###
         //
         // which is indeed sk_9
-        while new_sk.ssk[0].get_time() != delegator_time {
+        while new_sk.ssk[0].time() != delegator_time {
             // we use ClearOnDrop to safely remove the ssk[0]
             {
                 let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);
@@ -372,7 +372,7 @@ impl SecretKey {
             // and if we have found a duplicate, it means we have already finished
             // delegation, so we can break the loop
             for j in i + 1..new_sk.ssk.len() {
-                let tmp_time_vec = match new_sk.ssk[j].get_time_vec(depth) {
+                let tmp_time_vec = match new_sk.ssk[j].time_vec(depth) {
                     Err(e) => {
                         {
                             let _clear = ClearOnDrop::new(&mut new_sk);
@@ -397,7 +397,7 @@ impl SecretKey {
             //  i = 0, new_ssk = ssk_for_t_12
             //  i = 1, new_ssk = ssk_for_t_13
             let mut new_ssk = new_sk.ssk[0].clone();
-            match new_ssk.delegate(tmptime.get_time(), depth) {
+            match new_ssk.delegate(tmptime.time(), depth) {
                 Err(e) => {
                     {
                         let _clear1 = ClearOnDrop::new(&mut new_sk);
@@ -472,7 +472,7 @@ impl SecretKey {
 
         // now we can safely remove the ssk
         new_sk.ssk.remove(0);
-        new_sk.time = new_sk.ssk[0].get_time();
+        new_sk.time = new_sk.ssk[0].time();
         // in example 1,
         //
         // ### new_sk = {12, [ssk_for_t_12, ssk_for_t_13]}                // [2,1,1], [2,1,2] ###
@@ -520,23 +520,23 @@ impl SecretKey {
         let mut res = &self.ssk[0];
 
         // make sure that the time stamp is valid
-        if res.get_time() >= tar_time {
+        if res.time() >= tar_time {
             #[cfg(debug_assertions)]
             println!(
                 "Error in finding ancestor: the target time {} is invalid for current time {}",
                 tar_time,
-                res.get_time(),
+                res.time(),
             );
             return Err(ERR_TIME_STAMP.to_owned());
         }
 
         // find the ancestor
         for i in 0..self.ssk.len() - 1 {
-            if self.ssk[i + 1].get_time() <= tar_time {
+            if self.ssk[i + 1].time() <= tar_time {
                 res = &self.ssk[i + 1];
             }
         }
-        Ok(res.get_time())
+        Ok(res.time())
     }
 
     /// This function checks if the secret key valid w.r.t the
@@ -546,9 +546,7 @@ impl SecretKey {
     ///  * sk.TimeStamp's gamma list forms ssk.TimeVec for all ssk-s
     pub fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool {
         // validate the ciphersuite ids
-        if self.get_ciphersuite() != pk.get_ciphersuite()
-            || self.get_ciphersuite() != pp.get_ciphersuite()
-        {
+        if self.ciphersuite() != pk.ciphersuite() || self.ciphersuite() != pp.ciphersuite() {
             #[cfg(debug_assertions)]
             println!("Ciphersuite does not match");
             #[cfg(feature = "verbose")]
@@ -557,16 +555,16 @@ impl SecretKey {
                 "pk's ciphersuite: {}\n\
                  sk's ciphersuite: {}\n\
                  pp's ciphersuite: {}",
-                pk.get_ciphersuite(),
-                self.get_ciphersuite(),
-                pp.get_ciphersuite()
+                pk.ciphersuite(),
+                self.ciphersuite(),
+                pp.ciphersuite()
             );
             return false;
         }
 
         // get the gamma list of the current sk
-        let depth = pp.get_d();
-        let time_stamp = self.get_time();
+        let depth = pp.depth();
+        let time_stamp = self.time();
         // returns false if the time stamp or depth is not valid
         let time_vec = match TimeVec::init(time_stamp, depth) {
             Err(_e) => {
@@ -585,7 +583,7 @@ impl SecretKey {
             Ok(p) => p,
         };
 
-        let mut ssk = self.get_ssk_vec();
+        let mut ssk = self.ssk_vec();
         for i in 0..ssk.len() {
             // checks that each ssk is valid
             if !ssk[i].validate(&pk, &pp) {
@@ -599,7 +597,7 @@ impl SecretKey {
                 return false;
             }
             // checks that the time for each ssk is valid w.r.t gamma list
-            if ssk[i].get_time() != gamma_list[i].get_time() {
+            if ssk[i].time() != gamma_list[i].time() {
                 // clear ssk before exit
                 {
                     let _clear = ClearOnDrop::new(&mut ssk);
@@ -611,8 +609,8 @@ impl SecretKey {
                 println!(
                     "Current time: {}\n\
                      time from gamma list: {}",
-                    ssk[i].get_time(),
-                    gamma_list[i].get_time()
+                    ssk[i].time(),
+                    gamma_list[i].time()
                 );
                 return false;
             }
@@ -639,11 +637,11 @@ impl SecretKey {
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
     ///
     /// So the output will be 66 + size of eash ssk.
-    pub fn get_size(&self) -> usize {
+    pub fn size(&self) -> usize {
         let mut len = 66;
-        let ssk = self.get_ssk_vec();
+        let ssk = self.ssk_vec();
         for e in ssk {
-            len += e.get_size();
+            len += e.size();
         }
         len
     }
@@ -679,7 +677,7 @@ impl SecretKey {
             //     * 1 byte for hvlength
             //     * 144 bytes for g2r and hpoly
             //     * (d + 1 - |tmp+time+vec|) * 48 for h_|tmp+time+vec| ... h_d
-            res = res + 149 + (depth - e.get_vector_len()) * 96;
+            res = res + 149 + (depth - e.vector_len()) * 96;
         }
         Ok(res)
     }
@@ -704,16 +702,16 @@ impl fmt::Debug for SecretKey {
 /// convenient function to compare secret key objects
 impl std::cmp::PartialEq for SecretKey {
     fn eq(&self, other: &Self) -> bool {
-        if self.get_ssk_number() != other.get_ssk_number() {
+        if self.ssk_number() != other.ssk_number() {
             return false;
         }
-        for i in 0..self.get_ssk_number() {
+        for i in 0..self.ssk_number() {
             if self.ssk[i] != other.ssk[i] {
                 return false;
             }
         }
-        self.get_ciphersuite() == other.get_ciphersuite()
-            && self.get_time() == other.get_time()
+        self.ciphersuite() == other.ciphersuite()
+            && self.time() == other.time()
             && self.prng == other.prng
     }
 }

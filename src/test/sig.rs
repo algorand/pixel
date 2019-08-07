@@ -145,7 +145,7 @@ fn test_quick_signature_tests() {
         let mut sk2 = sk.clone();
         let res = sk2.update(&pp, j, seed.as_ref());
         assert!(res.is_ok(), "updating failed");
-        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg);
+        let res = Signature::sign_bytes(&sk2, sk2.time(), &pp, msg);
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
@@ -191,7 +191,7 @@ fn test_long_signature_tests() {
             assert!(res.is_ok(), "updating failed");
             assert!(sk3.validate(&pk, &pp), "validation failed");
 
-            let res = Signature::sign_bytes(&sk3, sk3.get_time(), &pp, msg);
+            let res = Signature::sign_bytes(&sk3, sk3.time(), &pp, msg);
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(
@@ -199,7 +199,7 @@ fn test_long_signature_tests() {
                 "signature verification failed"
             );
         }
-        let res = Signature::sign_bytes(&sk2, sk2.get_time(), &pp, msg);
+        let res = Signature::sign_bytes(&sk2, sk2.time(), &pp, msg);
         assert!(res.is_ok(), "signing failed");
         let sig = res.unwrap();
         assert!(
@@ -260,7 +260,7 @@ fn test_quick_aggregated_signature_tests() {
             let res = sklist2[i].update(&pp, j, seed.as_ref());
             assert!(res.is_ok(), "updating failed");
 
-            let res = Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg);
+            let res = Signature::sign_bytes(&sklist2[i], sklist2[i].time(), &pp, msg);
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(
@@ -327,7 +327,7 @@ fn test_long_aggregated_signature_tests() {
             let res = sklist2[i].update(&pp, j, seed.as_ref());
             assert!(res.is_ok(), "updating failed");
 
-            let res = Signature::sign_bytes(&sklist2[i], sklist2[i].get_time(), &pp, msg);
+            let res = Signature::sign_bytes(&sklist2[i], sklist2[i].time(), &pp, msg);
             assert!(res.is_ok(), "signing failed");
             let sig = res.unwrap();
             assert!(

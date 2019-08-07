@@ -92,7 +92,7 @@ impl KeyPair {
         );
 
         // return the keys and the proof of possession
-        Ok((pk, sk, ProofOfPossession::construct(pp.ciphersuite(), pop)))
+        Ok((pk, sk, ProofOfPossession::new(pp.ciphersuite(), pop)))
     }
 }
 

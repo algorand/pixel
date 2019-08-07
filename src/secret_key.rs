@@ -32,7 +32,7 @@ pub struct SecretKey {
 impl SecretKey {
     /// Build a secret key from the given inputs. Does not check
     /// if the validity of the key.
-    pub fn construct(ciphersuite: u8, time: TimeStamp, ssk: Vec<SubSecretKey>, prng: PRNG) -> Self {
+    pub fn new(ciphersuite: u8, time: TimeStamp, ssk: Vec<SubSecretKey>, prng: PRNG) -> Self {
         SecretKey {
             ciphersuite,
             time,

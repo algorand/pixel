@@ -33,7 +33,7 @@ pub struct SubSecretKey {
 impl SubSecretKey {
     /// Build a sub secret key from the given inputs. Does not check
     /// the validity of the key.
-    pub fn construct(time: TimeStamp, g2r: PixelG2, hpoly: PixelG1, hvector: Vec<PixelG1>) -> Self {
+    pub fn new(time: TimeStamp, g2r: PixelG2, hpoly: PixelG1, hvector: Vec<PixelG1>) -> Self {
         SubSecretKey {
             time,
             g2r,

@@ -30,7 +30,7 @@ pub struct Signature {
 
 impl Signature {
     /// Constructing a signature object.
-    pub fn construct(ciphersuite: u8, time: TimeStamp, sigma1: PixelG2, sigma2: PixelG1) -> Self {
+    pub fn new(ciphersuite: u8, time: TimeStamp, sigma1: PixelG2, sigma2: PixelG1) -> Self {
         Signature {
             ciphersuite,
             time,
@@ -487,7 +487,7 @@ impl Signature {
         for e in pk_list.iter().skip(1) {
             agg_pke.add_assign(&e.pk());
         }
-        let pk = PublicKey::construct(ciphersuite, agg_pke);
+        let pk = PublicKey::new(ciphersuite, agg_pke);
         Signature::verify_bytes(&self, &pk, &pp, msg)
     }
 }

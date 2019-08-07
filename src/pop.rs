@@ -12,7 +12,7 @@ pub struct ProofOfPossession {
 
 impl ProofOfPossession {
     /// Cosntruct a PoP object.
-    pub fn construct(ciphersuite: u8, pop: PixelG1) -> Self {
+    pub fn new(ciphersuite: u8, pop: PixelG1) -> Self {
         Self { ciphersuite, pop }
     }
 

@@ -200,7 +200,7 @@ impl PixelSerDes for ProofOfPossession {
         let (pop, compressed) = PixelG1::deserialize(reader)?;
 
         // finished
-        Ok((ProofOfPossession::construct(constants[0], pop), compressed))
+        Ok((ProofOfPossession::new(constants[0], pop), compressed))
     }
 }
 
@@ -279,7 +279,7 @@ impl PixelSerDes for Signature {
 
         // finished
         Ok((
-            Signature::construct(constants[0], u64::from(time), sigma1, sigma2),
+            Signature::new(constants[0], u64::from(time), sigma1, sigma2),
             compressed1,
         ))
     }
@@ -323,7 +323,7 @@ impl PixelSerDes for PublicKey {
         let (pk, compressed) = PixelG2::deserialize(reader)?;
 
         // finished
-        Ok((PublicKey::construct(constants[0], pk), compressed))
+        Ok((PublicKey::new(constants[0], pk), compressed))
     }
 }
 
@@ -415,11 +415,11 @@ impl PixelSerDes for SecretKey {
 
         // finished
         Ok((
-            SecretKey::construct(
+            SecretKey::new(
                 constants[0],
                 ssk_vec[0].time(),
                 ssk_vec,
-                PRNG::construct(rngseed),
+                PRNG::new(rngseed),
             ),
             compressed1,
         ))
@@ -513,7 +513,7 @@ impl PixelSerDes for SubSecretKey {
         }
 
         Ok((
-            SubSecretKey::construct(u64::from(time), g2r, hpoly, hv),
+            SubSecretKey::new(u64::from(time), g2r, hpoly, hv),
             compressed1,
         ))
     }

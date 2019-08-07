@@ -31,7 +31,7 @@ impl PublicKey {
     }
 
     /// Constructing a PublicKey object.
-    pub fn construct(ciphersuite: u8, pk: PixelG2) -> Self {
+    pub fn new(ciphersuite: u8, pk: PixelG2) -> Self {
         PublicKey { ciphersuite, pk }
     }
 

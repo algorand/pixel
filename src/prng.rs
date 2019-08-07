@@ -60,7 +60,7 @@ impl PRNG {
     }
 
     /// Build a prng from an rngseed.
-    pub fn construct(rngseed: [u8; 64]) -> Self {
+    pub fn new(rngseed: [u8; 64]) -> Self {
         Self(rngseed)
     }
 

@@ -32,6 +32,7 @@ typedef struct pixel_pk {
  */
 typedef struct pixel_sk {
   uint8_t *data;
+  size_t len;
 } pixel_sk;
 
 /**
@@ -81,7 +82,7 @@ pixel_keys c_keygen(const uint8_t *seed, size_t seed_len);
  * Input a secret key, a time stamp that matches the timestamp of the secret key,
  * the public parameter, and a message in the form of a byte string,
  * output a signature. If the time stamp is not the same as the secret key,
- * returns an error
+ * returns an error.
  */
 pixel_sig c_sign_present(pixel_sk sk, const uint8_t *msg, size_t msg_len, uint64_t tar_time);
 

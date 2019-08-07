@@ -88,7 +88,6 @@ pub trait PixelSignature {
     /// Input a byte string as the seed, and a ciphersuite identifier.
     /// The seed needs to be at least
     /// 32 bytes long. Output the public parameters.
-    /// Check `use_rand_generators` flags for randomized generators.
     /// Returns an error if seed is not long enough.
     fn param_gen<Blob: AsRef<[u8]>>(seed: Blob, ciphersuite: u8) -> Result<PubParam, String> {
         PubParam::init(seed.as_ref(), ciphersuite)

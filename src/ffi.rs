@@ -13,6 +13,7 @@ use PixelSignature;
 #[derive(Debug)]
 pub struct pixel_sk {
     data: *mut u8,
+    len: libc::size_t,
 }
 
 /// A wrapper of pk
@@ -115,13 +116,24 @@ pub unsafe extern "C" fn c_keygen(seed: *const u8, seed_len: libc::size_t) -> pi
     pk_array.copy_from_slice(&pk_buf);
     let mut pop_array = [0u8; POP_LEN];
     pop_array.copy_from_slice(&pop_buf);
-    let boxsk = Box::new(sk_buf);
+
+    // shrink the vector sk_buf so that it is encoded
+    // as raw memory
+    sk_buf.shrink_to_fit();
+    assert!(sk_buf.len() == sk_buf.capacity());
+    let sk_ptr = sk_buf.as_mut_ptr();
+    let sk_len = sk_buf.len();
+    // remove the ownership of sk_buf
+    // so that when sk_ptr is passed to C
+    // rust will not clear the memory
+    std::mem::forget(sk_buf);
 
     // return the keys
     pixel_keys {
         pk: pixel_pk { data: pk_array },
         sk: pixel_sk {
-            data: Box::into_raw(boxsk) as *mut u8,
+            data: sk_ptr,
+            len: sk_len,
         },
         pop: pixel_pop { data: pop_array },
     }
@@ -130,7 +142,7 @@ pub unsafe extern "C" fn c_keygen(seed: *const u8, seed_len: libc::size_t) -> pi
 /// Input a secret key, a time stamp that matches the timestamp of the secret key,
 /// the public parameter, and a message in the form of a byte string,
 /// output a signature. If the time stamp is not the same as the secret key,
-/// returns an error
+/// returns an error.
 #[no_mangle]
 pub unsafe extern "C" fn c_sign_present(
     sk: pixel_sk,
@@ -144,7 +156,7 @@ pub unsafe extern "C" fn c_sign_present(
     let m: &[u8] = std::slice::from_raw_parts(msg, msg_len as usize);
 
     // load the secret key
-    let sk_local = &mut *(sk.data as *mut Vec<u8>);
+    let mut sk_local = std::slice::from_raw_parts(sk.data, sk.len as usize);
 
     // println!("sk in signature");
     // for i in 0..128 {
@@ -154,7 +166,7 @@ pub unsafe extern "C" fn c_sign_present(
     //     }
     // }
 
-    let (mut k, _compressed) = match SecretKey::deserialize(&mut sk_local[..].as_ref()) {
+    let (mut k, _compressed) = match SecretKey::deserialize(&mut sk_local) {
         Ok(p) => p,
         Err(e) => panic!("C wrapper error: signing function: deserialize sk: {}", e),
     };
@@ -229,8 +241,8 @@ pub unsafe extern "C" fn c_sk_update(
     let s: &[u8] = std::slice::from_raw_parts(seed, seed_len as usize);
 
     // decompress the secret key
-    let sk_local = &mut *(sk.data as *mut Vec<u8>);
-    let (mut k, _compressed) = match SecretKey::deserialize(&mut sk_local[..].as_ref()) {
+    let mut sk_local = std::slice::from_raw_parts(sk.data, sk.len as usize);
+    let (mut k, _compressed) = match SecretKey::deserialize(&mut sk_local) {
         Ok(p) => p,
         Err(e) => panic!(
             "C wrapper error: key update function: deserialize sk: {}",
@@ -256,9 +268,21 @@ pub unsafe extern "C" fn c_sk_update(
     //         println!();
     //     }
     // }
-    let boxsk = Box::new(k_buf);
+
+    // shrink the vector sk_buf so that it is encoded
+    // as raw memory
+    k_buf.shrink_to_fit();
+    assert!(k_buf.len() == k_buf.capacity());
+    let sk_ptr = k_buf.as_mut_ptr();
+    let sk_len = k_buf.len();
+    // remove the ownership of sk_buf
+    // so that when sk_ptr is passed to C
+    // rust will not clear the memory
+    std::mem::forget(k_buf);
+
     pixel_sk {
-        data: Box::into_raw(boxsk) as *mut u8,
+        data: sk_ptr,
+        len: sk_len,
     }
 }
 

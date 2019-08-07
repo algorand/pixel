@@ -29,7 +29,7 @@ int test()
 
   // dump the output
   hexDump ("pk", key.pk.data, PK_LEN);
-
+  hexDump ("sk", key.sk.data, key.sk.len);
   // verify the pop
   assert(c_verify_pop(key.pk, key.pop) == true);
 
@@ -43,6 +43,7 @@ int test()
   // verifies the signature
   assert(c_verify(key.pk, (void*)msg, sizeof(msg)-1, sig) == true);
 
+  printf("Updating an sk\n");
   pixel_sk sk2 = c_sk_update(key.sk, (void*)rngseed, sizeof(rngseed)-1, 2);
 
   // sign the message with the key
@@ -110,12 +111,20 @@ int test_vector()
   assert(c_verify_pop(key.pk, key.pop) == true);
 
   char* a = "test_buf/sig_bin_";
+  char* b = "test_buf/sk_bin_";
   char* extension = ".txt";
-  char fileSpec[strlen(a)+strlen(extension)+3];
+  char fileSpec1[strlen(a)+strlen(extension)+3];
+  char fileSpec2[strlen(b)+strlen(extension)+3];
   FILE *out;
-  snprintf( fileSpec, sizeof( fileSpec ), "%s%02d%s", a, 1, extension );
-  out = fopen( fileSpec, "wb" );
+  snprintf( fileSpec1, sizeof( fileSpec1 ), "%s%02d%s", a, 1, extension );
+  out = fopen( fileSpec1, "wb" );
   fwrite(sig.data, sizeof(sig.data), 1, out);
+  fclose(out);
+
+
+  snprintf( fileSpec2, sizeof( fileSpec2 ), "%s%02d%s", b, 1, extension );
+  out = fopen( fileSpec2, "wb" );
+  fwrite(key.sk.data, key.sk.len, 1, out);
   fclose(out);
 
   sk = key.sk;
@@ -125,9 +134,15 @@ int test_vector()
     sk2 = c_sk_update(sk, (void*)rngseed, sizeof(rngseed)-1, i);
     sig = c_sign_present(sk2, (uint8_t*)msg, sizeof(msg)-1, i);
     sk = sk2;
-    snprintf( fileSpec, sizeof( fileSpec ), "%s%02d%s", a, i, extension );
-    out = fopen( fileSpec, "wb" );
+    snprintf( fileSpec1, sizeof( fileSpec1 ), "%s%02d%s", a, i, extension );
+    out = fopen( fileSpec1, "wb" );
     fwrite(sig.data, sizeof(sig.data), 1, out);
+    fclose(out);
+
+
+    snprintf( fileSpec2, sizeof( fileSpec2 ), "%s%02d%s", b, i, extension );
+    out = fopen( fileSpec2, "wb" );
+    fwrite(sk.data, sk.len, 1, out);
     fclose(out);
   }
 

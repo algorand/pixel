@@ -552,12 +552,19 @@ const INVALID_G2_POINTS: [&[u8]; 8] = [
 #[test]
 fn test_pop_serialization_kat() {
     // correct format of pops
-    for &val in &VALID_G2_POINTS[..] {
+    for &val in &VALID_G2_POINTS[0..2] {
         for &csid in &VALID_CIPHERSUITE {
             let tmp = [[csid].as_ref(), val].concat();
             let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp));
             assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
         }
+    }
+
+    // incorrect compressness of pops
+    for &csid in &VALID_CIPHERSUITE {
+        let tmp = [[csid].as_ref(), &VALID_G2_POINTS[2]].concat();
+        let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp));
+        assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
     }
 
     // incorrect format
@@ -597,7 +604,6 @@ fn test_sig_serialization_kat_valid() {
 #[test]
 fn test_sig_serialization_kat_invalid_const() {
     // mix-match the compressness
-    // TODO: decide if we allow for mix-match of compressness
     for &csid in &VALID_CIPHERSUITE {
         let val1 = VALID_G1_ZERO_COM;
         let val2 = VALID_G2_ZERO_UNCOM;

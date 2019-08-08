@@ -564,7 +564,7 @@ fn test_pop_serialization_kat() {
     for &csid in &VALID_CIPHERSUITE {
         let tmp = [[csid].as_ref(), &VALID_G2_POINTS[2]].concat();
         let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp));
-        assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
+        assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }
 
     // incorrect format

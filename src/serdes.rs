@@ -184,7 +184,11 @@ impl PixelSerDes for ProofOfPossession {
     ///
     /// bytes => `|ciphersuite id | pop |`
     ///
-    /// Returns an error if deserialization fails.
+    /// Returns an error if deserialization fails, or if
+    /// the pop is not compressed.
+    /// The pop's signature must be in the compressed form - strong
+    /// unforgebility requires a unique representation of the
+    /// signature.
     fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
@@ -198,6 +202,9 @@ impl PixelSerDes for ProofOfPossession {
 
         // read into pop
         let (pop, compressed) = PixelG1::deserialize(reader)?;
+        if !compressed {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
+        }
 
         // finished
         Ok((ProofOfPossession::new(constants[0], pop), compressed))
@@ -247,7 +254,11 @@ impl PixelSerDes for Signature {
     ///
     /// bytes => `|ciphersuite id | time | sigma1 | sigma2 |`
     ///
-    /// Returns an error if deserialization fails.
+    /// Returns an error if deserialization fails, or if
+    /// the signature is not compressed.
+    /// The signature must be in the compressed form - strong
+    /// unforgebility requires a unique representation of the
+    /// signature.
     fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
@@ -269,18 +280,21 @@ impl PixelSerDes for Signature {
         }
 
         // read into sigma1
-        let (sigma1, compressed1) = PixelG2::deserialize(reader)?;
+        let (sigma1, compressed) = PixelG2::deserialize(reader)?;
+        if !compressed {
+            return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
+        }
 
         // read into sigma2
-        let (sigma2, compressed2) = PixelG1::deserialize(reader)?;
-        if compressed1 != compressed2 {
+        let (sigma2, compressed) = PixelG1::deserialize(reader)?;
+        if !compressed {
             return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
         }
 
         // finished
         Ok((
             Signature::new(constants[0], u64::from(time), sigma1, sigma2),
-            compressed1,
+            compressed,
         ))
     }
 }
@@ -415,12 +429,7 @@ impl PixelSerDes for SecretKey {
 
         // finished
         Ok((
-            SecretKey::new(
-                constants[0],
-                ssk_vec[0].time(),
-                ssk_vec,
-                PRNG::new(rngseed),
-            ),
+            SecretKey::new(constants[0], ssk_vec[0].time(), ssk_vec, PRNG::new(rngseed)),
             compressed1,
         ))
     }

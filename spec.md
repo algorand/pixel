@@ -26,11 +26,16 @@ CREDIT: http://patorjk.com/software/taag
   * `CONST_D`: A constant set to `32`. This allows for `780` years of time stamps if
   we use a timestamp every `5` seconds.
 
+### Pairing group
+
+  * `PixelG1` defines the G1 group in the paper; it is mapped to BLS12-381 G2 group.
+  * `PixelG2` defines the G2 group in the paper; it is mapped to BLS12-381 G1 group.
+
 ### Public Parameter
 * Structure
   ``` rust
   struct PubParam {
-      d:            usize,              // the depth of the time vector
+      depth:        usize,              // the depth of the time vector
       ciphersuite:  u8,                 // ciphersuite id
       g2:           PixelG2,            // generator for PixelG2 group
       h:            PixelG1,            // h
@@ -60,9 +65,9 @@ The parameter set can be accessed via
   ```
 * Get various elements from the TimeVec
   ``` rust
-  fn get_time(&self) -> TimeStamp ;
-  fn get_vector(&self) -> Vec<u64> ;
-  fn get_vector_len(&self) -> usize ;
+  fn time(&self) -> TimeStamp ;
+  fn vector(&self) -> Vec<u64> ;
+  fn vector_len(&self) -> usize ;
   ```
 * Additional functionalities
   ``` Rust
@@ -73,11 +78,13 @@ The parameter set can be accessed via
   or is a posterity of the elements in the list.
     And propagates error messages if the conversion fails.
 
-  Example: for time vector `[1, 1, 1]` and `d = 4`, the list consists
+  Example: for time vector `[1, 1, 1]` and `depth = 4`, the list consists
     `[1,1,1], [1,1,2], [1,2], [2]`.
 
 
 ## Pseudo random generators
+NOTE: this part of the spec is NOT documented in the paper.
+It is the result of a serial of internal discussion.
 
 * Structure
   ``` Rust
@@ -154,8 +161,8 @@ The parameter set can be accessed via
     3. `prng = PRNG::init(seed, salt)`
     3. `info = "Pixel master key"`
     3. `x = prng.sample_then_update(info)`
-    3. `pk = pp.get_g2() ^ x`
-    4. `sk = pp.get_h() ^ x`
+    3. `pk = pp.g2() ^ x`
+    4. `sk = pp.h() ^ x`
     5. `pop = proof_of_possession(x, pk, pp.ciphersuite)`
     5. return `(pk, sk, pop, prng)`
 
@@ -171,16 +178,20 @@ The parameter set can be accessed via
 
 * Get various elements from the PoP:
   ``` rust
-  fn get_pop(&self) -> PixelG1;
-  fn get_ciphersuite(&self) -> u8 ;
+  fn pop(&self) -> PixelG1;
+  fn ciphersuite(&self) -> u8 ;
   ```
 * Serialization:  
   ``` rust
   fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
-  fn deserialize<R: Read>(reader: &mut R) -> Result<PublicKey>;
+  fn deserialize<R: Read>(reader: &mut R) -> Result<(ProofOfPossession, bool)>;
   ```
-  The compressed flag will always be `true`. The `reader` and `writer` is assumed
+  * The `reader` and `writer` is assumed
   to have allocated sufficient memory, or an error will be returned.
+  * `Deserialize` function will also return a flag that wether the `reader` is
+  in compressed format or not.
+  The compressed flag will always be `true`, as a requirement of strong
+  unforgeability. An error will be returned if the `reader` is not compressed.
 
 * Generate PoP
   ``` Rust
@@ -192,7 +203,7 @@ The parameter set can be accessed via
   * Output: a proof of possession for the public key
   * Error: ERR_SERIAL
   * Steps:
-    1. `msg = DOM_SEP_POP | pk.serial()`  
+    1. `msg = DOM_SEP_POP | pk.serialize()`  
     2. `pop = BLSSignature::sign(msk, buf, ciphersuite)`
     3. return `ProofOfPossession{ciphersuite, pop}`
 
@@ -208,23 +219,26 @@ The parameter set can be accessed via
   ```
 * Construct a public key object from some input:
   ``` rust
-  fn construct(ciphersuite: u8, pk: PixelG2) -> PublicKey
+  fn new(ciphersuite: u8, pk: PixelG2) -> PublicKey
   ```
 
 * Get various elements from the public key:
   ``` rust
-  fn get_pk(&self) -> PixelG2;
-  fn get_ciphersuite(&self) -> u8 ;
+  fn pk(&self) -> PixelG2;
+  fn ciphersuite(&self) -> u8 ;
   ```
 * Serialization:  
   ``` rust
   const PK_LEN;                   // size in bytes of public key
-  fn get_size(&self) -> usize;    // same as above
+  fn size(&self) -> usize;    // same as above
   fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
-  fn deserialize<R: Read>(reader: &mut R) -> Result<PublicKey>;
+  fn deserialize<R: Read>(reader: &mut R) -> Result<(PublicKey, bool)>;
   ```
-  The compressed flag will always be `true`. The `reader` and `writer` is assumed
+  * The `reader` and `writer` is assumed
   to have allocated sufficient memory, or an error will be returned.
+  * `Deserialize` function will also return a flag that wether the `reader` is
+  in compressed format or not.
+  The compressed flag can be either `true` or `false`.
 
 * Initialization
   ``` rust
@@ -235,8 +249,8 @@ The parameter set can be accessed via
   * Output: a public key struct
   * Error: ERR_CIPHERSUITE
   * Steps:
-    1. returns an error is `pp.get_ciphersuite()` is not supported.
-    2. returns `construct(pp.get_ciphersuite(), pk)`
+    1. returns an error is `pp.ciphersuite()` is not supported.
+    2. returns `new(pp.ciphersuite(), pk)`
 
 * Verify pk against PoP
   ``` Rust
@@ -249,8 +263,8 @@ The parameter set can be accessed via
   * Steps:
     1. return false if ciphersuites of pop and pk don't match
     1. `msg = DOM_SEP_POP | pk.serial()`  
-    2. `sig = pop.get_pop()`
-    3. return `BLSSignature::verify(pk, sig, msg, pk.get_ciphersuite())`
+    2. `sig = pop.pop()`
+    3. return `BLSSignature::verify(pk, sig, msg, pk.ciphersuite())`
 
 
 ## Secret Key
@@ -268,27 +282,31 @@ The parameter set can be accessed via
   ```
 * Construct a secret key object from some input:
   ``` rust
-  fn construct(ciphersuite: u8, time: TimeStamp, ssk: Vec<SubSecretKey>, prng: PRNG) -> SecretKey
+  fn new(ciphersuite: u8, time: TimeStamp, ssk: Vec<SubSecretKey>, prng: PRNG) -> SecretKey
   ```
 * Get various elements from the secret key:
   ``` rust
-  fn get_ciphersuite(&self) -> u8;
-  fn get_time(&self) -> TimeStamp;
-  fn get_ssk_number(&self) -> usize;                        // the number of subsecretkeys
-  fn get_first_ssk(&self) -> Result<SubSecretKey, String>;  // the first ssk
-  fn get_ssk_vec(&self) -> Vec<SubSecretKey>;               // the whole ssk vector
-  fn get_prng(&self) -> PRNG;                               // the seed
+  fn ciphersuite(&self) -> u8;
+  fn time(&self) -> TimeStamp;
+  fn ssk_number(&self) -> usize;                        // the number of subsecretkeys
+  fn first_ssk(&self) -> Result<SubSecretKey, String>;  // the first ssk
+  fn ssk_vec(&self) -> Vec<SubSecretKey>;               // the whole ssk vector
+  fn prng(&self) -> PRNG;                               // the seed
   ```
 * Serialization:  
   * Each SecretKey is a blob of `|ciphersuite id| number_of_ssk-s | prng | serial(first ssk) | serial(second ssk)| ...`
 
   ``` rust
-  fn get_size(&self) -> usize;                              // get the storage requirement
+  fn size(&self) -> usize;                              // get the storage requirement
   fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
-  fn deserialize<R: Read>(reader: &mut R) -> Result<SecretKey>;
+  fn deserialize<R: Read>(reader: &mut R) -> Result<(SecretKey, bool)>;
   ```
-  The compressed flag will always be `true`. The `reader` and `writer` is assumed
+  * The `reader` and `writer` is assumed
   to have allocated sufficient memory, or an error will be returned.
+  * `Deserialize` function will also return a flag that wether the `reader` is
+  in compressed format or not.
+  The compressed flag can be either `true` or `false`. However, the flag needs to
+  be consistent for all its components.
 
 * Initialization:
 
@@ -300,11 +318,11 @@ The parameter set can be accessed via
   * Output: a secret key struct
   * Error: ERR_CIPHERSUITE, ERR_SERIAL
   * Steps:
-    1. returns an error is `pp.get_ciphersuite()` is not supported.
+    1. returns an error is `pp.ciphersuite()` is not supported.
     2. `info = "Pixel secret key init"`
     3. `r = prng.sample_then_update(info)`
     4. `ssk = SubSecretKey::init(pp, alpha, r)`
-    5. return `construct(pp.get_ciphersuite(), 1, [ssk], prng)`
+    5. return `construct(pp.ciphersuite(), 1, [ssk], prng)`
 
 * Update:
 
@@ -328,11 +346,11 @@ The parameter set can be accessed via
 
     4. If delegator's time equals target time, return success
 
-    5. Generate a gamma list from target time `GammaList = target_time.gamma_list(pp.get_d())`, returns an error if time stamp is invalid
-    6. Use the first ssk to delegate `delegator_ssk = sk.get_first_ssk()`
+    5. Generate a gamma list from target time `GammaList = tartime.gamma_list(pp.depth())`, returns an error if time stamp is invalid
+    6. Use the first ssk to delegate `delegator_ssk = sk.first_ssk()`
     6. for (i, TimeStamp) in Gammalist
         1. if delegator's time is a prefix of TimeStamp
-            * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.get_d())`
+            * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.depth())`
             * if `i!=0`
               * `info = "Pixel secret key update"`
               * `r = sk.prng.sample_then_update(info)`
@@ -373,7 +391,7 @@ The parameter set can be accessed via
   ``` Rust
   fn validate(&self, pk: &PublicKey, pp: &PubParam) -> bool
   ```
-   This function checks if the secret key valid w.r.t the
+   This function checks if the secret key is valid w.r.t the
      public key, the parameters and the sk's time stamp. A secret key is valid if
     * `sk.ciphersuite == pk.ciphersuite == pp.ciphersuite`
     * `sk.ssk.validate(pk, pp)` is valid for all ssk-s (see ssk section)
@@ -393,30 +411,34 @@ The parameter set can be accessed via
   ```
 * Construct a sub secret key object from some input:
   ``` rust
-  fn construct(time: TimeStamp, g2r: PixelG2, hpoly: PixelG1, hvector: Vec<PixelG1>) -> SubSecretKey;
+  fn new(time: TimeStamp, g2r: PixelG2, hpoly: PixelG1, hvector: Vec<PixelG1>) -> SubSecretKey;
   ```
 * Get various elements from the sub secret key:
   ``` rust
-  fn get_time(&self) -> TimeStamp;
+  fn time(&self) -> TimeStamp;
   // Returns the time vector associated with the time stamp.
-  fn get_time_vec(&self, depth: usize) -> Result<TimeVec, String>;   
-  fn get_g2r(&self) -> PixelG2;
-  fn get_hpoly(&self) -> PixelG1;
-  fn get_hvector(&self) -> Vec<PixelG1>;
+  fn time_vec(&self, depth: usize) -> Result<TimeVec, String>;   
+  fn g2r(&self) -> PixelG2;
+  fn hpoly(&self) -> PixelG1;
+  fn hvector(&self) -> Vec<PixelG1>;
   // Returns the last coefficient of the h_vector.
-  fn get_last_hvector_coeff(&self) -> Result<PixelG1, String>;
+  fn last_hvector_coeff(&self) -> Result<PixelG1, String>;
   ```
 
 * Serialization:
-  * Each  ssk into a blob:
+  * Each  ssk is a blob:
 `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
   ``` rust
-  fn get_size(&self) -> usize;                              // get the storage requirement
+  fn size(&self) -> usize;                              // get the storage requirement
   fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
-  fn deserialize<R: Read>(reader: &mut R) -> Result<SecretKey>;
+  fn deserialize<R: Read>(reader: &mut R) -> Result<(SubSecretKey, bool)>;
   ```
-  The compressed flag will always be `true`. The `reader` and `writer` is assumed
+  * The `reader` and `writer` is assumed
   to have allocated sufficient memory, or an error will be returned.
+  * `Deserialize` function will also return a flag that wether the `reader` is
+  in compressed format or not.
+  The compressed flag can be `true` or `false`. However, the flag needs to
+  be consistent for all its components.
 
 * Initialization:
   ``` rust
@@ -426,10 +448,10 @@ The parameter set can be accessed via
   * Input: a master secret `alpha`.
   * Output: root secret key `[g2^r, h^alpha*h0^r, h1^r, ..., hd^r]` at time stamp = 1.
   * Steps:
-    1. `g2r = pp.get_g2()^r`
-    2. `hpoly = pp.get_h()^alpha * pp.get_hlist()[0]^r`
+    1. `g2r = pp.g2()^r`
+    2. `hpoly = pp.h()^alpha * pp.hlist()[0]^r`
     3. for i in `[1..=d]`:
-      * `hvector[i-1] = pp.get_hlist()[i]^r`
+      * `hvector[i-1] = pp.hlist()[i]^r`
     5. return `SubSecretKey{pp.ciphersuit, 1, g2r, hpoly, hvector}`
 
 * Delegation:
@@ -444,7 +466,7 @@ This function does NOT handle re-randomizations.
     * the ssk's time vector is not a prefix of the target time,  
     * the ssk's or target time stamp is invalid w.r.t. depth.
   * Steps:
-    1. `cur_tv = time_to_vec(sk.get_time, depth)`
+    1. `cur_tv = time_to_vec(sk.time, depth)`
     2. `tar_tv = time_to_vec(tar_time, depth)`
     2. if `cur_tv` is not a prefix of `tar_tv`, return `ERR_TIME_STAMP`
     3. for i in `0..tar_tv.len()-cur_tv.len()`  
@@ -464,9 +486,9 @@ This function does NOT handle re-randomizations.
   * Error: ERR_TIME_STAMP if the ssk's time stamp is invalid w.r.t the depth in the public parameter.
   * Steps:
 
-    1. `tv = ssk.get_time_vec()`
-    1. `hlist = pp.get_hlist()`
-    1. `sk.g2r *= pp.get_g2()^r`
+    1. `tv = ssk.time_vec()`
+    1. `hlist = pp.hlist()`
+    1. `sk.g2r *= pp.g2()^r`
     2. `hpoly_base =  hlist[0]`
     2. for i in range(tv.len())
         * `hpoly_base *= hlist[i+1]^tv[i]`
@@ -504,10 +526,10 @@ This function does NOT handle re-randomizations.
   ```
 * Get various elements from the secret key:
   ``` rust
-  fn get_ciphersuite(&self) -> u8;
-  fn get_time(&self) -> TimeStamp;
-  fn get_sigma1(&self) -> PixelG2 ;
-  fn get_sigma2(&self) -> PixelG1 ;
+  fn ciphersuite(&self) -> u8;
+  fn time(&self) -> TimeStamp;
+  fn sigma1(&self) -> PixelG2 ;
+  fn sigma2(&self) -> PixelG1 ;
   ```
 * Serialization:  
   * A signature is a blob `|ciphersuite id| time | sigma1 | sigma2 |`
@@ -515,8 +537,14 @@ This function does NOT handle re-randomizations.
   ``` rust
   cosnt SIG_LEN;                             // a signature is 149 bytes
   fn serialize<W: Write>(&self, writer: &mut W, compressed: bool) -> Result<()>;
-  fn deserialize<R: Read>(reader: &mut R) -> Result<SecretKey>;
+  fn deserialize<R: Read>(reader: &mut R) -> Result<(Signature, bool)>;
   ```
+  * The `reader` and `writer` is assumed
+  to have allocated sufficient memory, or an error will be returned.
+  * `Deserialize` function will also return a flag that wether the `reader` is
+  in compressed format or not.
+  The compressed flag will always be `true`, as a requirement of strong
+  unforgeability. An error will be returned if the `reader` is not compressed.
 
 * Sign:
   ``` rust
@@ -536,7 +564,7 @@ This function does NOT handle re-randomizations.
     1. info = DOM_SEP_SIG | msg
     1. sample `r = sk.prng.sample(info)`
     2. set `m = hash_msg_into_fr(msg, ciphersuite)`
-    2. use the first SubSecretKey for signing `ssk = sk.get_first_ssk()`
+    2. use the first SubSecretKey for signing `ssk = sk.first_ssk()`
     2. re-randomizing sigma1: `sig1 = ssk.g2r * g2^r`
     2. re-randomizing sigma2
         1. `tmp = h0 * \prod h_i ^ t_i * h_d^m`
@@ -556,7 +584,7 @@ This function does NOT handle re-randomizations.
     3. set `m = hash_msg_into_fr(msg, ciphersuite)`
     4. set `t = self.tar_time`
     5. compute `hfx = h0 * h_i ^ t_i * h_d ^ m`
-    6. return `e(1/g2, sigma2) * e( sigma1, hfx) * e(pk, h) == 1`
+    6. return `e(1/g2, sigma2) * e(sigma1, hfx) * e(pk, h) == 1`
 
 * hash message to a field element
   ``` Rust
@@ -586,7 +614,7 @@ This function does NOT handle re-randomizations.
 
 * Verify aggregated signature
   ```rust
-  verify_bytes_aggregated(&self,
+  fn verify_bytes_aggregated(&self,
         pk_list: &[PublicKey],
         pp: &PubParam,
         msg: &[u8],
@@ -598,12 +626,16 @@ This function does NOT handle re-randomizations.
   * Input: a message
   * Output: true if the signature is a valid aggregated signature w.r.t. public keys and parameters
   * Steps:
-    1. return error if signature's ciphersuite does not match the public keys' or the public parameters
+    1. return `false` if signature's ciphersuite does not match the public keys' or the public parameters
+    1. return `false` if all signatures' time stamps do not match
     2. `agg_pk = pk_list[0]`
     3. for for i in 1..pk_list.len()
         * `agg_pk.pk *= pk_list[i].pk`
     4. return `verify(sig, pk, pp, msg)`
 
+    Note: if the `pk_list` contains multiple copies of a same public key, then this
+    public key needs to be `multuplied` multiple times during public key aggregation, i.e.,
+    they are treated as if they were distinct public keys.
 
 # Seed and rng
 
@@ -616,7 +648,7 @@ We will be using the following functions
 
 ## Parameter generation
 * The parameter generation function takes a seed as one of the inputs. This seed is provided by the caller (our go library). The rust code checks if the seed is longer than 32 bytes.
-Rust code does not perform any extra checks over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc. We use SHA512's IV as the seed.
+Rust code does not perform any extra checks over the seed. The caller needs to make sure that the seed is well formed and has enough entropy, etc. For default parameters we use SHA512's IV as the seed.
 Then, we generate the generators as follows:
   * Input: `seed`
   * Output: `param = [g2, h, h0, ... hd]`
@@ -659,19 +691,20 @@ The field element is generated as follows:
   * A rngseed is generated from `sha256(DOM_SEP_SEED_INIT | ciphersuite | seed)`. This rngseed is part of the secret key, and will be used for deterministic updating and signing. -->
 
 ## Key Updates
-* During a (fast) key updating, a random field element is generated
+* During a (fast) key updating, random field elements are generated
 as follows:
   * Input: `rngseed` from the secret key
   * Input: `newseed` from the `key_update()` API to re-randomize the seed
-  * Output: a field element `r`
+  * Output: `n` field elements `r[0..n-1]`
   * Output: update secret key's prng seed
   * Steps:
     * `salt = "Pixel secret key rerandomize"`
     * `info = "Pixel secret key update"`
     * `rngseed = prng_rerandomize(rngseed, newseed, salt, info)`
-    * `t = HKDF-Expand(m, info, 128)`
-    * `r = OS2IP(t[0..64]) mod p`
-    * update the rngseed as `rngseed = t[64..128]`
+    * `for i in 0..n-1`
+      * `t = HKDF-Expand(rngseed, info, 128)`
+      * `r = OS2IP(t[0..64]) mod p`
+      * update the rngseed as `rngseed = t[64..128]`
 
 * The `prng_rerandomize` subrouting is as follows:
   * Input: `rngseed`, `newseed`, `salt`, `info`

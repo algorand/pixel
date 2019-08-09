@@ -698,9 +698,10 @@ as follows:
   * Output: `n` field elements `r[0..n-1]`
   * Output: update secret key's prng seed
   * Steps:
-    * `salt = "Pixel secret key rerandomize"`
-    * `info = "Pixel secret key update"`
+    * `salt = "Pixel secret key rerandomize extract"`
+    * `info = "Pixel secret key rerandomize expand"`
     * `rngseed = prng_rerandomize(rngseed, newseed, salt, info)`
+    * `info = "Pixel secret key update"`
     * `for i in 0..n-1`
       * `t = HKDF-Expand(rngseed, info, 128)`
       * `r = OS2IP(t[0..64]) mod p`

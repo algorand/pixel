@@ -25,9 +25,14 @@ vectors and cross comparing with Rust's output. It should not be used for any
 other purpose.
 
 ## Dependencies
-* [Pairing library](https://github.com/algorand/pairing-fork)
+* [Pairing-fork library](https://github.com/algorand/pairing-fork)
+  * A fork of zkcrypto's pairing library; with additional functions such as `hash to groups`
+  and `membership testing`, etc.
+  * We rely heavily on this library for underlying arithmetics.
 * [Pixel_param](https://github.com/algorand/pixel_param)
-* [BLS_SIG-fork](https://github.com/algorand/bls_sigs_ref-fork) To be removed.
+  * We use the default parameters generated from this crate.
+* [BLS_SIG-fork](https://github.com/algorand/bls_sigs_ref-fork)
+  * This library is only used for generating and verifying proof of possession.
 
 ## Build options
 
@@ -45,7 +50,8 @@ other purpose.
 * `test_vector.py` also compares the binary outputs of Rust and python match.
 
 ## Quality control
-Following the guidelines from [Facebook's libra source code](https://developers.libra.org/docs/community/coding-guidelines)
+Following the guidelines from [Facebook's libra source code](https://developers.libra.org/docs/community/coding-guidelines) and
+[Rust API Guidelines](https://rust-lang-nursery.github.io/api-guidelines/about.html).
 * `cargo fmt` for coding style
 * `cargo clippy --all-targets --all-features -- -D warnings` for [lint](https://github.com/rust-lang/rust-clippy/blob/master/README.md)
 * `cargo doc` for documentation.
@@ -67,40 +73,6 @@ not implemented for it. We manually clear it by writing trivial data to it.
 * Run `cargo doc --open`
 * See `target/doc/pixel/index.html`
 
-<!--
-
-* `fn pixel_param_gen(seed: &[u8]) -> Result<PubParam, String>`
-  * Input: a byte string as the seed.
-  * Output: the public parameters.
-  * Error: if the seed is less than 32 bytes
-  * Option: `[use_rand_generators]`; unset by default
-
-* `fn pixel_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PublicKey, SecretKey), String>`  
-  * Input: a seed, a public parameter
-  * Output: a pair of keys
-  * Error: if the seed is less than 32 bytes
-
-
-* `fn pixel_get_pk(kp: &KeyPair) -> PublicKey`
-  * Input: a key pair
-  * Output: its public key
-
-* `fn pixel_get_sk(kp: &KeyPair) -> SecretKey`
-  * Input: a key pair
-  * Output: its secret key
-
-
-* `fn pixel_sk_update(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam) -> Result<(), String>`
-  * Input: a secret key,  a target time stamp, the public parameter
-  * Output: secret key is mutated to the new secret key
-  * Error: target time is invalid
-
-* `fn pixel_sign(sk: &mut SecretKey, tar_time: TimeStamp, pp: &PubParam, msg: &[u8]) -> Result<Signature, String>`
-  * Input: a secret key, a target time stamp, the public parameter, the message
-  * Output: a signature
-  * Error: target time is invalid
-
-* `fn pixel_verify( pk: &PublicKey, tar_time: TimeStamp, pp: &PubParam, msg: &[u8], sig: Signature) -> bool`
-  * Input: a secret key, a target time stamp, the public parameter, the message, and the signature
-  * Output: if the verification passes
-  -->
+## Wrapper
+* Generated with [cbindgen](https://rust-lang.github.io/rust-bindgen/)
+* See [c_wrapper](https://github.com/algorand/pixel/tree/master/c_wrapper)

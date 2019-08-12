@@ -74,5 +74,5 @@ not implemented for it. We manually clear it by writing trivial data to it.
 * See `target/doc/pixel/index.html`
 
 ## Wrapper
-* Generated with [cbindgen](https://rust-lang.github.io/rust-bindgen/)
+* Generated with [cbindgen](https://github.com/eqrion/cbindgen/blob/master/docs.md)
 * See [c_wrapper](https://github.com/algorand/pixel/tree/master/c_wrapper)

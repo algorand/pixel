@@ -338,8 +338,7 @@ It is the result of a serial of internal discussion.
   * Error: ERR_CIPHERSUITE, ERR_SERIAL, ERR_TIME_STAMP
   * Steps:
     1. If the time or ciphersuite is not correct, returns an error
-    4. Re-randomize sk's prng: `sk.prng.re-randomize(seed, salt, info)` where
-        * `salt = "Pixel secret key rerandomize extract"`
+    4. Re-randomize sk's prng: `sk.prng.re-randomize(seed, info)` where
         * `info = "Pixel secret key rerandomize expand" | self.time()`
     2. Find the ancestor node `delegator = sk.find_ancestor(tar_time)`, returns an error if time is not correct
     3. Update self to an sk for delegator's time by removing SubSecretKeys whose time stamps are smaller than delegator's time, returns an error if no SubSecretKey is left after removal
@@ -701,21 +700,22 @@ as follows:
   * Output: `n` field elements `r[0..n-1]`
   * Output: update secret key's prng seed
   * Steps:
-    * `salt = "Pixel secret key rerandomize extract"`
     * `info = "Pixel secret key rerandomize expand" | time`
-    * `rngseed = prng_rerandomize(rngseed, newseed, salt, info)`
+    * `rngseed = prng_rerandomize(rngseed, newseed, info)`
     * `info = "Pixel secret key update" | time`
     * `for i in 0..n-1`
       * `t = HKDF-Expand(rngseed, info, 128)`
-      * `r = OS2IP(t[0..64]) mod p`
+      * `r[i] = OS2IP(t[0..64]) mod p`
       * update the rngseed as `rngseed = t[64..128]`
 
-* The `prng_rerandomize` subrouting is as follows:
-  * Input: `rngseed`, `newseed`, `salt`, `info`
+* The `prng_rerandomize` subroutine is as follows:
+  * Input: `rngseed`, `newseed`, `info`
   * Output: a new `rngseed`
   * Steps:
-    * `m1 = HKDF-Expand(rngseed, info, 64)`
-    * return `rngseed = HKDF-Extract(m1 | newseed, salt)`
+    * `m = HKDF-Expand(rngseed, info, 128)`
+    * `m1 = m[0..64]`
+    * `m2 = m[64..128]`
+    * return `rngseed = HKDF-Extract(m1 | newseed, m2)`
 
 
 

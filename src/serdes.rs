@@ -224,7 +224,7 @@ impl PixelSerDes for Signature {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
 
-        // the time stamp cannot exceed 2^30
+        // the time stamp cannot exceed 2^32
         let time = self.time();
         if time > (1 << 32) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_SERIAL));

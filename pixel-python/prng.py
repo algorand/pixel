@@ -47,9 +47,9 @@ def prng_sample(prng_seed, info):
     r = OS2IP(hashinput) % q
     return r
 
-def prng_rerandomize(prng_seed, newseed, salt, info):
-    m1 = hkdf.hkdf_expand(prng_seed, info, 64)
-    return hkdf.hkdf_extract(salt, input_key_material=(m1+newseed), hash=hashlib.sha512);
+def prng_rerandomize(prng_seed, newseed,info):
+    m1 = hkdf.hkdf_expand(prng_seed, info, 128)
+    return hkdf.hkdf_extract(m1[64:], input_key_material=(m1[:64]+newseed), hash=hashlib.sha512);
 
 
 # basic functionality tests that matches Rust

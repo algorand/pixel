@@ -677,14 +677,18 @@ The `ctr` does not reset if when we generate generators for different groups. (I
 * The master key generation function also takes a seed as one of the inputs. This seed is also provided by the caller. Same check on the seed is done as in parameter generation.
 The field element is generated as follows:
   * Input: `seed`, parameter set
-  * Output: the secret exponent `x` and an rngseed
+  * Output: the secret exponent `x`, the randomness `r` and an rngseed
   * Steps:
     * `m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)`
-    * `time = 1`
-    * `info = "key initialization" | time`
+    * `info = "key initialization"`
     * `t = HKDF-Expand(m, info, 128)`
-    * `r = OS2IP(t[0..64]) mod p`
+    * `x = OS2IP(t[0..64]) mod p`
     * initialize the prng seed as `rngseed = t[64..128]`
+    * `time = 1`
+    * `info = "Pixel secret key init" | time`
+    * `t = HKDF-Expand(rngseed, info, 128)`
+    * `x = OS2IP(t[0..64]) mod p`
+    * update the prng seed as `rngseed = t[64..128]`
 
 <!--
   * A master secret (`x`, or `alpha`, i.e., the exponent for the pk) is generated from
@@ -733,7 +737,7 @@ as follows:
   * Input: the `message` blob
   * Output: a field element `r`
   * Steps:
-    * `info = "Pixel randomness for signing" | message`
+    * `info = "Pixel randomness for signing" | message | time`
     * `t = HKDF-Expand(rngseed, info, 64)`
     * `r = OS2IP(t[0..64]) mod p`
 

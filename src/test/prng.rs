@@ -105,7 +105,7 @@ fn test_prng() {
     );
 
     // test re-rerandomize function
-    prng.rerandomize("seed", "salt", "info");
+    prng.rerandomize("seed", "info");
     let r3 = prng.sample_then_update("info");
     assert_eq!(
         Fr::from_str(

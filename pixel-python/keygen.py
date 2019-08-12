@@ -35,7 +35,7 @@ def key_gen(seed):
     msk = point_mul(x, h)
 
     # r: randomness used in init
-    info = b"Pixel secret key init"
+    info = b"Pixel secret key init" + b"\1\0\0\0"
     r, prng = prng_sample_then_update(prng,info)
     # g2r = g2^2
     g2r = point_mul(r, pixelg2gen)

@@ -7,6 +7,7 @@ import filecmp
 import copy
 from curve_ops import point_mul, point_add
 from util import print_g1_hex, print_g2_hex
+from hash_to_field import I2OSP
 
 
 
@@ -14,9 +15,8 @@ from util import print_g1_hex, print_g2_hex
 def sk_update(sk, pp, tar_time, seed):
 
     # re-randomize the prng
-    salt = b"Pixel secret key rerandomize extract"
-    info = b"Pixel secret key rerandomize expand"
-    new_seed = prng_rerandomize(sk[0], seed, salt, info)
+    info = b"Pixel secret key rerandomize expand" + I2OSP(sk_vec[0][0],4)
+    new_seed = prng_rerandomize(sk[0], seed, info)
 
     # find the ancestor node of the tar-time
     # if the ancestor happens to be the same as tar-time
@@ -53,7 +53,7 @@ def sk_update(sk, pp, tar_time, seed):
 
     # now rerandomize all new_ssk except for the first one
     # randomize the ssks
-    info = b"Pixel secret key update"
+    info = b"Pixel secret key update"  + I2OSP(sk_vec[0][0],4)
     for i in range(1,len(new_ssk)):
         r, new_seed = prng_sample_then_update(new_seed, info)
         new_ssk[i] = randomization(new_ssk[i], pp, r)

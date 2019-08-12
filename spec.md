@@ -352,7 +352,7 @@ It is the result of a serial of internal discussion.
         1. if delegator's time is a prefix of TimeStamp
             * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.depth())`
             * if `i!=0`
-              * `info = "Pixel secret key update"`
+              * `info = "Pixel secret key update" | self.time()`
               * `r = sk.prng.sample_then_update(info)`
               * re-randomize the ssk via `new_ssk.randomization(pp, r)`
             * `sk.ssk.insert(i + 1, new_ssk)` so that ssk remains sorted

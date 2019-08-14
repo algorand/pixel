@@ -294,59 +294,6 @@ fn bench_verify(c: &mut Criterion) {
     });
 }
 
-/// benchmark aggregation and batch verification
-#[allow(dead_code)]
-fn bench_aggregation(c: &mut Criterion) {
-    const SAMPLES: usize = 3000;
-
-    // this benchmark uses the default parameter
-    let param = Pixel::param_default();
-
-    // get a list of public keys
-    let mut pklist: Vec<PublicKey> = vec![];
-    let mut siglist: Vec<Signature> = vec![];
-    let msg = "the message to be signed in benchmarking";
-    let rngseed = "";
-    // sign at time 1 for all signatures, for fast benchmarking
-    // let max_time = (1 << param.depth()) - 1;
-    // let time = rand::thread_rng().gen_range(0u64, max_time - 2);
-    let time = 1;
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk
-        let (pk, mut sk, _pop) = Pixel::key_gen(&seed, &param).unwrap();
-
-        let res = Pixel::sign(&mut sk, time, &param, msg, rngseed);
-        assert!(res.is_ok(), res.err());
-        // pack the signature, time, and public key
-        pklist.push(pk);
-        siglist.push(res.unwrap());
-    }
-
-    // benchmarking aggregation
-    let siglist_clone = siglist.clone();
-    c.bench_function("benchmark aggregation", move |b| {
-        b.iter(|| {
-            let res = Pixel::aggregate_without_validate(&siglist_clone);
-            assert!(res.is_ok(), "aggregation failed");
-        })
-    });
-
-    // benchmarking verification
-    let sig = Pixel::aggregate_without_validate(&siglist).unwrap();
-    c.bench_function("verifying aggregated signature", move |b| {
-        b.iter(|| {
-            let res = Pixel::verify_aggregated(&pklist, &param, msg, &sig);
-            assert!(res, "verification failed");
-        })
-    });
-}
-
-criterion_group!(aggregation, bench_aggregation,);
-
 criterion_group!(
     api,
     bench_key_update_next,

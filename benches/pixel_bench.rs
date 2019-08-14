@@ -7,7 +7,8 @@ extern crate walkdir;
 mod benchmarks;
 
 criterion_main!(
-    benchmarks::bench_api::aggregation,
+    benchmarks::bench_agg::aggregation_a_little_faster,
+    benchmarks::bench_agg::aggregation_really_really_slow,
     benchmarks::bench_sk_ops::sk_ops,
     benchmarks::bench_sk_ops::sk_ops_slow,
     benchmarks::bench_ssk_ops::ssk_ops,

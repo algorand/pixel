@@ -52,7 +52,12 @@ impl SecretKey {
             return Err(ERR_CIPHERSUITE.to_owned());
         }
 
-        let info = domain_sep::DOM_SEP_SK_INIT;
+        // info = domain_sep::DOM_SEP_SK_INIT | time = 1
+        let info = [
+            domain_sep::DOM_SEP_SK_INIT.as_ref(),
+            [0, 0, 0, 1u8].as_ref(),
+        ]
+        .concat();
         // r is a local secret, and need to be cleared after use
         let mut r_sec = prng.sample_then_update(info);
 
@@ -228,9 +233,19 @@ impl SecretKey {
         let mut new_sk = self.clone();
 
         // step 0. always re-randomize the prng
-        let salt = domain_sep::DOM_SEP_SK_RERANDOMIZE_SALT;
-        let info = domain_sep::DOM_SEP_SK_RERANDOMIZE_INFO;
-        new_sk.prng.rerandomize(seed, salt.as_ref(), info.as_ref());
+        // info = domain_sep::DOM_SEP_SK_RERANDOMIZE_INFO | I2OSP(time,4)
+        let time_tmp = [
+            (cur_time >> 24 & 0xFF) as u8,
+            (cur_time >> 16 & 0xFF) as u8,
+            (cur_time >> 8 & 0xFF) as u8,
+            (cur_time & 0xFF) as u8,
+        ];
+        let info = [
+            domain_sep::DOM_SEP_SK_RERANDOMIZE_INFO.as_ref(),
+            time_tmp.as_ref(),
+        ]
+        .concat();
+        new_sk.prng.rerandomize(seed, info.as_ref());
 
         // step 1.1 update new_sk's time stamp
         // the current sk is ### new_sk = {9, [ssk_for_t_3, ssk_for_t_6, ssk_for_t_9]} ###

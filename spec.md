@@ -319,7 +319,8 @@ It is the result of a serial of internal discussion.
   * Error: ERR_CIPHERSUITE, ERR_SERIAL
   * Steps:
     1. returns an error is `pp.ciphersuite()` is not supported.
-    2. `info = "Pixel secret key init"`
+    2. `time = 1`
+    2. `info = "Pixel secret key init" | time`
     3. `r = prng.sample_then_update(info)`
     4. `ssk = SubSecretKey::init(pp, alpha, r)`
     5. return `construct(pp.ciphersuite(), 1, [ssk], prng)`
@@ -337,9 +338,8 @@ It is the result of a serial of internal discussion.
   * Error: ERR_CIPHERSUITE, ERR_SERIAL, ERR_TIME_STAMP
   * Steps:
     1. If the time or ciphersuite is not correct, returns an error
-    4. Re-randomize sk's prng: `sk.prng.re-randomize(seed, salt, info)` where
-        * `salt = "Pixel secret key rerandomize extract"`
-        * `info = "Pixel secret key rerandomize expand"`
+    4. Re-randomize sk's prng: `sk.prng.re-randomize(seed, info)` where
+        * `info = "Pixel secret key rerandomize expand" | self.time()`
     2. Find the ancestor node `delegator = sk.find_ancestor(tar_time)`, returns an error if time is not correct
     3. Update self to an sk for delegator's time by removing SubSecretKeys whose time stamps are smaller than delegator's time, returns an error if no SubSecretKey is left after removal
 
@@ -352,7 +352,7 @@ It is the result of a serial of internal discussion.
         1. if delegator's time is a prefix of TimeStamp
             * `new_ssk = delegator_ssk.delegate(TimeStamp, pp.depth())`
             * if `i!=0`
-              * `info = "Pixel secret key update"`
+              * `info = "Pixel secret key update" | self.time()`
               * `r = sk.prng.sample_then_update(info)`
               * re-randomize the ssk via `new_ssk.randomization(pp, r)`
             * `sk.ssk.insert(i + 1, new_ssk)` so that ssk remains sorted
@@ -561,7 +561,7 @@ This function does NOT handle re-randomizations.
   * Steps:
     1. returns an error if secret key's time stamp is greater than target time
     1. returns an error if the ciphersuite in pp or sk doesn't match.
-    1. info = DOM_SEP_SIG | msg
+    1. info = DOM_SEP_SIG | msg | tar_time
     1. sample `r = sk.prng.sample(info)`
     2. set `m = hash_msg_into_fr(msg, ciphersuite)`
     2. use the first SubSecretKey for signing `ssk = sk.first_ssk()`
@@ -634,7 +634,7 @@ This function does NOT handle re-randomizations.
     4. return `verify(sig, pk, pp, msg)`
 
     Note: if the `pk_list` contains multiple copies of a same public key, then this
-    public key needs to be `multuplied` multiple times during public key aggregation, i.e.,
+    public key needs to be `multiplied` multiple times during public key aggregation, i.e.,
     they are treated as if they were distinct public keys.
 
 # Seed and rng
@@ -677,13 +677,18 @@ The `ctr` does not reset if when we generate generators for different groups. (I
 * The master key generation function also takes a seed as one of the inputs. This seed is also provided by the caller. Same check on the seed is done as in parameter generation.
 The field element is generated as follows:
   * Input: `seed`, parameter set
-  * Output: the secret exponent `x` and an rngseed
+  * Output: the secret exponent `x`, the randomness `r` and an rngseed
   * Steps:
     * `m = HKDF-Extract(DOM_SEP_MASTER_KEY | ciphersuite, seed)`
     * `info = "key initialization"`
     * `t = HKDF-Expand(m, info, 128)`
-    * `r = OS2IP(t[0..64]) mod p`
+    * `x = OS2IP(t[0..64]) mod p`
     * initialize the prng seed as `rngseed = t[64..128]`
+    * `time = 1`
+    * `info = "Pixel secret key init" | time`
+    * `t = HKDF-Expand(rngseed, info, 128)`
+    * `r = OS2IP(t[0..64]) mod p`
+    * update the prng seed as `rngseed = t[64..128]`
 
 <!--
   * A master secret (`x`, or `alpha`, i.e., the exponent for the pk) is generated from
@@ -695,24 +700,26 @@ The field element is generated as follows:
 as follows:
   * Input: `rngseed` from the secret key
   * Input: `newseed` from the `key_update()` API to re-randomize the seed
+  * Input: `time`, the time stamp from the secret key
   * Output: `n` field elements `r[0..n-1]`
   * Output: update secret key's prng seed
   * Steps:
-    * `salt = "Pixel secret key rerandomize extract"`
-    * `info = "Pixel secret key rerandomize expand"`
-    * `rngseed = prng_rerandomize(rngseed, newseed, salt, info)`
-    * `info = "Pixel secret key update"`
+    * `info = "Pixel secret key rerandomize expand" | time`
+    * `rngseed = prng_rerandomize(rngseed, newseed, info)`
+    * `info = "Pixel secret key update" | time`
     * `for i in 0..n-1`
       * `t = HKDF-Expand(rngseed, info, 128)`
-      * `r = OS2IP(t[0..64]) mod p`
+      * `r[i] = OS2IP(t[0..64]) mod p`
       * update the rngseed as `rngseed = t[64..128]`
 
-* The `prng_rerandomize` subrouting is as follows:
-  * Input: `rngseed`, `newseed`, `salt`, `info`
+* The `prng_rerandomize` subroutine is as follows:
+  * Input: `rngseed`, `newseed`, `info`
   * Output: a new `rngseed`
   * Steps:
-    * `m1 = HKDF-Expand(rngseed, info, 64)`
-    * return `rngseed = HKDF-Extract(m1 | newseed, salt)`
+    * `m = HKDF-Expand(rngseed, info, 128)`
+    * `m1 = m[0..64]`
+    * `m2 = m[64..128]`
+    * return `rngseed = HKDF-Extract(m1 | newseed, m2)`
 
 
 
@@ -730,7 +737,7 @@ as follows:
   * Input: the `message` blob
   * Output: a field element `r`
   * Steps:
-    * `info = "Pixel randomness for signing" | message`
+    * `info = "Pixel randomness for signing" | message | time`
     * `t = HKDF-Expand(rngseed, info, 64)`
     * `r = OS2IP(t[0..64]) mod p`
 

@@ -224,7 +224,7 @@ impl PixelSerDes for Signature {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
 
-        // the time stamp cannot exceed 2^30
+        // the time stamp cannot exceed 2^32
         let time = self.time();
         if time > (1 << 32) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_SERIAL));
@@ -235,10 +235,10 @@ impl PixelSerDes for Signature {
 
         let mut buf: Vec<u8> = vec![
             self.ciphersuite(),
-            (time & 0xFF) as u8,
-            (time >> 8 & 0xFF) as u8,
-            (time >> 16 & 0xFF) as u8,
             (time >> 24 & 0xFF) as u8,
+            (time >> 16 & 0xFF) as u8,
+            (time >> 8 & 0xFF) as u8,
+            (time & 0xFF) as u8,
         ];
 
         // serialize sigma1
@@ -267,7 +267,7 @@ impl PixelSerDes for Signature {
 
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;
-        let time = u32::from_le_bytes(time);
+        let time = u32::from_be_bytes(time);
 
         // the time stamp has to be at least 1
         if time == 0 {
@@ -451,10 +451,10 @@ impl PixelSerDes for SubSecretKey {
         }
 
         let mut buf: Vec<u8> = vec![
-            (time & 0xFF) as u8,
-            (time >> 8 & 0xFF) as u8,
-            (time >> 16 & 0xFF) as u8,
             (time >> 24 & 0xFF) as u8,
+            (time >> 16 & 0xFF) as u8,
+            (time >> 8 & 0xFF) as u8,
+            (time & 0xFF) as u8,
         ];
 
         // next, store one byte which is the length of the hvector
@@ -489,7 +489,7 @@ impl PixelSerDes for SubSecretKey {
         // the first 4 bytes stores the time stamp
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;
-        let time = u32::from_le_bytes(time);
+        let time = u32::from_be_bytes(time);
         // the time stamp has to be at least 1
         if time == 0 {
             return Err(Error::new(ErrorKind::InvalidData, ERR_TIME_STAMP));

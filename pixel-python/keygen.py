@@ -35,7 +35,7 @@ def key_gen(seed):
     msk = point_mul(x, h)
 
     # r: randomness used in init
-    info = b"Pixel secret key init"
+    info = b"Pixel secret key init" + b"\0\0\0\1"
     r, prng = prng_sample_then_update(prng,info)
     # g2r = g2^2
     g2r = point_mul(r, pixelg2gen)
@@ -59,7 +59,7 @@ def key_gen(seed):
 def serialize_ssk(ssk):
     (time, g2r, hpoly, hvector) = ssk
     hlen = len(hvector)
-    buf = time.to_bytes(4, 'little') + b"%c"% hlen
+    buf = time.to_bytes(4, 'big') + b"%c"% hlen
     buf += serialize(g2r, True)
     buf += serialize(hpoly, True)
     for e in hvector:

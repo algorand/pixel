@@ -191,11 +191,18 @@ impl Signature {
         // recovering from the error
         assert_eq!(sk.time(), tar_time, "The time stamps does not match!");
 
+        let time_tmp = [
+            (tar_time >> 24 & 0xFF) as u8,
+            (tar_time >> 16 & 0xFF) as u8,
+            (tar_time >> 8 & 0xFF) as u8,
+            (tar_time & 0xFF) as u8,
+        ];
+
         // We generate a random field element from the prng; the prng is not updated.
         // Within sample():
         //  m = HKDF-Expand(prng_seed, info, 64)
         //  r = OS2IP(m) % p
-        let info = [DOM_SEP_SIG.as_bytes(), msg].concat();
+        let info = [DOM_SEP_SIG.as_bytes(), msg, time_tmp.as_ref()].concat();
         let mut r_sec = sk.prng().sample(info);
 
         // hash the message into a field element

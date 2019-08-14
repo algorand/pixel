@@ -10,7 +10,7 @@ from keyupdate import sk_update, time_to_vec
 
 from curve_ops import g1gen, point_mul, point_add
 from hashlib import sha512, sha256
-from hash_to_field import Hr, OS2IP
+from hash_to_field import Hr, OS2IP, I2OSP
 from util import print_g1_hex, print_g2_hex
 from serdesZ import serialize
 from consts import q
@@ -32,7 +32,7 @@ def sign_present(sk, tar_time, pp, msg):
     (pixelg2gen, h, hlist)  = pp
 
 
-    r = prng_sample(sk[0], b"Pixel randomness for signing" + msg)
+    r = prng_sample(sk[0], b"Pixel randomness for signing" + msg + I2OSP(tar_time, 4))
     m = hash_msg_into_fr(msg)
 
     # sig1 = g2^r + ssk.g2r
@@ -65,7 +65,7 @@ def sign_present(sk, tar_time, pp, msg):
 
 # `|ciphersuite id| time | sigma1 | sigma2 |` => bytes
 def serialize_sig(sig):
-    return b"%c"%0 + sig[0].to_bytes(4, 'little') + serialize(sig[1],True) + serialize(sig[2], True)
+    return b"%c"%0 + sig[0].to_bytes(4, 'big') + serialize(sig[1],True) + serialize(sig[2], True)
 
 def print_sig(sig):
     print("time: %d"%sig[0])

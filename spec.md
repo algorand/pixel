@@ -687,7 +687,7 @@ The field element is generated as follows:
     * `time = 1`
     * `info = "Pixel secret key init" | time`
     * `t = HKDF-Expand(rngseed, info, 128)`
-    * `x = OS2IP(t[0..64]) mod p`
+    * `r = OS2IP(t[0..64]) mod p`
     * update the prng seed as `rngseed = t[64..128]`
 
 <!--

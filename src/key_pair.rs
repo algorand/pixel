@@ -7,7 +7,7 @@ use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng::PRNG;
 
-use crate::{PixelG1, PixelG2, PixelSerDes, ProofOfPossession, PublicKey, SecretKey};
+use crate::{PixelG1, PixelG2, SerDes, ProofOfPossession, PublicKey, SecretKey};
 
 /// The keypair is  a pair of public and secret keys,
 /// and a proof of possesion of the public key.

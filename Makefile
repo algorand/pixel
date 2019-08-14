@@ -33,5 +33,7 @@ test: test_vector_rust test_vector_python test_vector_c
 
 clean:
 	cargo clean
+	rm test_vector/test_vector/*.txt
+	rm pixel-python/test_vector/*.txt
 	rm c_wrapper/c_example
 	rm test_buf/*.txt

@@ -8,7 +8,7 @@ use std::io::Cursor;
 use subkeys::SubSecretKey;
 use PixelG1;
 use PixelG2;
-use PixelSerDes;
+use SerDes;
 use ProofOfPossession;
 use PublicKey;
 use SecretKey;

@@ -1,7 +1,6 @@
 //pub use bls_sigs_ref_rs::SerDes;
 use clear_on_drop::ClearOnDrop;
-use pairing::{bls12_381::*, CurveAffine, CurveProjective, EncodedPoint};
-use param::VALID_CIPHERSUITE;
+use param:: VALID_CIPHERSUITE;
 use pixel_err::*;
 use prng::PRNG;
 use std::io::{Error, ErrorKind, Read, Result, Write};
@@ -12,155 +11,11 @@ use ProofOfPossession;
 use PublicKey;
 use SecretKey;
 use Signature;
+use SerDes;
 
 type Compressed = bool;
 
-/// Serialization support for pixel structures.
-/// This trait is the same as pixel_param::serdes::PixelSerDes.
-/// We should think of merge those two traits rather than defining them twice.
-pub trait PixelSerDes: Sized {
-    /// Serialize a struct to a writer
-    /// Whether a point is compressed or not is implicit for the structure:
-    /// * public parameters: uncompressed
-    /// * public keys: compressed
-    /// * proof of possessions: compressed
-    /// * secret keys: uncompressed
-    /// * signatures: compressed
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()>;
-
-    /// Deserialize a struct; also returns a flag
-    /// if the struct was compressed or not.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)>;
-}
-
-impl PixelSerDes for PixelG1 {
-    /// Convert a PixelG1 point to a blob.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
-        let t = self.into_affine();
-
-        // convert element into an (un)compressed byte string
-        let buf = {
-            if compressed {
-                let tmp = pairing::bls12_381::G2Compressed::from_affine(t);
-                tmp.as_ref().to_vec()
-            } else {
-                let tmp = pairing::bls12_381::G2Uncompressed::from_affine(t);
-                tmp.as_ref().to_vec()
-            }
-        };
-
-        // format the output
-        writer.write_all(&buf)?;
-        Ok(())
-    }
-
-    /// Deserialize a PixelG1 element from a blob.
-    /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
-        // read into buf of compressed size
-        let mut buf = vec![0u8; G2Compressed::size()];
-        reader.read_exact(&mut buf)?;
-
-        // check the first bit of buf[0] to decide if the point is compressed
-        // or not
-        if (buf[0] & 0x80) == 0x80 {
-            // first bit is 1 => compressed mode
-            // convert the blob into a group element
-            let mut g_buf = G2Compressed::empty();
-            g_buf.as_mut().copy_from_slice(&buf);
-            let g = match g_buf.into_affine() {
-                Ok(p) => p.into_projective(),
-                Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
-            };
-            Ok((g, true))
-        } else if (buf[0] & 0x80) == 0x00 {
-            // first bit is 0 => uncompressed mode
-            // read the next uncompressed - compressed size
-            let mut buf2 = vec![0u8; G2Uncompressed::size() - G2Compressed::size()];
-            reader.read_exact(&mut buf2)?;
-            // now buf holds the whole uncompressed bytes
-            buf.append(&mut buf2);
-            // convert the buf into a group element
-            let mut g_buf = G2Uncompressed::empty();
-            g_buf.as_mut().copy_from_slice(&buf);
-            let g = match g_buf.into_affine() {
-                Ok(p) => p.into_projective(),
-                Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
-            };
-            Ok((g, false))
-        } else {
-            Err(Error::new(
-                ErrorKind::InvalidData,
-                "Should never reach here. Something is wrong",
-            ))
-        }
-    }
-}
-
-impl PixelSerDes for PixelG2 {
-    /// Convert a PixelG1 point to a blob.
-    fn serialize<W: Write>(&self, writer: &mut W, compressed: Compressed) -> Result<()> {
-        let t = self.into_affine();
-        // convert element into an (un)compressed byte string
-        let buf = {
-            if compressed {
-                let tmp = pairing::bls12_381::G1Compressed::from_affine(t);
-                tmp.as_ref().to_vec()
-            } else {
-                let tmp = pairing::bls12_381::G1Uncompressed::from_affine(t);
-                tmp.as_ref().to_vec()
-            }
-        };
-
-        // format the output
-        writer.write_all(&buf)?;
-        Ok(())
-    }
-
-    /// Deserialize a PixelG2 element from a blob.
-    /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
-        // read into buf of compressed size
-        let mut buf = vec![0u8; G1Compressed::size()];
-        reader.read_exact(&mut buf)?;
-
-        // check the first bit of buf[0] to decide if the point is compressed
-        // or not
-        if (buf[0] & 0x80) == 0x80 {
-            // first bit is 1 => compressed mode
-            // convert the buf into a group element
-            let mut g_buf = G1Compressed::empty();
-            g_buf.as_mut().copy_from_slice(&buf);
-            let g = match g_buf.into_affine() {
-                Ok(p) => p.into_projective(),
-                Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
-            };
-            Ok((g, true))
-        } else if (buf[0] & 0x80) == 0x00 {
-            // first bit is 0 => uncompressed mode
-            // read the next uncompressed - compressed size
-            let mut buf2 = vec![0u8; G1Uncompressed::size() - G1Compressed::size()];
-            reader.read_exact(&mut buf2)?;
-            // now buf holds the whole uncompressed bytes
-            buf.append(&mut buf2);
-            // convert the buf into a group element
-            let mut g_buf = G1Uncompressed::empty();
-            g_buf.as_mut().copy_from_slice(&buf);
-            let g = match g_buf.into_affine() {
-                Ok(p) => p.into_projective(),
-                Err(e) => return Err(Error::new(ErrorKind::InvalidData, e)),
-            };
-            Ok((g, false))
-        } else {
-            Err(Error::new(
-                ErrorKind::InvalidData,
-                "Should never reach here. Something is wrong",
-            ))
-        }
-    }
-}
-
-impl PixelSerDes for ProofOfPossession {
+impl SerDes for ProofOfPossession {
     /// Convert a pop into a blob:
     ///
     /// `|ciphersuite id| pop |` => bytes
@@ -211,7 +66,7 @@ impl PixelSerDes for ProofOfPossession {
     }
 }
 
-impl PixelSerDes for Signature {
+impl SerDes for Signature {
     /// Convert a signature into a blob:
     ///
     /// `|ciphersuite id| time | sigma1 | sigma2 |` => bytes
@@ -299,7 +154,7 @@ impl PixelSerDes for Signature {
     }
 }
 
-impl PixelSerDes for PublicKey {
+impl SerDes for PublicKey {
     /// Convert pk into a blob:
     ///
     /// bytes => `|ciphersuite id| PixelG2 element |`
@@ -341,7 +196,7 @@ impl PixelSerDes for PublicKey {
     }
 }
 
-impl PixelSerDes for SecretKey {
+impl SerDes for SecretKey {
     /// Convert sk into a blob:
     ///
     /// `|ciphersuite id| number_of_ssk-s | seed | serial(first ssk) | serial(second ssk)| ...`,
@@ -435,7 +290,7 @@ impl PixelSerDes for SecretKey {
     }
 }
 
-impl PixelSerDes for SubSecretKey {
+impl SerDes for SubSecretKey {
     /// Conver ssk into a blob:
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if serialization fails or time stamp is greater than 2^32-1
@@ -503,10 +358,10 @@ impl PixelSerDes for SubSecretKey {
         }
 
         // the next chunck of data stores g2r
-        let (g2r, compressed1) = PixelSerDes::deserialize(reader)?;
+        let (g2r, compressed1) = SerDes::deserialize(reader)?;
 
         // the next chunck of data stores hpoly
-        let (hpoly, compressed2) = PixelSerDes::deserialize(reader)?;
+        let (hpoly, compressed2) = SerDes::deserialize(reader)?;
         if compressed1 != compressed2 {
             return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
         }
@@ -514,7 +369,7 @@ impl PixelSerDes for SubSecretKey {
         // the next chunck of data stores hvector
         let mut hv: Vec<PixelG1> = vec![];
         for _i in 0..hvlen[0] {
-            let (tmp, compressed2) = PixelSerDes::deserialize(reader)?;
+            let (tmp, compressed2) = SerDes::deserialize(reader)?;
             if compressed1 != compressed2 {
                 return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
             }

@@ -1,4 +1,4 @@
-use crate::{PixelSerDes, PublicKey, SubSecretKey};
+use crate::{PublicKey, SerDes, SubSecretKey};
 //use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
 use key_pair::KeyPair;

@@ -12,7 +12,7 @@ homepage = "https://github.com/algorand/pixel"
 repository = "https://github.com/algorand/pixel"
 
 [dependencies]
-pairing = { version = "0.15", git = "ssh://git@github.com/algorand/pairing-fork"}
+pairing = { version = "0.15", git = "https://github.com/algorand/pairing-fork"}
 criterion = "0.2.11"
 walkdir = "2.2.7"
 hkdf = "0.7"

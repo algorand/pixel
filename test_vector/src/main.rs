@@ -1,4 +1,4 @@
-use pixel::{Pixel, PixelSignature, PixelSerDes};
+use pixel::{Pixel, PixelSignature, SerDes};
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -8,10 +8,10 @@ use std::io::prelude::*;
 fn main() -> std::io::Result<()> {
     // default parameter
     let pp = Pixel::param_default();
-    // let mut file = File::create("test_vector/param_plain.txt")?;
-    // file.write_all(format!("{:?}", pp).as_ref())?;
-    // let mut file = File::create("test_vector/param_bin.txt")?;
-    // pp.serialize(&mut file, false)?;
+    let mut file = File::create("test_vector/param_plain.txt")?;
+    file.write_all(format!("{:?}", pp).as_ref())?;
+    let mut file = File::create("test_vector/param_bin.txt")?;
+    pp.serialize(&mut file, false)?;
 
     // the default seed to generate the keys is
     //  "this is a very long seed for pixel tests"

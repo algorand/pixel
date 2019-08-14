@@ -65,7 +65,7 @@ def sign_present(sk, tar_time, pp, msg):
 
 # `|ciphersuite id| time | sigma1 | sigma2 |` => bytes
 def serialize_sig(sig):
-    return b"%c"%0 + sig[0].to_bytes(4, 'little') + serialize(sig[1],True) + serialize(sig[2], True)
+    return b"%c"%0 + sig[0].to_bytes(4, 'big') + serialize(sig[1],True) + serialize(sig[2], True)
 
 def print_sig(sig):
     print("time: %d"%sig[0])

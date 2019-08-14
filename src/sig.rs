@@ -192,10 +192,10 @@ impl Signature {
         assert_eq!(sk.time(), tar_time, "The time stamps does not match!");
 
         let time_tmp = [
-            (tar_time & 0xFF) as u8,
-            (tar_time >> 8 & 0xFF) as u8,
-            (tar_time >> 16 & 0xFF) as u8,
             (tar_time >> 24 & 0xFF) as u8,
+            (tar_time >> 16 & 0xFF) as u8,
+            (tar_time >> 8 & 0xFF) as u8,
+            (tar_time & 0xFF) as u8,
         ];
 
         // We generate a random field element from the prng; the prng is not updated.

@@ -235,10 +235,10 @@ impl PixelSerDes for Signature {
 
         let mut buf: Vec<u8> = vec![
             self.ciphersuite(),
-            (time & 0xFF) as u8,
-            (time >> 8 & 0xFF) as u8,
-            (time >> 16 & 0xFF) as u8,
             (time >> 24 & 0xFF) as u8,
+            (time >> 16 & 0xFF) as u8,
+            (time >> 8 & 0xFF) as u8,
+            (time & 0xFF) as u8,
         ];
 
         // serialize sigma1
@@ -451,10 +451,10 @@ impl PixelSerDes for SubSecretKey {
         }
 
         let mut buf: Vec<u8> = vec![
-            (time & 0xFF) as u8,
-            (time >> 8 & 0xFF) as u8,
-            (time >> 16 & 0xFF) as u8,
             (time >> 24 & 0xFF) as u8,
+            (time >> 16 & 0xFF) as u8,
+            (time >> 8 & 0xFF) as u8,
+            (time & 0xFF) as u8,
         ];
 
         // next, store one byte which is the length of the hvector

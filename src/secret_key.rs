@@ -55,7 +55,7 @@ impl SecretKey {
         // info = domain_sep::DOM_SEP_SK_INIT | time = 1
         let info = [
             domain_sep::DOM_SEP_SK_INIT.as_ref(),
-            [1u8, 0, 0, 0].as_ref(),
+            [0, 0, 0, 1u8].as_ref(),
         ]
         .concat();
         // r is a local secret, and need to be cleared after use
@@ -233,12 +233,12 @@ impl SecretKey {
         let mut new_sk = self.clone();
 
         // step 0. always re-randomize the prng
-        // info = domain_sep::DOM_SEP_SK_RERANDOMIZE_INFO | time
+        // info = domain_sep::DOM_SEP_SK_RERANDOMIZE_INFO | I2OSP(time,4)
         let time_tmp = [
-            (cur_time & 0xFF) as u8,
-            (cur_time >> 8 & 0xFF) as u8,
-            (cur_time >> 16 & 0xFF) as u8,
             (cur_time >> 24 & 0xFF) as u8,
+            (cur_time >> 16 & 0xFF) as u8,
+            (cur_time >> 8 & 0xFF) as u8,
+            (cur_time & 0xFF) as u8,
         ];
         let info = [
             domain_sep::DOM_SEP_SK_RERANDOMIZE_INFO.as_ref(),

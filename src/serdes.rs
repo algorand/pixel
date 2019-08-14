@@ -1,6 +1,6 @@
 //pub use bls_sigs_ref_rs::SerDes;
 use clear_on_drop::ClearOnDrop;
-use param:: VALID_CIPHERSUITE;
+use param::VALID_CIPHERSUITE;
 use pixel_err::*;
 use prng::PRNG;
 use std::io::{Error, ErrorKind, Read, Result, Write};
@@ -10,8 +10,8 @@ use PixelG2;
 use ProofOfPossession;
 use PublicKey;
 use SecretKey;
-use Signature;
 use SerDes;
+use Signature;
 
 type Compressed = bool;
 

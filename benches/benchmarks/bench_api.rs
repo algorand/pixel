@@ -1,8 +1,10 @@
 use super::pixel::Pixel;
 use super::pixel::PixelSignature;
+use super::pixel::SerDes;
 use super::pixel::{ProofOfPossession, PublicKey, SecretKey, Signature};
 use super::rand::Rng;
 use criterion::Criterion;
+use std::fs::File;
 
 /// benchmark parameter generation
 #[allow(dead_code)]
@@ -54,13 +56,10 @@ fn bench_key_update_next(c: &mut Criterion) {
 
     let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk
-        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (mut sk, _) = SecretKey::deserialize(&mut file).unwrap();
+
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 1);
         assert!(Pixel::sk_update(&mut sk, time, &param, rngseed).is_ok());
@@ -93,13 +92,10 @@ fn bench_key_update_random(c: &mut Criterion) {
 
     let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk
-        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (mut sk, _) = SecretKey::deserialize(&mut file).unwrap();
+
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param, rngseed).is_ok());
@@ -134,13 +130,10 @@ fn bench_sign(c: &mut Criterion) {
     let msg = "the message to be signed in benchmarking";
     let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk
-        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (mut sk, _) = SecretKey::deserialize(&mut file).unwrap();
+
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param, rngseed).is_ok());
@@ -173,13 +166,10 @@ fn bench_sign_present(c: &mut Criterion) {
     let msg = "the message to be signed in benchmarking";
     let max_time = (1 << param.depth()) - 1;
     let rngseed = b"";
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk
-        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (mut sk, _) = SecretKey::deserialize(&mut file).unwrap();
+
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param, rngseed).is_ok());
@@ -212,13 +202,10 @@ fn bench_sign_then_update(c: &mut Criterion) {
     let msg = "the message to be signed in benchmarking";
     let max_time = (1 << param.depth()) - 1;
     let rngseed = "";
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk
-        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (mut sk, _) = SecretKey::deserialize(&mut file).unwrap();
+
         // delegate it to a random time
         let time = rand::thread_rng().gen_range(0u64, max_time - 2);
         assert!(Pixel::sk_update(&mut sk, time, &param, rngseed).is_ok());

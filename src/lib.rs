@@ -74,7 +74,7 @@ pub const SIG_LEN: usize = 149;
 pub const POP_LEN: usize = 97;
 
 // Expose this constant.
-pub use param::{PixelG1, PixelG2, PubParam, CONST_D, VALID_CIPHERSUITE, SerDes};
+pub use param::{PixelG1, PixelG2, PubParam, SerDes, CONST_D, VALID_CIPHERSUITE};
 pub use pop::ProofOfPossession;
 pub use public_key::PublicKey;
 pub use secret_key::SecretKey;

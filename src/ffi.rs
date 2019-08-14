@@ -5,8 +5,8 @@ use crate::{Pixel, ProofOfPossession, PubParam, PublicKey, SecretKey, Signature}
 // constants
 use crate::{CONST_D, PK_LEN, POP_LEN, SIG_LEN};
 // traits
-use SerDes;
 use PixelSignature;
+use SerDes;
 
 /// A wrapper of sk
 #[repr(C)]

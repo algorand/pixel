@@ -1,4 +1,4 @@
-use crate::{PixelG1, SerDes, PublicKey, SubSecretKey};
+use crate::{PixelG1, PublicKey, SerDes, SubSecretKey};
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
 use ff::Field;

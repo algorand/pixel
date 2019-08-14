@@ -77,7 +77,7 @@ def prng_test():
     assert r2 == 0x30cdf80e28b7c7391a8a0c2ff8503944f808a1c0cc22efd2f217fe299b51645c
     assert r2 == r3
 
-    new_prng_seed2 = prng_rerandomize(new_prng_seed, seed, salt, info)
+    new_prng_seed2 = prng_rerandomize(new_prng_seed, seed, info)
     # for e in new_prng_seed2:
     #     print ("%s,"%hex(e))
     # print(prng.hex())
@@ -89,7 +89,7 @@ def prng_test():
     #     print ("%s,"%hex(e))
     # print(prng.hex())
     # print(new_prng_seed.hex())
-    assert r4 == 0x48b74ed11ca642bd3380373182f113c1fb0ac52bdd840c5fe9396d9e2f971e18
+    assert r4 == 0x6a4690024f210cf99651fa88f7bfaf892ffb29b6efb5bdded78fbf2de7381b54
 
 if __name__ == "__main__":
     def main():

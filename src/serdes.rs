@@ -267,7 +267,7 @@ impl PixelSerDes for Signature {
 
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;
-        let time = u32::from_le_bytes(time);
+        let time = u32::from_be_bytes(time);
 
         // the time stamp has to be at least 1
         if time == 0 {
@@ -489,7 +489,7 @@ impl PixelSerDes for SubSecretKey {
         // the first 4 bytes stores the time stamp
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;
-        let time = u32::from_le_bytes(time);
+        let time = u32::from_be_bytes(time);
         // the time stamp has to be at least 1
         if time == 0 {
             return Err(Error::new(ErrorKind::InvalidData, ERR_TIME_STAMP));

@@ -1,7 +1,9 @@
 .DS_Store
 target/
 Cargo.lock
-*.txt
 *.pyc
 __pycache__
 c_example
+pixel-python/test_vector/*.txt
+test_vector/test_vector/*.txt
+siderophile_out/

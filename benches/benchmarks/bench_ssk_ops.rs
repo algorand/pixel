@@ -2,8 +2,11 @@ use super::pairing::bls12_381::Fr;
 use super::pixel::Pixel;
 use super::pixel::PixelSignature;
 use super::pixel::SubSecretKey;
+use super::pixel::SecretKey;
 use super::rand::{Rand, Rng};
 use criterion::Criterion;
+use super::pixel::SerDes;
+use std::fs::File;
 
 /// benchmark sub secret key delegation - without randomization
 #[allow(dead_code)]
@@ -11,21 +14,13 @@ fn bench_ssk_delegate(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 
     // this benchmark uses a same set of parameter
-    let seed = rand::thread_rng()
-        .gen_ascii_chars()
-        .take(32)
-        .collect::<String>();
-    let param = Pixel::param_gen(&seed, 0).unwrap();
+    let param = Pixel::param_default();
 
     // ssklist at time 1
     let mut ssklist: Vec<SubSecretKey> = vec![];
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk and store the first ssk
-        let (_, sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (sk, _) = SecretKey::deserialize(&mut file).unwrap();
         ssklist.push(sk.first_ssk().unwrap());
     }
 

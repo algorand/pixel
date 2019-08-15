@@ -1,8 +1,9 @@
 use super::pixel::Pixel;
 use super::pixel::PixelSignature;
 use super::pixel::SecretKey;
-use super::rand::Rng;
 use criterion::Criterion;
+use super::pixel::SerDes;
+use std::fs::File;
 
 /// benchmark secret key update sequentially
 #[allow(dead_code)]
@@ -10,21 +11,13 @@ fn bench_sk_update_seq(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 
     // this benchmark uses a same set of parameter
-    let seed = rand::thread_rng()
-        .gen_ascii_chars()
-        .take(32)
-        .collect::<String>();
-    let param = Pixel::param_gen(&seed, 0).unwrap();
+    let param = Pixel::param_default();
 
     // sklist1 at time 1
     let mut sklist: Vec<SecretKey> = vec![];
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk
-        let (_, sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (sk, _) = SecretKey::deserialize(&mut file).unwrap();
         sklist.push(sk);
     }
     let rngseed = "";
@@ -63,21 +56,16 @@ fn bench_sk_update_leaf(c: &mut Criterion) {
     const SAMPLES: usize = 100;
 
     // this benchmark uses a same set of parameter
-    let seed = rand::thread_rng()
-        .gen_ascii_chars()
-        .take(32)
-        .collect::<String>();
-    let param = Pixel::param_gen(&seed, 0).unwrap();
+    let param = Pixel::param_default();
+
     let rngseed = "";
     // sklist at time 31 -- one level above the leaf nodes
     let mut sklist: Vec<SecretKey> = vec![];
-    for _i in 0..SAMPLES {
-        let seed = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(32)
-            .collect::<String>();
-        // generate a sk and update to time 31
-        let (_, mut sk, _) = Pixel::key_gen(&seed, &param).unwrap();
+    for i in 0..SAMPLES {
+
+        let mut file = File::open(format!("benches/pre-keys/data/sk_bin_{:04?}.txt", i)).unwrap();
+        let (mut sk, _) = SecretKey::deserialize(&mut file).unwrap();
+
         let res = Pixel::sk_update(&mut sk, 31, &param, rngseed);
         assert!(res.is_ok(), res.err());
         sklist.push(sk);

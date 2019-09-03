@@ -8,10 +8,10 @@ use std::io::Cursor;
 use subkeys::SubSecretKey;
 use PixelG1;
 use PixelG2;
-use SerDes;
 use ProofOfPossession;
 use PublicKey;
 use SecretKey;
+use SerDes;
 use VALID_CIPHERSUITE;
 
 #[test]

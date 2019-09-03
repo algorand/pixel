@@ -40,10 +40,6 @@ mod domain_sep;
 /// Error messages are defined here.
 mod pixel_err;
 
-// We may upstream this mod to pairing library.
-/// This module defines memebership tests for Pixel Groups
-pub mod membership;
-
 mod prng;
 mod serdes;
 mod sig;

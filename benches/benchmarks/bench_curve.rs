@@ -1,5 +1,4 @@
-use super::pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
-use super::pixel::membership::MembershipTesting;
+use super::pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine, SubgroupCheck};
 use super::pixel::{PixelG1, PixelG2};
 use super::rand::Rand;
 use criterion::Criterion;
@@ -54,7 +53,7 @@ fn bench_membership_testing(c: &mut Criterion) {
     let mut counter = 0;
     c.bench_function("Pixel G1 membership testing cost", move |b| {
         b.iter(|| {
-            g1list[counter].is_in_prime_group();
+            g1list[counter].into_affine().in_subgroup();
             counter = (counter + 1) % SAMPLES;
         })
     });
@@ -62,7 +61,7 @@ fn bench_membership_testing(c: &mut Criterion) {
     let mut counter = 0;
     c.bench_function("Pixel G2 membership testing cost", move |b| {
         b.iter(|| {
-            g2list[counter].is_in_prime_group();
+            g2list[counter].into_affine().in_subgroup();
             counter = (counter + 1) % SAMPLES;
         })
     });

@@ -1,7 +1,7 @@
 use PixelG1;
 
-/// The public key structure is a wrapper of `PixelG2` group.
-/// The actual group that the public key lies in depends on `pk_in_g2` flag.
+/// The PoP structure is a wrapper of `PixelG1` group,
+/// which is mapped to BLS12-381 G2.
 #[derive(Debug, Clone, Default)]
 pub struct ProofOfPossession {
     /// ciphersuite id

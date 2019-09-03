@@ -3,8 +3,7 @@ use crate::{PixelG1, PixelG2, PublicKey, SecretKey, SubSecretKey};
 use clear_on_drop::ClearOnDrop;
 use domain_sep::DOM_SEP_SIG;
 use ff::Field;
-use membership::MembershipTesting;
-use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
+use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine, SubgroupCheck};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng;
@@ -348,18 +347,6 @@ impl Signature {
             return false;
         }
 
-        // membership testing
-        if !self.sigma1().is_in_prime_group() || !self.sigma2().is_in_prime_group() {
-            #[cfg(debug_assertions)]
-            println!(
-                "Signature not it the correct subgroup\n\
-                 sigma1: {}, sigma2: {}",
-                self.sigma1().is_in_prime_group(),
-                self.sigma2().is_in_prime_group()
-            );
-            return false;
-        }
-
         // hash the message into a field element
         let m = hash_msg_into_fr(msg, pp.ciphersuite());
 
@@ -371,6 +358,20 @@ impl Signature {
     /// It assumes that the signature is well formed (in the right subgroup) already.
     /// It returns true if the signature is valid.
     pub fn verify_fr(&self, pk: &PublicKey, pp: &PubParam, msg: Fr) -> bool {
+        // membership testing
+        let s1_aff = self.sigma1().into_affine();
+        let s2_aff = self.sigma2().into_affine();
+        if !s1_aff.in_subgroup() || !s2_aff.in_subgroup() {
+            #[cfg(debug_assertions)]
+            println!(
+                "Signature not it the correct subgroup\n\
+                 sigma1: {}, sigma2: {}",
+                s1_aff.in_subgroup(),
+                s2_aff.in_subgroup()
+            );
+            return false;
+        }
+
         let depth = pp.depth();
 
         // extract the group element in pk
@@ -406,9 +407,6 @@ impl Signature {
         tmp.mul_assign(msg);
         hfx.add_assign(&tmp);
 
-        let sigma1 = self.sigma1;
-        let sigma2 = self.sigma2;
-
         // to use simultaneous pairing, we compute
         //  e(1/g2, sigma2) * e(sigma1, hv^{time_vec}) * e(pk, h)
         // we negate g2 rather than sigma2, since it is slightly faster
@@ -418,14 +416,8 @@ impl Signature {
 
         let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
             [
-                (
-                    &(neg_g2.into_affine().prepare()),
-                    &(sigma2.into_affine().prepare()),
-                ),
-                (
-                    &(sigma1.into_affine().prepare()),
-                    &(hfx.into_affine().prepare()),
-                ),
+                (&(neg_g2.into_affine().prepare()), &(s2_aff.prepare())),
+                (&(s1_aff.prepare()), &(hfx.into_affine().prepare())),
                 (
                     &(pke.into_affine().prepare()),
                     &(pp.h().into_affine().prepare()),

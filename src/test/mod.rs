@@ -12,8 +12,5 @@ mod sig;
 /// This module tests serialization and deserialization of the keys and signatures.
 mod serdes;
 
-/// This module tests membership testing functions
-mod membership;
-
 /// This module tests prng fucntions
 mod prng;

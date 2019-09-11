@@ -174,7 +174,6 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
 /// This function is a subroutine of the key generation function, and
 /// should not be called anywhere else -- the master secret key is
 /// destroyed after key generation.
-/// TODO: Change to pixel signatures for POP
 fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1, String> {
     // buf = DOM_SEP_POP | serial (PK)
     let mut buf = domain_sep::DOM_SEP_POP.as_bytes().to_vec();
@@ -198,18 +197,18 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
 
     // check e(pk, h) ?= e(g2, sk)
     // which is e(pk,h) * e(-g2,sk) == 1
-    let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+    match Bls12::final_exponentiation(&Bls12::miller_loop(
         [
             (&(g2.into_affine().prepare()), &(sk.into_affine().prepare())),
             (&(pk.into_affine().prepare()), &(h.into_affine().prepare())),
         ]
         .iter(),
-    ))
-    .unwrap();
-
-    // verification is successful if
-    //   pairingproduct == 1
-    pairingproduct == Fq12::one()
+    )) {
+        None => false,
+        // verification is successful if
+        //   pairingproduct == 1
+        Some(pairingproduct) => pairingproduct == Fq12::one(),
+    }
 }
 
 #[test]

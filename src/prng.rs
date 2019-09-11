@@ -308,5 +308,9 @@ pub fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
         *e = i as u8;
     }
 
-    Fr::from_repr(s).unwrap()
+    // s has to be a Fr element by construction, if not, panic
+    match Fr::from_repr(s) {
+        Err(e) => panic!(e),
+        Ok(p) => p,
+    }
 }

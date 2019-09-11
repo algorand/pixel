@@ -414,7 +414,7 @@ impl Signature {
         let mut neg_g2 = pp.g2();
         neg_g2.negate();
 
-        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+        match Bls12::final_exponentiation(&Bls12::miller_loop(
             [
                 (&(neg_g2.into_affine().prepare()), &(s2_aff.prepare())),
                 (&(s1_aff.prepare()), &(hfx.into_affine().prepare())),
@@ -424,9 +424,12 @@ impl Signature {
                 ),
             ]
             .iter(),
-        ))
-        .unwrap();
-        pairingproduct == Fq12::one()
+        )) {
+            None => false,
+            // signature is valid if
+            // e(1/g2, sigma2) * e(sigma1, hv^{time_vec}) * e(pk, h) = 1
+            Some(pairingproduct) => pairingproduct == Fq12::one(),
+        }
     }
 
     /// This function aggregates the signatures without checking if a signature is valid or not.

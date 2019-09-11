@@ -277,7 +277,7 @@ impl SubSecretKey {
         g2.negate();
 
         // and then use sim-pairing for faster computation
-        let pairingproduct = Bls12::final_exponentiation(&Bls12::miller_loop(
+        match Bls12::final_exponentiation(&Bls12::miller_loop(
             [
                 (
                     &(g2.into_affine().prepare()),
@@ -293,12 +293,12 @@ impl SubSecretKey {
                 ),
             ]
             .iter(),
-        ))
-        .unwrap();
-
-        // verification is successful if
-        //   e(hpoly, -g2) * e(h, pk) * e(h0*hi^ti, g2r) == 1
-        pairingproduct == Fq12::one()
+        )) {
+            None => false,
+            // verification is successful if
+            //   e(hpoly, -g2) * e(h, pk) * e(h0*hi^ti, g2r) == 1
+            Some(pairingproduct) => pairingproduct == Fq12::one(),
+        }
     }
 
     /// This function returns the storage requirement for this sub secret key. Recall that

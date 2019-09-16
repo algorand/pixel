@@ -31,7 +31,7 @@ other purpose.
   * We rely heavily on this library for underlying arithmetics.
 * [Pixel_param](https://github.com/algorand/pixel_param)
   * We use the default parameters generated from this crate.
-* [BLS_SIG-fork](https://github.com/algorand/bls_sigs_ref-fork)
+* [BLS_SIG-fork](https://github.com/algorand/bls_sigs_ref)
   * This library is only used for generating and verifying proof of possession.
 
 ## Build options

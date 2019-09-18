@@ -1,4 +1,4 @@
-use bls_sigs_ref_rs::BLSSignature;
+use bls_sigs_ref_rs::BLSSigCore;
 use clear_on_drop::ClearOnDrop;
 use domain_sep;
 use ff::Field;
@@ -181,7 +181,7 @@ fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1,
         return Err(ERR_SERIAL.to_owned());
     };
     // the pop is a signature on the buf
-    let sig = BLSSignature::sign(msk, buf, ciphersuite);
+    let sig = BLSSigCore::core_sign(msk, buf, ciphersuite);
     Ok(sig)
 }
 

@@ -25,13 +25,13 @@ vectors and cross comparing with Rust's output. It should not be used for any
 other purpose.
 
 ## Dependencies
-* [Pairing-fork library](https://github.com/algorand/pairing-fork)
+* [Pairing-plus library](https://github.com/algorand/pairing-plus)
   * A fork of zkcrypto's pairing library; with additional functions such as `hash to groups`
   and `membership testing`, etc.
   * We rely heavily on this library for underlying arithmetics.
 * [Pixel_param](https://github.com/algorand/pixel_param)
   * We use the default parameters generated from this crate.
-* [BLS_SIG-fork](https://github.com/algorand/bls_sigs_ref)
+* [BLS_SIG](https://github.com/algorand/bls_sigs_ref)
   * This library is only used for generating and verifying proof of possession.
 
 ## Build options

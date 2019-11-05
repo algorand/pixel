@@ -10,7 +10,7 @@ from keyupdate import sk_update, time_to_vec
 
 from curve_ops import g1gen, point_mul, point_add
 from hashlib import sha512, sha256
-from hash_to_field import Hr, OS2IP, I2OSP
+from hash_to_field import hash_to_base, OS2IP, I2OSP
 from util import print_g1_hex, print_g2_hex
 from serdesZ import serialize
 from consts import q

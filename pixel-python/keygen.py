@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/Users/zhenfei/Documents/GitHub/bls_sigs_ref-fork/python-impl")
+sys.path.append("/Users/zhenfei/Documents/GitHub/bls_sigs_ref/python-impl")
 
 import hkdf
 import hashlib
@@ -7,7 +7,7 @@ import filecmp
 
 from curve_ops import g1gen, point_mul, point_add
 from hashlib import sha512, sha256
-from hash_to_field import Hr
+from hash_to_field import hash_to_base
 from util import print_g1_hex, print_g2_hex
 from serdesZ import serialize
 

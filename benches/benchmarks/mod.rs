@@ -1,4 +1,4 @@
-extern crate pairing;
+extern crate pairing_plus as pairing;
 extern crate pixel;
 extern crate rand;
 

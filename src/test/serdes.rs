@@ -40,8 +40,8 @@ fn test_ssk_serialization_rand() {
     assert!(t.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let (s, compressed) = SubSecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let s = SubSecretKey::deserialize(&mut buf[..].as_ref(), true).unwrap();
+
     // makes sure that the keys match
     assert_eq!(t, s);
 }
@@ -73,8 +73,8 @@ fn test_sk_serialization_rand() {
     assert!(sk.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let (sk_recover, compressed) = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let sk_recover = SecretKey::deserialize(&mut buf[..].as_ref(), true).unwrap();
+
     // makes sure that the keys match
     assert_eq!(sk, sk_recover);
 
@@ -107,8 +107,8 @@ fn test_sk_serialization_rand() {
         assert!(sk2.serialize(&mut buf, true).is_ok());
         assert_eq!(buf.len(), bufsize, "length of blob is incorrect");
         // deserialize a buffer into ssk
-        let (sk_recover, compressed) = SecretKey::deserialize(&mut buf[..].as_ref()).unwrap();
-        assert_eq!(compressed, true);
+        let sk_recover = SecretKey::deserialize(&mut buf[..].as_ref(), true).unwrap();
+
         assert_eq!(sk_recover, sk2);
     }
 }
@@ -135,8 +135,8 @@ fn test_pk_serialization_rand() {
     assert_eq!(buf.len(), PK_LEN, "length of blob is incorrect");
 
     // deserialize a buffer into ssk
-    let (pk_recover, compressed) = PublicKey::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let pk_recover = PublicKey::deserialize(&mut buf[..].as_ref(), true).unwrap();
+
     // makes sure that the keys match
     assert_eq!(pk, pk_recover);
 }
@@ -162,8 +162,8 @@ fn test_signature_serialization_rand() {
     assert!(sig.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), SIG_LEN, "length of blob is incorrect");
     // deserialize a buffer into ssk
-    let (sig_recover, compressed) = Signature::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let sig_recover = Signature::deserialize(&mut buf[..].as_ref(), true).unwrap();
+
     // makes sure that the keys match
     assert_eq!(sig, sig_recover);
 }
@@ -176,8 +176,8 @@ fn test_g1_serialization_rand() {
     // serialize a PixelG1 element into buffer
     assert!(g1_zero.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let (g1_zero_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let g1_zero_recover = PixelG1::deserialize(&mut buf[..].as_ref(), true).unwrap();
+
     assert_eq!(g1_zero, g1_zero_recover);
 
     // PixelG1::one, compressed
@@ -186,8 +186,8 @@ fn test_g1_serialization_rand() {
     // serialize a PixelG1 element into buffer
     assert!(g1_one.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let (g1_one_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let g1_one_recover = PixelG1::deserialize(&mut buf[..].as_ref(), true).unwrap();
+
     assert_eq!(g1_one, g1_one_recover);
 
     // PixelG1::zero, uncompressed
@@ -195,8 +195,8 @@ fn test_g1_serialization_rand() {
     // serialize a PixelG1 element into buffer
     assert!(g1_zero.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 192, "length of blob is incorrect");
-    let (g1_zero_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, false);
+    let g1_zero_recover = PixelG1::deserialize(&mut buf[..].as_ref(), false).unwrap();
+
     assert_eq!(g1_zero, g1_zero_recover);
 
     // PixelG1::one, uncompressed
@@ -204,8 +204,8 @@ fn test_g1_serialization_rand() {
     // serialize a PixelG1 element into buffer
     assert!(g1_one.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 192, "length of blob is incorrect");
-    let (g1_one_recover, compressed) = PixelG1::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, false);
+    let g1_one_recover = PixelG1::deserialize(&mut buf[..].as_ref(), false).unwrap();
+
     assert_eq!(g1_one, g1_one_recover);
 }
 
@@ -217,8 +217,7 @@ fn test_g2_serialization_rand() {
     // serialize a PixelG2 element into buffer
     assert!(g2_zero.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 48, "length of blob is incorrect");
-    let (g2_zero_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let g2_zero_recover = PixelG2::deserialize(&mut buf[..].as_ref(), true).unwrap();
     assert_eq!(g2_zero, g2_zero_recover);
 
     // PixelG2::one, compressed
@@ -227,8 +226,7 @@ fn test_g2_serialization_rand() {
     // serialize a PixelG2 element into buffer
     assert!(g2_one.serialize(&mut buf, true).is_ok());
     assert_eq!(buf.len(), 48, "length of blob is incorrect");
-    let (g2_one_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, true);
+    let g2_one_recover = PixelG2::deserialize(&mut buf[..].as_ref(), true).unwrap();
     assert_eq!(g2_one, g2_one_recover);
 
     // PixelG2::zero, uncompressed
@@ -236,8 +234,7 @@ fn test_g2_serialization_rand() {
     // serialize a PixelG2 element into buffer
     assert!(g2_zero.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let (g2_zero_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
-    assert_eq!(compressed, false);
+    let g2_zero_recover = PixelG2::deserialize(&mut buf[..].as_ref(), false).unwrap();
     assert_eq!(g2_zero, g2_zero_recover);
 
     // PixelG2::one, uncompressed
@@ -245,9 +242,8 @@ fn test_g2_serialization_rand() {
     // serialize a PixelG2 element into buffer
     assert!(g2_one.serialize(&mut buf, false).is_ok());
     assert_eq!(buf.len(), 96, "length of blob is incorrect");
-    let (g2_one_recover, compressed) = PixelG2::deserialize(&mut buf[..].as_ref()).unwrap();
+    let g2_one_recover = PixelG2::deserialize(&mut buf[..].as_ref(), false).unwrap();
 
-    assert_eq!(compressed, false);
     assert_eq!(g2_one, g2_one_recover);
 }
 
@@ -369,19 +365,38 @@ const INVALID_CIPHERSUITE: [u8; 2] = [0x0f, 0xff];
 #[test]
 fn test_pk_serialization_kat() {
     // correct format of pks
-    for &val in &VALID_G1_POINTS[..] {
+    for &val in &[VALID_G1_ZERO_COM, VALID_G1_COM] {
         for &csid in &VALID_CIPHERSUITE {
             let tmp = [[csid].as_ref(), val].concat();
-            let res = PublicKey::deserialize(&mut Cursor::new(tmp));
+            let res = PublicKey::deserialize(&mut Cursor::new(tmp), true);
             assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
         }
+    }
+    for &csid in &VALID_CIPHERSUITE {
+        let tmp = [[csid].as_ref(),  VALID_G1_ZERO_UNCOM].concat();
+        let res = PublicKey::deserialize(&mut Cursor::new(tmp), false);
+        assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
+    }
+
+    // incorrect compressness
+    for &val in &[VALID_G1_ZERO_COM, VALID_G1_COM] {
+        for &csid in &VALID_CIPHERSUITE {
+            let tmp = [[csid].as_ref(), val].concat();
+            let res = PublicKey::deserialize(&mut Cursor::new(tmp), false);
+            assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
+        }
+    }
+    for &csid in &VALID_CIPHERSUITE {
+        let tmp = [[csid].as_ref(),  VALID_G1_ZERO_UNCOM].concat();
+        let res = PublicKey::deserialize(&mut Cursor::new(tmp), true);
+        assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }
 
     // incorrect format
     for &inval in &INVALID_G1_POINTS[..] {
         for &csid in &VALID_CIPHERSUITE {
             let tmp = [[csid].as_ref(), inval].concat();
-            let res = PublicKey::deserialize(&mut Cursor::new(tmp));
+            let res = PublicKey::deserialize(&mut Cursor::new(tmp), true);
             assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
         }
     }
@@ -390,7 +405,7 @@ fn test_pk_serialization_kat() {
     for &val in &VALID_G1_POINTS[..] {
         for &csid in &INVALID_CIPHERSUITE {
             let tmp = [[csid].as_ref(), val].concat();
-            let res = PublicKey::deserialize(&mut Cursor::new(tmp));
+            let res = PublicKey::deserialize(&mut Cursor::new(tmp), true);
             assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
         }
     }
@@ -555,7 +570,7 @@ fn test_pop_serialization_kat() {
     for &val in &VALID_G2_POINTS[0..2] {
         for &csid in &VALID_CIPHERSUITE {
             let tmp = [[csid].as_ref(), val].concat();
-            let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp));
+            let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp), true);
             assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
         }
     }
@@ -563,7 +578,7 @@ fn test_pop_serialization_kat() {
     // incorrect compressness of pops
     for &csid in &VALID_CIPHERSUITE {
         let tmp = [[csid].as_ref(), &VALID_G2_POINTS[2]].concat();
-        let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp));
+        let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp), true);
         assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }
 
@@ -571,7 +586,7 @@ fn test_pop_serialization_kat() {
     for &inval in &INVALID_G2_POINTS[..] {
         for &csid in &VALID_CIPHERSUITE {
             let tmp = [[csid].as_ref(), inval].concat();
-            let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp));
+            let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp), true);
             assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
         }
     }
@@ -580,7 +595,7 @@ fn test_pop_serialization_kat() {
     for &val in &VALID_G2_POINTS[..] {
         for &csid in &INVALID_CIPHERSUITE {
             let tmp = [[csid].as_ref(), val].concat();
-            let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp));
+            let res = ProofOfPossession::deserialize(&mut Cursor::new(tmp), true);
             assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
         }
     }
@@ -594,7 +609,7 @@ fn test_sig_serialization_kat_valid() {
             for &csid in &VALID_CIPHERSUITE {
                 let time: [u8; 4] = [1, 2, 3, 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
-                let res = Signature::deserialize(&mut Cursor::new(tmp));
+                let res = Signature::deserialize(&mut Cursor::new(tmp), true);
                 assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
             }
         }
@@ -609,7 +624,7 @@ fn test_sig_serialization_kat_invalid_const() {
         let val2 = VALID_G2_ZERO_UNCOM;
         let time: [u8; 4] = [1, 2, 3, 4];
         let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
-        let res = Signature::deserialize(&mut Cursor::new(tmp));
+        let res = Signature::deserialize(&mut Cursor::new(tmp), true);
         assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }
     for &csid in &VALID_CIPHERSUITE {
@@ -617,7 +632,7 @@ fn test_sig_serialization_kat_invalid_const() {
         let val2 = VALID_G2_ZERO_COM;
         let time: [u8; 4] = [1, 2, 3, 4];
         let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
-        let res = Signature::deserialize(&mut Cursor::new(tmp));
+        let res = Signature::deserialize(&mut Cursor::new(tmp), true);
         assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }
 
@@ -627,7 +642,7 @@ fn test_sig_serialization_kat_invalid_const() {
             for &csid in &INVALID_CIPHERSUITE {
                 let time: [u8; 4] = [1, 2, 3, 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
-                let res = Signature::deserialize(&mut Cursor::new(tmp));
+                let res = Signature::deserialize(&mut Cursor::new(tmp), true);
                 assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
             }
         }
@@ -638,7 +653,7 @@ fn test_sig_serialization_kat_invalid_const() {
             for &csid in &VALID_CIPHERSUITE {
                 let time: [u8; 4] = [0; 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), val1, val2].concat();
-                let res = Signature::deserialize(&mut Cursor::new(tmp));
+                let res = Signature::deserialize(&mut Cursor::new(tmp), true);
                 assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
             }
         }
@@ -653,7 +668,7 @@ fn test_sig_serialization_kat_invalid_points() {
             for &csid in &VALID_CIPHERSUITE {
                 let time: [u8; 4] = [1, 2, 3, 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), inval1, val2].concat();
-                let res = Signature::deserialize(&mut Cursor::new(tmp));
+                let res = Signature::deserialize(&mut Cursor::new(tmp), true);
                 assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok())
             }
         }
@@ -665,7 +680,7 @@ fn test_sig_serialization_kat_invalid_points() {
             for &csid in &VALID_CIPHERSUITE {
                 let time: [u8; 4] = [1, 2, 3, 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), val1, inval2].concat();
-                let res = Signature::deserialize(&mut Cursor::new(tmp));
+                let res = Signature::deserialize(&mut Cursor::new(tmp), true);
                 assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok())
             }
         }
@@ -677,7 +692,7 @@ fn test_sig_serialization_kat_invalid_points() {
             for &csid in &VALID_CIPHERSUITE {
                 let time: [u8; 4] = [1, 2, 3, 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), inval1, inval2].concat();
-                let res = Signature::deserialize(&mut Cursor::new(tmp));
+                let res = Signature::deserialize(&mut Cursor::new(tmp), true);
                 assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok())
             }
         }
@@ -689,7 +704,7 @@ fn test_sig_serialization_kat_invalid_points() {
             for &csid in &VALID_CIPHERSUITE {
                 let time: [u8; 4] = [1, 2, 3, 4];
                 let tmp = [[csid].as_ref(), time.as_ref(), val2, val1].concat();
-                let res = Signature::deserialize(&mut Cursor::new(tmp));
+                let res = Signature::deserialize(&mut Cursor::new(tmp), true);
                 assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok())
             }
         }

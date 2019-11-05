@@ -1,5 +1,5 @@
 use crate::{PixelG2, ProofOfPossession, SerDes, PK_LEN};
-use bls_sigs_ref_rs::BLSSigCore;
+use bls_sigs_ref::BLSSigCore;
 use domain_sep;
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
@@ -73,7 +73,7 @@ impl PublicKey {
             return false;
         };
         // return the output of verification
-        BLSSigCore::core_verify(self.pk(), pop.pop(), buf, self.ciphersuite())
+        BLSSigCore::core_verify(self.pk(), pop.pop(), buf, &[self.ciphersuite()])
     }
 }
 

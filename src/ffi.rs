@@ -166,7 +166,7 @@ pub unsafe extern "C" fn c_sign_present(
     //     }
     // }
 
-    let (mut k, _compressed) = match SecretKey::deserialize(&mut sk_local) {
+    let mut k = match SecretKey::deserialize(&mut sk_local, true) {
         Ok(p) => p,
         Err(e) => panic!("C wrapper error: signing function: deserialize sk: {}", e),
     };
@@ -205,7 +205,7 @@ pub unsafe extern "C" fn c_verify(
     // decompress the public key
     let mut k_buf = pk.data.to_vec();
 
-    let (k, _compressed) = match PublicKey::deserialize(&mut k_buf[..].as_ref()) {
+    let k = match PublicKey::deserialize(&mut k_buf[..].as_ref(), true) {
         Ok(p) => p,
         Err(e) => panic!(
             "C wrapper error: verification function: deserialize pk: {}",
@@ -215,7 +215,7 @@ pub unsafe extern "C" fn c_verify(
 
     // decompress the signature
     let mut s_buf = sig.data.to_vec();
-    let (s, _compressed) = match Signature::deserialize(&mut s_buf[..].as_ref()) {
+    let s = match Signature::deserialize(&mut s_buf[..].as_ref(), true) {
         Ok(p) => p,
         Err(e) => panic!(
             "C wrapper error: verification function: deserialize signature: {}",
@@ -242,7 +242,7 @@ pub unsafe extern "C" fn c_sk_update(
 
     // decompress the secret key
     let mut sk_local = std::slice::from_raw_parts(sk.data, sk.len as usize);
-    let (mut k, _compressed) = match SecretKey::deserialize(&mut sk_local) {
+    let mut k = match SecretKey::deserialize(&mut sk_local, true) {
         Ok(p) => p,
         Err(e) => panic!(
             "C wrapper error: key update function: deserialize sk: {}",
@@ -300,7 +300,7 @@ pub unsafe extern "C" fn c_aggregation(
 
     for sig in sig_list.iter().take(sig_num) {
         // decompress the signature
-        let (s, _compressed) = match Signature::deserialize(&mut sig.data.as_ref()) {
+        let s = match Signature::deserialize(&mut sig.data.as_ref(), true) {
             Ok(p) => p,
             Err(e) => panic!(
                 "C wrapper error: signature aggregation function: deserialize signature: {}",
@@ -345,7 +345,7 @@ pub unsafe extern "C" fn c_verify_agg(
 
     for pk in pk_list.iter().take(pk_num) {
         // decompress the signature
-        let (s, _compressed) = match PublicKey::deserialize(&mut pk.data.as_ref()) {
+        let s = match PublicKey::deserialize(&mut pk.data.as_ref(), true) {
             Ok(p) => p,
             Err(e) => panic!(
                 "C wrapper error: signature aggregation function: deserialize signature: {}",
@@ -360,7 +360,7 @@ pub unsafe extern "C" fn c_verify_agg(
 
     // decompress the signature
     let mut s_buf = agg_sig.data.to_vec();
-    let (sig, _compressed) = match Signature::deserialize(&mut s_buf[..].as_ref()) {
+    let sig = match Signature::deserialize(&mut s_buf[..].as_ref(), true) {
         Ok(p) => p,
         Err(e) => panic!(
             "C wrapper error: verification function: deserialize signature: {}",
@@ -377,7 +377,7 @@ pub extern "C" fn c_verify_pop(pk: pixel_pk, pop: pixel_pop) -> bool {
     // decompress the public key
     let mut k_buf = pk.data.to_vec();
 
-    let (k, _compressed) = match PublicKey::deserialize(&mut k_buf[..].as_ref()) {
+    let k = match PublicKey::deserialize(&mut k_buf[..].as_ref(), true) {
         Ok(p) => p,
         Err(e) => panic!(
             "C wrapper error: PoP verification function: deserialize pk: {}",
@@ -388,7 +388,7 @@ pub extern "C" fn c_verify_pop(pk: pixel_pk, pop: pixel_pop) -> bool {
     // decompress the pop
     let mut pop_buf = pop.data.to_vec();
 
-    let (p, _compressed) = match ProofOfPossession::deserialize(&mut pop_buf[..].as_ref()) {
+    let p = match ProofOfPossession::deserialize(&mut pop_buf[..].as_ref(), true) {
         Ok(p) => p,
         Err(e) => panic!(
             "C wrapper error: PoP verification function: deserialize pop: {}",

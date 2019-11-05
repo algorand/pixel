@@ -22,12 +22,12 @@
 //! mapping between ids and parameters is yet to be specified.
 
 extern crate bigint;
-extern crate bls_sigs_ref_rs;
+extern crate bls_sigs_ref;
 extern crate clear_on_drop;
 extern crate ff;
 extern crate hkdf;
 extern crate libc;
-extern crate pairing;
+extern crate pairing_plus as pairing;
 extern crate pixel_param as param;
 extern crate sha2;
 

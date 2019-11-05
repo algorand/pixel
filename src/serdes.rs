@@ -44,7 +44,7 @@ impl SerDes for ProofOfPossession {
     /// The pop's signature must be in the compressed form - strong
     /// unforgebility requires a unique representation of the
     /// signature.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
+    fn deserialize<R: Read>(reader: &mut R, compressed: Compressed) -> Result<Self> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -56,13 +56,10 @@ impl SerDes for ProofOfPossession {
         }
 
         // read into pop
-        let (pop, compressed) = PixelG1::deserialize(reader)?;
-        if !compressed {
-            return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
-        }
+        let pop = PixelG1::deserialize(reader, compressed)?;
 
         // finished
-        Ok((ProofOfPossession::new(constants[0], pop), compressed))
+        Ok(ProofOfPossession::new(constants[0], pop))
     }
 }
 
@@ -81,7 +78,7 @@ impl SerDes for Signature {
 
         // the time stamp cannot exceed 2^32
         let time = self.time();
-        if time > (1 << 32) {
+        if time >= (1 << 32) {
             return Err(Error::new(ErrorKind::InvalidData, ERR_SERIAL));
         }
 
@@ -114,7 +111,7 @@ impl SerDes for Signature {
     /// The signature must be in the compressed form - strong
     /// unforgebility requires a unique representation of the
     /// signature.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
+    fn deserialize<R: Read>(reader: &mut R, compressed: Compressed) -> Result<Self> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -135,21 +132,23 @@ impl SerDes for Signature {
         }
 
         // read into sigma1
-        let (sigma1, compressed) = PixelG2::deserialize(reader)?;
+        let sigma1 = PixelG2::deserialize(reader, compressed)?;
         if !compressed {
             return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
         }
 
         // read into sigma2
-        let (sigma2, compressed) = PixelG1::deserialize(reader)?;
+        let sigma2 = PixelG1::deserialize(reader, compressed)?;
         if !compressed {
             return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
         }
 
         // finished
-        Ok((
-            Signature::new(constants[0], u64::from(time), sigma1, sigma2),
-            compressed,
+        Ok(Signature::new(
+            constants[0],
+            u64::from(time),
+            sigma1,
+            sigma2,
         ))
     }
 }
@@ -178,7 +177,7 @@ impl SerDes for PublicKey {
     /// `|ciphersuite id| PixelG2 element |` => bytes
     ///
     /// Returns an error if deserialization fails.
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
+    fn deserialize<R: Read>(reader: &mut R, compressed: Compressed) -> Result<Self> {
         // constants stores id and the number of ssk-s
         let mut constants: [u8; 1] = [0u8; 1];
 
@@ -189,10 +188,10 @@ impl SerDes for PublicKey {
             return Err(Error::new(ErrorKind::InvalidData, ERR_CIPHERSUITE));
         }
         // read into pk
-        let (pk, compressed) = PixelG2::deserialize(reader)?;
+        let pk = PixelG2::deserialize(reader, compressed)?;
 
         // finished
-        Ok((PublicKey::new(constants[0], pk), compressed))
+        Ok(PublicKey::new(constants[0], pk))
     }
 }
 
@@ -253,7 +252,7 @@ impl SerDes for SecretKey {
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`.
     ///
     /// Return an error if deserialization fails
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
+    fn deserialize<R: Read>(reader: &mut R, compressed: Compressed) -> Result<Self> {
         // constants stores id, the number of ssk-s, and the seed
         let mut constants: [u8; 2] = [0u8; 2];
         let mut rngseed: [u8; 64] = [0u8; 64];
@@ -272,20 +271,20 @@ impl SerDes for SecretKey {
 
         // deserialize the individual ssk
         let mut ssk_vec: Vec<SubSecretKey> = vec![];
-        let (ssk, compressed1) = SubSecretKey::deserialize(reader)?;
+        let ssk = SubSecretKey::deserialize(reader, compressed)?;
         ssk_vec.push(ssk);
         for _i in 1..constants[1] {
-            let (ssk, compressed2) = SubSecretKey::deserialize(reader)?;
-            if compressed1 != compressed2 {
-                return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
-            }
+            let ssk = SubSecretKey::deserialize(reader, compressed)?;
+
             ssk_vec.push(ssk);
         }
 
         // finished
-        Ok((
-            SecretKey::new(constants[0], ssk_vec[0].time(), ssk_vec, PRNG::new(rngseed)),
-            compressed1,
+        Ok(SecretKey::new(
+            constants[0],
+            ssk_vec[0].time(),
+            ssk_vec,
+            PRNG::new(rngseed),
         ))
     }
 }
@@ -340,7 +339,7 @@ impl SerDes for SubSecretKey {
     /// Conver a blob into a ssk:
     /// `| time stamp | hv_length | serial(g2r) | serial(hpoly) | serial(h0) ... | serial(ht) |`
     /// Return an error if deserialization fails or invalid ciphersuite
-    fn deserialize<R: Read>(reader: &mut R) -> Result<(Self, Compressed)> {
+    fn deserialize<R: Read>(reader: &mut R, compressed: Compressed) -> Result<Self> {
         // the first 4 bytes stores the time stamp
         let mut time: [u8; 4] = [0u8; 4];
         reader.read_exact(&mut time)?;
@@ -358,27 +357,18 @@ impl SerDes for SubSecretKey {
         }
 
         // the next chunck of data stores g2r
-        let (g2r, compressed1) = SerDes::deserialize(reader)?;
+        let g2r = SerDes::deserialize(reader, compressed)?;
 
         // the next chunck of data stores hpoly
-        let (hpoly, compressed2) = SerDes::deserialize(reader)?;
-        if compressed1 != compressed2 {
-            return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
-        }
+        let hpoly = SerDes::deserialize(reader, compressed)?;
 
         // the next chunck of data stores hvector
         let mut hv: Vec<PixelG1> = vec![];
         for _i in 0..hvlen[0] {
-            let (tmp, compressed2) = SerDes::deserialize(reader)?;
-            if compressed1 != compressed2 {
-                return Err(Error::new(ErrorKind::InvalidData, ERR_COMPRESS));
-            }
+            let tmp = SerDes::deserialize(reader, compressed)?;
             hv.push(tmp)
         }
 
-        Ok((
-            SubSecretKey::new(u64::from(time), g2r, hpoly, hv),
-            compressed1,
-        ))
+        Ok(SubSecretKey::new(u64::from(time), g2r, hpoly, hv))
     }
 }

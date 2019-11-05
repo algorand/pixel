@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = [
     "Zhenfei Zhang <zhenfei@algorand.com>",
 ]
-license = "MIT/Apache-2.0"
+license = "MIT"
 
 description = "Pixel: Algorand's consensus signature over curve BLS12-381"
 homepage = "https://github.com/algorand/pixel"
@@ -13,11 +13,13 @@ repository = "https://github.com/algorand/pixel"
 autobenches = false
 
 [dependencies]
-pairing = { version = "0.15", git = "https://github.com/algorand/pairing-fork"}
+#pairing = { version = "0.15", git = "https://github.com/algorand/pairing-fork"}
+pairing-plus = "0.17"
 hkdf = "0.7"
 sha2 = "0.8"
 ff = { version = "0.4", features = ["derive"] }
-bls_sigs_ref-rs = { git = "https://github.com/algorand/bls_sigs_ref"}
+#bls_sigs_ref-rs = { git = "https://github.com/algorand/bls_sigs_ref"}
+bls_sigs_ref = "0.1"
 clear_on_drop = "0.2.3"
 pixel_param = { git = "ssh://git@github.com/algorand/pixel_param"}
 bigint = { version = "4", default-features = false }

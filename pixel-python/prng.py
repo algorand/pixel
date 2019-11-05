@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/Users/zhenfei/Documents/GitHub/bls_sigs_ref-fork/python-impl")
+sys.path.append("/Users/zhenfei/Documents/GitHub/bls_sigs_ref/python-impl")
 
 import hkdf
 import hashlib

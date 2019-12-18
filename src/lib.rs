@@ -9,6 +9,7 @@
 #![cfg_attr(feature = "cargo-clippy", deny(warnings))]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::missing_safety_doc))]
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 

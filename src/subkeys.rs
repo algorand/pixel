@@ -8,6 +8,7 @@ use pixel_err::*;
 use public_key::PublicKey;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
+//use zeroize::*;
 use PixelG1;
 use PixelG2;
 
@@ -16,7 +17,7 @@ use PixelG2;
 /// * g1r: the randomization on G1
 /// * h0poly: h0^{alpha + f(x) r}
 /// * hlist: the randomization of the public parameter hlist
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Zeroize)]
 pub struct SubSecretKey {
     /// timestamp for the current subkey
     time: TimeStamp,

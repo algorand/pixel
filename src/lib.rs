@@ -9,6 +9,7 @@
 #![cfg_attr(feature = "cargo-clippy", deny(warnings))]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::unreadable_literal))]
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::missing_safety_doc))]
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 
@@ -30,6 +31,9 @@ extern crate libc;
 extern crate pairing_plus as pairing;
 extern crate pixel_param as param;
 extern crate sha2;
+#[macro_use]
+extern crate zeroize;
+extern crate secrecy;
 
 #[cfg(test)]
 #[macro_use]
@@ -52,6 +56,8 @@ mod key_pair;
 mod pop;
 mod public_key;
 mod secret_key;
+
+//mod pixel_zeroize;
 
 /// This module defines interfaces to C.
 pub mod ffi;

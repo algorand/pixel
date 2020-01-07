@@ -13,18 +13,24 @@ repository = "https://github.com/algorand/pixel"
 autobenches = false
 
 [dependencies]
-#pairing = { version = "0.15", git = "https://github.com/algorand/pairing-fork"}
-pairing-plus = "0.17"
+#pairing-plus = { path = "../pairing-plus"}
+pairing-plus = { git = "https://github.com/algorand/pairing-plus"}
+#pairing-plus = "0.17"
 hkdf = "0.7"
 sha2 = "0.8"
-ff = { version = "0.4", features = ["derive"] }
-#bls_sigs_ref-rs = { git = "https://github.com/algorand/bls_sigs_ref"}
-bls_sigs_ref = "0.1"
+#ff = { path = "../ff2"}
+ff = { git = "https://github.com/algorand/ff"}
+#ff = { version = "0.4", features = ["derive"] }
+bls_sigs_ref = { git = "https://github.com/algorand/bls_sigs_ref"}
+#bls_sigs_ref = "0.1"
+#bls_sigs_ref = { path = "../bls_sigs_ref/rust-impl"}
 clear_on_drop = "0.2.3"
-pixel_param = { git = "ssh://git@github.com/algorand/pixel_param"}
+#pixel_param = { path = "../pixel_param"}
+pixel_param = { git = "https://github.com/algorand/pixel_param"}
 bigint = { version = "4", default-features = false }
 libc = { version = "0.2", features = ["align"] }
-
+zeroize = {version = "1.1", features = ["zeroize_derive"]}
+secrecy="0.6"
 
 [dev-dependencies]
 hex-literal = "0.1"

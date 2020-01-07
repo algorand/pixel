@@ -16,7 +16,7 @@ use std::ops::Rem;
 /// stored as part of the secret key, updated When
 /// secret key is updated, and is used to generate
 /// random field elements.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Zeroize)]
 pub struct PRNG([u8; 64]);
 
 /// implement the Default trait for PRNG

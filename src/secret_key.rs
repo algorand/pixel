@@ -9,7 +9,7 @@ use prng::PRNG;
 use sha2::Digest;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
-
+//use zeroize::*;
 /// The secret key consists of ...
 /// * a list of SubSecretKeys;
 ///     the length of the list can be arbitrary;
@@ -17,7 +17,7 @@ use time::{TimeStamp, TimeVec};
 /// * the ciphersuite id,
 /// * time stamp,
 /// * and a prng.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Zeroize)]
 pub struct SecretKey {
     /// ciphersuite id
     ciphersuite: u8,
@@ -270,6 +270,8 @@ impl SecretKey {
         //
         // which is indeed sk_9
         while new_sk.ssk[0].time() != delegator_time {
+            //            let clear = Zeroizing::new(new_sk.ssk[0]);
+
             // we use ClearOnDrop to safely remove the ssk[0]
             {
                 let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);

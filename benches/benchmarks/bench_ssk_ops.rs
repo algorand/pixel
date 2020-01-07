@@ -1,8 +1,11 @@
+use super::ff::Field;
 use super::pairing::bls12_381::Fr;
 use super::pixel::Pixel;
 use super::pixel::PixelSignature;
 use super::pixel::SubSecretKey;
-use super::rand::{Rand, Rng};
+use super::rand::Rng;
+use super::rand_core::*;
+use super::rand_xorshift::XorShiftRng;
 use criterion::Criterion;
 
 /// benchmark sub secret key delegation - without randomization
@@ -90,7 +93,10 @@ fn bench_ssk_leveled_randomization(c: &mut Criterion) {
         c.bench_function(&message, move |b| {
             b.iter(|| {
                 let mut ssknew = ssk_clone.clone();
-                let r = Fr::rand(&mut rand::thread_rng());
+                let r = Fr::random(&mut XorShiftRng::from_seed([
+                    0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54,
+                    0x06, 0xbc, 0xe5,
+                ]));
                 let res = ssknew.randomization(&param_clone, r);
                 assert!(res.is_ok(), res.err());
             })
@@ -132,7 +138,10 @@ fn bench_ssk_leaf_randomization(c: &mut Criterion) {
     c.bench_function(&message, move |b| {
         b.iter(|| {
             //let mut ssknew = ssk_clone.clone();
-            let r = Fr::rand(&mut rand::thread_rng());
+            let r = Fr::random(&mut XorShiftRng::from_seed([
+                0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06,
+                0xbc, 0xe5,
+            ]));
             let res = ssk.randomization(&param, r);
             assert!(res.is_ok(), res.err());
         })

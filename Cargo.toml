@@ -34,9 +34,11 @@ secrecy="0.6"
 
 [dev-dependencies]
 hex-literal = "0.1"
-rand = "0.4"
+rand_core = "0.5"
+rand_xorshift = "0.2"
 criterion = "0.2.11"
 walkdir = "2.2.7"
+rand = "0.4"
 
 [[bench]]
 name = "pixel_bench"

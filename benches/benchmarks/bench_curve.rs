@@ -1,6 +1,8 @@
+use super::ff::Field;
 use super::pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine, SubgroupCheck};
 use super::pixel::{PixelG1, PixelG2};
-use super::rand::Rand;
+use super::rand_core::*;
+use super::rand_xorshift::XorShiftRng;
 use criterion::Criterion;
 
 /// benchmark group multiplication
@@ -10,11 +12,14 @@ fn bench_group_multiplication(c: &mut Criterion) {
     let mut g1list: Vec<PixelG1> = vec![];
     let mut g2list: Vec<PixelG2> = vec![];
     let mut r1list: Vec<Fr> = vec![];
-    let mut rng = rand::thread_rng();
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
     for _i in 0..SAMPLES {
-        g1list.push(PixelG1::rand(&mut rng));
-        g2list.push(PixelG2::rand(&mut rng));
-        r1list.push(Fr::rand(&mut rng));
+        g1list.push(PixelG1::random(&mut rng));
+        g2list.push(PixelG2::random(&mut rng));
+        r1list.push(Fr::random(&mut rng));
     }
     let r2list = r1list.clone();
     // benchmarking
@@ -43,10 +48,13 @@ fn bench_membership_testing(c: &mut Criterion) {
     let mut g1list: Vec<PixelG1> = vec![];
     let mut g2list: Vec<PixelG2> = vec![];
 
-    let mut rng = rand::thread_rng();
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
     for _i in 0..SAMPLES {
-        g1list.push(PixelG1::rand(&mut rng));
-        g2list.push(PixelG2::rand(&mut rng));
+        g1list.push(PixelG1::random(&mut rng));
+        g2list.push(PixelG2::random(&mut rng));
     }
     // benchmarking
 
@@ -78,14 +86,17 @@ fn bench_pairing(c: &mut Criterion) {
     let mut g2list2: Vec<G2> = vec![];
     let mut g2list3: Vec<G2> = vec![];
 
-    let mut rng = rand::thread_rng();
+    let mut rng = XorShiftRng::from_seed([
+        0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06, 0xbc,
+        0xe5,
+    ]);
     for _i in 0..SAMPLES {
-        g1list1.push(G1::rand(&mut rng));
-        g1list2.push(G1::rand(&mut rng));
-        g1list3.push(G1::rand(&mut rng));
-        g2list1.push(G2::rand(&mut rng));
-        g2list2.push(G2::rand(&mut rng));
-        g2list3.push(G2::rand(&mut rng));
+        g1list1.push(G1::random(&mut rng));
+        g1list2.push(G1::random(&mut rng));
+        g1list3.push(G1::random(&mut rng));
+        g2list1.push(G2::random(&mut rng));
+        g2list2.push(G2::random(&mut rng));
+        g2list3.push(G2::random(&mut rng));
     }
 
     // benchmarking

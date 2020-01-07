@@ -187,8 +187,8 @@ fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1,
 /// This function is private, and test only, since by default no one shall have the master secret key.
 #[cfg(test)]
 fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
+    use ff::Field;
     use pairing::{bls12_381::*, CurveAffine, Engine};
-
     let mut g2 = pp.g2();
     g2.negate();
     let h = pp.h();

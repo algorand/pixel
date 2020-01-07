@@ -11,6 +11,8 @@ CREDIT: http://patorjk.com/software/taag
 
 # Pixel signature scheme
 
+__WORK IN PROGRESS__
+
 [![Build Status](https://travis-ci.com/algorand/pixel.svg?token=cs332z4omsgc9ykLW8pu&branch=master)](https://travis-ci.com/algorand/pixel)
 
 This is Algorand's implementation of Pixel signature, over the BLS12-381 curve.

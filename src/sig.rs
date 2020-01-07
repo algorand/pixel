@@ -1,6 +1,5 @@
 // implements the signature structure, the signing and verification algorithms
-use crate::{PixelG1, PixelG2, PublicKey, SecretKey, SubSecretKey};
-use clear_on_drop::ClearOnDrop;
+use crate::{PixelG1, PixelG2, PublicKey, SecretKey};
 use domain_sep::DOM_SEP_SIG;
 use ff::Field;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine, SubgroupCheck};
@@ -202,18 +201,18 @@ impl Signature {
         //  m = HKDF-Expand(prng_seed, info, 64)
         //  r = OS2IP(m) % p
         let info = [DOM_SEP_SIG.as_bytes(), msg, time_tmp.as_ref()].concat();
-        let mut r_sec = sk.prng().sample(info);
+        let r_sec = sk.prng().sample(info);
 
         // hash the message into a field element
         let m = hash_msg_into_fr(msg, pp.ciphersuite());
         // calls the sign_fr subroutine
-        let sig = Signature::sign_fr(&sk, tar_time, &pp, m, r_sec);
-        // clear the secret data
-        {
-            let _clear = ClearOnDrop::new(&mut r_sec);
-        }
-        assert_eq!(r_sec, Fr::zero(), "randomness not cleared!");
-        sig
+        Signature::sign_fr(&sk, tar_time, &pp, m, r_sec)
+        // // clear the secret data
+        // {
+        //     let _clear = ClearOnDrop::new(&mut r_sec);
+        // }
+        // assert_eq!(r_sec, Fr::zero(), "randomness not cleared!");
+        // sig
     }
 
     /// This function generates a signature for a message in the form of a field element.
@@ -232,7 +231,7 @@ impl Signature {
         assert_eq!(sk.time(), tar_time, "The time stamps does not match!");
         // we only use the first sub secret key to sign
         // this creates a copy of ssk and therefore needs to be destroyed
-        let mut ssk_sec = sk.first_ssk()?;
+        let ssk_sec = sk.first_ssk()?;
 
         // get all neccessary variables
         let depth = pp.depth();
@@ -240,10 +239,10 @@ impl Signature {
         let timevec = match ssk_sec.time_vec(depth) {
             // clear ssk_sec before returing the error
             Err(e) => {
-                {
-                    let _clear = ClearOnDrop::new(&mut ssk_sec);
-                }
-                assert_eq!(ssk_sec, SubSecretKey::default(), "memory not cleared");
+                // {
+                //     let _clear = ClearOnDrop::new(&mut ssk_sec);
+                // }
+                // assert_eq!(ssk_sec, SubSecretKey::default(), "memory not cleared");
                 return Err(e);
             }
             Ok(p) => p,
@@ -258,11 +257,11 @@ impl Signature {
         let mut tmp_sec = pp.g2();
         tmp_sec.mul_assign(r);
         sig1.add_assign(&tmp_sec);
-        {
-            let _clear = ClearOnDrop::new(&mut tmp_sec);
-        }
-
-        assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
+        // {
+        //     let _clear = ClearOnDrop::new(&mut tmp_sec);
+        // }
+        //
+        // assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
 
         // tmp3 = h0 * \prod h_i ^ t_i * h_d^m
         let mut tmp3_sec = hlist[0];
@@ -287,17 +286,17 @@ impl Signature {
         let mut hv_last_sec = match ssk_sec.last_hvector_coeff() {
             // clear buffer before returing the error
             Err(e) => {
-                {
-                    // remove the ssk and tmp3
-                    let _clear1 = ClearOnDrop::new(&mut ssk_sec);
-                    let _clear2 = ClearOnDrop::new(&mut tmp3_sec);
-                }
-                assert_eq!(
-                    ssk_sec,
-                    SubSecretKey::default(),
-                    "subsecretkey is not cleared"
-                );
-                assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
+                // {
+                //     // remove the ssk and tmp3
+                //     let _clear1 = ClearOnDrop::new(&mut ssk_sec);
+                //     let _clear2 = ClearOnDrop::new(&mut tmp3_sec);
+                // }
+                // assert_eq!(
+                //     ssk_sec,
+                //     SubSecretKey::default(),
+                //     "subsecretkey is not cleared"
+                // );
+                // assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
                 return Err(e);
             }
             Ok(p) => p,
@@ -306,20 +305,20 @@ impl Signature {
         sig2.add_assign(&hv_last_sec);
         sig2.add_assign(&tmp3_sec);
 
-        // clean up the secret data that has been used
-        {
-            // remove the ssk, hv_last and tmp3
-            let _clear1 = ClearOnDrop::new(&mut ssk_sec);
-            let _clear2 = ClearOnDrop::new(&mut hv_last_sec);
-            let _clear3 = ClearOnDrop::new(&mut tmp3_sec);
-        }
-        assert_eq!(
-            ssk_sec,
-            SubSecretKey::default(),
-            "subsecretkey is not cleared"
-        );
-        assert_eq!(hv_last_sec, PixelG1::default(), "h vector is not cleared");
-        assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
+        // // clean up the secret data that has been used
+        // {
+        //     // remove the ssk, hv_last and tmp3
+        //     let _clear1 = ClearOnDrop::new(&mut ssk_sec);
+        //     let _clear2 = ClearOnDrop::new(&mut hv_last_sec);
+        //     let _clear3 = ClearOnDrop::new(&mut tmp3_sec);
+        // }
+        // assert_eq!(
+        //     ssk_sec,
+        //     SubSecretKey::default(),
+        //     "subsecretkey is not cleared"
+        // );
+        // assert_eq!(hv_last_sec, PixelG1::default(), "h vector is not cleared");
+        // assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
 
         Ok(Signature {
             ciphersuite: pp.ciphersuite(),

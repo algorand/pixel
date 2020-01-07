@@ -1,7 +1,7 @@
 /// This file implements the functions that we will be using to, initiate, maintain and update
 /// the seeds of random number generators.
-// use clear on drop to zero out buffer
-use clear_on_drop::ClearOnDrop;
+// use zeroize to clear the memory
+use zeroize::Zeroize;
 // use hkdf-sha512 to extract and expand a seed
 use hkdf::Hkdf;
 use sha2::{digest::generic_array, Sha512};
@@ -16,7 +16,8 @@ use std::ops::Rem;
 /// stored as part of the secret key, updated When
 /// secret key is updated, and is used to generate
 /// random field elements.
-#[derive(Clone, Copy, Zeroize)]
+#[derive(Clone, Zeroize)]
+#[zeroize(drop)]
 pub struct PRNG([u8; 64]);
 
 /// implement the Default trait for PRNG
@@ -69,19 +70,19 @@ impl PRNG {
     /// from the seed using HKDF-Extract
     pub fn init<Blob: AsRef<[u8]>>(seed: Blob, salt: Blob) -> Self {
         // now build the hkdf-sha512: m = hkdf-extract(salt, seed)
-        let mut hk_sec = Hkdf::<Sha512>::extract(Some(salt.as_ref()), seed.as_ref());
+        let hk_sec = Hkdf::<Sha512>::extract(Some(salt.as_ref()), seed.as_ref());
         let mut rng_seed = [0u8; 64];
         rng_seed.copy_from_slice(&hk_sec.prk[0..64]);
-        // clear the hk
-        {
-            let _clear2 = ClearOnDrop::new(&mut hk_sec.prk);
-        }
-        // make sure the HKDF memory is cleared
-        assert_eq!(
-            hk_sec.prk.to_vec(),
-            vec![0u8; 64],
-            "HKDF buffer not cleared"
-        );
+        // // clear the hk
+        // {
+        //     let _clear2 = ClearOnDrop::new(&mut hk_sec.prk);
+        // }
+        // // make sure the HKDF memory is cleared
+        // assert_eq!(
+        //     hk_sec.prk.to_vec(),
+        //     vec![0u8; 64],
+        //     "HKDF buffer not cleared"
+        // );
         Self(rng_seed)
     }
 
@@ -89,7 +90,7 @@ impl PRNG {
     /// and sample a field element; the PRNG is updated.
     pub fn sample_then_update<Blob: AsRef<[u8]>>(&mut self, info: Blob) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
-        let mut hk_sec = Hkdf::<Sha512> {
+        let hk_sec = Hkdf::<Sha512> {
             prk: generic_array::GenericArray::clone_from_slice(self.seed()),
         };
 
@@ -103,11 +104,11 @@ impl PRNG {
         // by os2ip(output_sec[0..64]) % p
         let r = os2ip_mod_p(&output_sec[0..64]);
 
-        // clear the old seed
-        {
-            let _clear1 = ClearOnDrop::new(&mut (*self));
-        }
-        assert_eq!(*self, PRNG::default(), "old seed not cleared");
+        // // clear the old seed
+        // {
+        //     let _clear1 = ClearOnDrop::new(&mut (*self));
+        // }
+        // assert_eq!(*self, PRNG::default(), "old seed not cleared");
 
         // update self to the new seed
         let mut new_seed = [0u8; 64];
@@ -131,18 +132,18 @@ impl PRNG {
             *e = i as u8;
         }
 
-        // clear the buffer and hk
-        {
-            let _clear2 = ClearOnDrop::new(&mut output_sec);
-            let _clear3 = ClearOnDrop::new(&mut hk_sec.prk);
-        }
-        // make sure the memory is cleared
-        assert_eq!(output_sec, vec![], "secret buf not cleared");
-        assert_eq!(
-            hk_sec.prk.to_vec(),
-            vec![0u8; 64],
-            "HKDF buffer not cleared"
-        );
+        // // clear the buffer and hk
+        // {
+        //     let _clear2 = ClearOnDrop::new(&mut output_sec);
+        //     let _clear3 = ClearOnDrop::new(&mut hk_sec.prk);
+        // }
+        // // make sure the memory is cleared
+        // assert_eq!(output_sec, vec![], "secret buf not cleared");
+        // assert_eq!(
+        //     hk_sec.prk.to_vec(),
+        //     vec![0u8; 64],
+        //     "HKDF buffer not cleared"
+        // );
 
         // return the field element
         r
@@ -152,7 +153,7 @@ impl PRNG {
     /// and sample a field element; the PRNG is NOT updated.
     pub fn sample<Blob: AsRef<[u8]>>(&mut self, info: Blob) -> Fr {
         // re-build the hkdf-sha512 from the PRNG seed
-        let mut hk_sec = Hkdf::<Sha512> {
+        let hk_sec = Hkdf::<Sha512> {
             prk: generic_array::GenericArray::clone_from_slice(self.seed()),
         };
 
@@ -165,40 +166,40 @@ impl PRNG {
 
         // convert the first 64 bytes of the output to a field element
         // by os2ip(output_sec) % p
-        let r = os2ip_mod_p(&output_sec);
+        os2ip_mod_p(&output_sec)
 
-        // clear the buffer and hk
-        {
-            let _clear2 = ClearOnDrop::new(&mut output_sec);
-            let _clear3 = ClearOnDrop::new(&mut hk_sec.prk);
-        }
-        // make sure the memory is cleared
-        assert_eq!(output_sec, vec![], "secret buf not cleared");
-        assert_eq!(
-            hk_sec.prk.to_vec(),
-            vec![0u8; 64],
-            "HKDF buffer not cleared"
-        );
+        // // clear the buffer and hk
+        // {
+        //     let _clear2 = ClearOnDrop::new(&mut output_sec);
+        //     let _clear3 = ClearOnDrop::new(&mut hk_sec.prk);
+        // }
+        // // make sure the memory is cleared
+        // assert_eq!(output_sec, vec![], "secret buf not cleared");
+        // assert_eq!(
+        //     hk_sec.prk.to_vec(),
+        //     vec![0u8; 64],
+        //     "HKDF buffer not cleared"
+        // );
 
         // return the field element
-        r
     }
 
     /// Use this function to safely clear the secret within a PRNG.
-    pub fn destroy(&mut self) {
-        // clear the seed within a PRNG
-        {
-            let _clear = ClearOnDrop::new(&mut (*self));
-        }
-        assert_eq!(*self, PRNG::default(), "old seed not cleared");
-    }
+    /// Zeroize has already got a destructor
+    // pub fn destroy(&mut self) {
+    // // clear the seed within a PRNG
+    // {
+    //     let _clear = ClearOnDrop::new(&mut (*self));
+    // }
+    // assert_eq!(*self, PRNG::default(), "old seed not cleared");
+    // }
 
     /// Mix new entropy into the PRNG.
     pub fn rerandomize<Blob: AsRef<[u8]>>(&mut self, seed: Blob, info: Blob) {
         // expand self into a new 64 array
         // m1 = hkdf-expand(info, 64)
         // re-build the hkdf-sha512 from the PRNG seed
-        let mut hk1_sec = Hkdf::<Sha512> {
+        let hk1_sec = Hkdf::<Sha512> {
             prk: generic_array::GenericArray::clone_from_slice(self.seed()),
         };
         // hkdf-expand(seed, info)
@@ -210,30 +211,30 @@ impl PRNG {
 
         // extract the new prng seed
         // hk2 = hkdf-extract(m[64..128], m[0..64]|seed)
-        let mut tmp_sec = [m_sec[0..64].as_ref(), seed.as_ref()].concat();
-        let mut hk2_sec = Hkdf::<Sha512>::extract(Some(m_sec[64..128].as_ref()), tmp_sec.as_ref());
+        let tmp_sec = [m_sec[0..64].as_ref(), seed.as_ref()].concat();
+        let hk2_sec = Hkdf::<Sha512>::extract(Some(m_sec[64..128].as_ref()), tmp_sec.as_ref());
 
         // update self with the new hkdf's key
         self.0.clone_from_slice(&hk2_sec.prk[0..64]);
-        // clean up m and k
-        {
-            let _clear1 = ClearOnDrop::new(&mut m_sec);
-            let _clear2 = ClearOnDrop::new(&mut hk1_sec.prk);
-            let _clear3 = ClearOnDrop::new(&mut tmp_sec);
-            let _clear3 = ClearOnDrop::new(&mut hk2_sec.prk);
-        }
-        assert_eq!(m_sec, vec![], "Extracted secret not cleared");
-        assert_eq!(
-            hk1_sec.prk,
-            generic_array::GenericArray::default(),
-            "HKDF not cleared"
-        );
-        assert_eq!(tmp_sec, vec![], "Extracted secret not cleared");
-        assert_eq!(
-            hk2_sec.prk,
-            generic_array::GenericArray::default(),
-            "HKDF not cleared"
-        );
+        // // clean up m and k
+        // {
+        //     let _clear1 = ClearOnDrop::new(&mut m_sec);
+        //     let _clear2 = ClearOnDrop::new(&mut hk1_sec.prk);
+        //     let _clear3 = ClearOnDrop::new(&mut tmp_sec);
+        //     let _clear3 = ClearOnDrop::new(&mut hk2_sec.prk);
+        // }
+        // assert_eq!(m_sec, vec![], "Extracted secret not cleared");
+        // assert_eq!(
+        //     hk1_sec.prk,
+        //     generic_array::GenericArray::default(),
+        //     "HKDF not cleared"
+        // );
+        // assert_eq!(tmp_sec, vec![], "Extracted secret not cleared");
+        // assert_eq!(
+        //     hk2_sec.prk,
+        //     generic_array::GenericArray::default(),
+        //     "HKDF not cleared"
+        // );
     }
 }
 
@@ -261,7 +262,7 @@ pub fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
     //  ...  + x_1 256 + x_0.
     // 3.  Output x. "
 
-    let mut r_sec = U512::from(oct_str);
+    let r_sec = U512::from(oct_str);
 
     // hard coded modulus p
     let p = U512::from([
@@ -271,7 +272,7 @@ pub fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
         0x00, 0x00, 0x01,
     ]);
     // t = r % p
-    let mut t_sec = r_sec.rem(p);
+    let t_sec = r_sec.rem(p);
 
     // convert t from a U512 into a primefield object s
     let mut tslide: [u8; 64] = [0; 64];
@@ -295,13 +296,13 @@ pub fn os2ip_mod_p(oct_str: &[u8]) -> Fr {
             bytes[32], bytes[33], bytes[34], bytes[35], bytes[36], bytes[37], bytes[38], bytes[39],
         ]),
     ]);
-    // clear r_sec and t_sec
-    {
-        let _clear1 = ClearOnDrop::new(&mut r_sec);
-        let _clear2 = ClearOnDrop::new(&mut t_sec);
-    }
-    assert_eq!(r_sec, U512::default());
-    assert_eq!(t_sec, U512::default());
+    // // clear r_sec and t_sec
+    // {
+    //     let _clear1 = ClearOnDrop::new(&mut r_sec);
+    //     let _clear2 = ClearOnDrop::new(&mut t_sec);
+    // }
+    // assert_eq!(r_sec, U512::default());
+    // assert_eq!(t_sec, U512::default());
 
     // manually clear bytes since Default trait is not implemented for [u8;64]
     for (i, e) in bytes.iter_mut().enumerate().take(64) {

@@ -1,5 +1,3 @@
-//pub use bls_sigs_ref_rs::SerDes;
-use clear_on_drop::ClearOnDrop;
 use param::VALID_CIPHERSUITE;
 use pixel_err::*;
 use prng::PRNG;
@@ -231,11 +229,11 @@ impl SerDes for SecretKey {
         // finished
         writer.write_all(&buf)?;
 
-        // clean the buf
-        {
-            let _clear = ClearOnDrop::new(&mut buf);
-        }
-        assert_eq!(buf, Vec::default());
+        // // clean the buf
+        // {
+        //     let _clear = ClearOnDrop::new(&mut buf);
+        // }
+        // assert_eq!(buf, Vec::default());
 
         Ok(())
     }
@@ -327,11 +325,11 @@ impl SerDes for SubSecretKey {
         }
         writer.write_all(&buf)?;
 
-        // clean the buf
-        {
-            let _clear = ClearOnDrop::new(&mut buf);
-        }
-        assert_eq!(buf, Vec::default());
+        // // clean the buf
+        // {
+        //     let _clear = ClearOnDrop::new(&mut buf);
+        // }
+        // assert_eq!(buf, Vec::default());
 
         Ok(())
     }

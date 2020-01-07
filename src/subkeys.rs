@@ -1,6 +1,5 @@
 // a module for sub secret keys and related functions
 
-use clear_on_drop::ClearOnDrop;
 use ff::Field;
 use pairing::{bls12_381::*, CurveAffine, CurveProjective, Engine};
 use param::PubParam;
@@ -8,7 +7,7 @@ use pixel_err::*;
 use public_key::PublicKey;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
-//use zeroize::*;
+use zeroize::*;
 use PixelG1;
 use PixelG2;
 
@@ -18,6 +17,7 @@ use PixelG2;
 /// * h0poly: h0^{alpha + f(x) r}
 /// * hlist: the randomization of the public parameter hlist
 #[derive(Clone, PartialEq, Default, Zeroize)]
+#[zeroize(drop)]
 pub struct SubSecretKey {
     /// timestamp for the current subkey
     time: TimeStamp,
@@ -159,25 +159,25 @@ impl SubSecretKey {
         tmp3_sec.mul_assign(r);
         self.hpoly.add_assign(&tmp3_sec);
 
-        // clean up the secret data that has been used
-        {
-            // remove the  tmp, tmp3
-            let _clear1 = ClearOnDrop::new(&mut tmp_sec);
-            let _clear3 = ClearOnDrop::new(&mut tmp3_sec);
-        }
-        assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
-        assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
+        // // clean up the secret data that has been used
+        // {
+        //     // remove the  tmp, tmp3
+        //     let _clear1 = ClearOnDrop::new(&mut tmp_sec);
+        //     let _clear3 = ClearOnDrop::new(&mut tmp3_sec);
+        // }
+        // assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
+        // assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
 
         // randmoize hlist
         for i in 0..self.hvector.len() {
             let mut tmp_sec = hlist[tlen + i + 1];
             tmp_sec.mul_assign(r);
             self.hvector[i].add_assign(&tmp_sec);
-            // safely remove tmp after use
-            {
-                let _clear = ClearOnDrop::new(&mut tmp_sec);
-            }
-            assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
+            // // safely remove tmp after use
+            // {
+            //     let _clear = ClearOnDrop::new(&mut tmp_sec);
+            // }
+            // assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
         }
         Ok(())
     }
@@ -218,25 +218,25 @@ impl SubSecretKey {
                 tmp_sec.double();
             }
             self.hpoly.add_assign(&tmp_sec);
-            // safely remove tmp after use
-            {
-                let _clear = ClearOnDrop::new(&mut tmp_sec);
-            }
-            assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
+            // // safely remove tmp after use
+            // {
+            //     let _clear = ClearOnDrop::new(&mut tmp_sec);
+            // }
+            // assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
         }
 
         // remove the first `tar_vec_length - cur_vec_length` elements in h-vector
         for _ in 0..tar_vec_length - cur_vec_length {
             // h_i = 0
-            // safely remove the first element of hvector
-            {
-                let _clear = ClearOnDrop::new(&mut self.hvector[0]);
-            }
-            assert_eq!(
-                self.hvector[0],
-                PixelG1::default(),
-                "h vector is not cleared"
-            );
+            // // safely remove the first element of hvector
+            // {
+            //     let _clear = ClearOnDrop::new(&mut self.hvector[0]);
+            // }
+            // assert_eq!(
+            //     self.hvector[0],
+            //     PixelG1::default(),
+            //     "h vector is not cleared"
+            // );
             self.hvector.remove(0);
         }
         // update the time to the new time stamp

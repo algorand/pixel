@@ -24,16 +24,16 @@
 
 extern crate bigint;
 extern crate bls_sigs_ref;
-extern crate clear_on_drop;
+// extern crate clear_on_drop;
 extern crate ff;
 extern crate hkdf;
 extern crate libc;
 extern crate pairing_plus as pairing;
 extern crate pixel_param as param;
 extern crate sha2;
-#[macro_use]
+// #[macro_use]
 extern crate zeroize;
-extern crate secrecy;
+// extern crate secrecy;
 
 #[cfg(test)]
 #[macro_use]

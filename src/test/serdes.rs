@@ -373,7 +373,7 @@ fn test_pk_serialization_kat() {
         }
     }
     for &csid in &VALID_CIPHERSUITE {
-        let tmp = [[csid].as_ref(),  VALID_G1_ZERO_UNCOM].concat();
+        let tmp = [[csid].as_ref(), VALID_G1_ZERO_UNCOM].concat();
         let res = PublicKey::deserialize(&mut Cursor::new(tmp), false);
         assert!(res.is_ok(), "expected Ok, got Err: {:?}", res.err());
     }
@@ -387,7 +387,7 @@ fn test_pk_serialization_kat() {
         }
     }
     for &csid in &VALID_CIPHERSUITE {
-        let tmp = [[csid].as_ref(),  VALID_G1_ZERO_UNCOM].concat();
+        let tmp = [[csid].as_ref(), VALID_G1_ZERO_UNCOM].concat();
         let res = PublicKey::deserialize(&mut Cursor::new(tmp), true);
         assert!(res.is_err(), "expected Err, got Ok: {:?}", res.ok());
     }

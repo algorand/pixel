@@ -1,7 +1,5 @@
 use bls_sigs_ref::BLSSigCore;
-use clear_on_drop::ClearOnDrop;
 use domain_sep;
-use ff::Field;
 use pairing::{bls12_381::Fr, CurveProjective};
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
@@ -51,7 +49,7 @@ impl KeyPair {
         // use the first 64 bytes as the input to hash_to_field
         // use the last 64 bytes as the prngseed
         // msk_sec and prng are local variable and will need to be cleared
-        let (pk, mut msk_sec, pop, mut prng_sec) = master_key_gen(seed, &pp)?;
+        let (pk, msk_sec, pop, prng_sec) = master_key_gen(seed, &pp)?;
 
         // this may fail if the ciphersuite is not supported
         let pk = PublicKey::init(&pp, pk)?;
@@ -61,12 +59,12 @@ impl KeyPair {
         let sk = match SecretKey::init(&pp, msk_sec, prng_sec) {
             Err(e) => {
                 // if failed, clear the buffer before exit
-                {
-                    let _clear2 = ClearOnDrop::new(&mut msk_sec);
-                    let _clear2 = ClearOnDrop::new(&mut prng_sec);
-                }
-                assert_eq!(msk_sec, PixelG1::default(), "msk buffer not cleared");
-                assert_eq!(prng_sec, PRNG::default(), "prng buffer not cleared");
+                // {
+                //     let _clear2 = ClearOnDrop::new(&mut msk_sec);
+                //     let _clear2 = ClearOnDrop::new(&mut prng_sec);
+                // }
+                // assert_eq!(msk_sec, PixelG1::default(), "msk buffer not cleared");
+                // assert_eq!(prng_sec, PRNG::default(), "prng buffer not cleared");
                 return Err(e);
             }
             Ok(p) => p,
@@ -75,21 +73,21 @@ impl KeyPair {
         // clean up the memory
         // makes sure the seed, msk are distroyed
         // so if not, we should panic rather than return errors
-        {
-            let _clear1 = ClearOnDrop::new(&mut prng_sec);
-            let _clear2 = ClearOnDrop::new(&mut msk_sec);
-        }
-
-        assert_eq!(
-            prng_sec,
-            PRNG::default(),
-            "seed not cleared after secret key initialization"
-        );
-        assert_eq!(
-            msk_sec,
-            PixelG1::default(),
-            "msk not cleared after secret key initialization"
-        );
+        // {
+        //     let _clear1 = ClearOnDrop::new(&mut prng_sec);
+        //     let _clear2 = ClearOnDrop::new(&mut msk_sec);
+        // }
+        //
+        // assert_eq!(
+        //     prng_sec,
+        //     PRNG::default(),
+        //     "seed not cleared after secret key initialization"
+        // );
+        // assert_eq!(
+        //     msk_sec,
+        //     PixelG1::default(),
+        //     "msk not cleared after secret key initialization"
+        // );
 
         // return the keys and the proof of possession
         Ok((pk, sk, ProofOfPossession::new(pp.ciphersuite(), pop)))
@@ -142,7 +140,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     let info = b"key initialization";
     // this is a local secret - need to clear after use
     //  x = hkdf-expand(prng, info)
-    let mut x_sec = prng.sample_then_update(info);
+    let x_sec = prng.sample_then_update(info);
 
     // pk = g2^x
     // sk = h^x
@@ -150,10 +148,10 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     pk.mul_assign(x_sec);
     let pop = match proof_of_possession(x_sec, pk, pp.ciphersuite()) {
         Err(e) => {
-            {
-                let _clear1 = ClearOnDrop::new(&mut x_sec);
-            }
-            assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
+            // {
+            //     let _clear1 = ClearOnDrop::new(&mut x_sec);
+            // }
+            // assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
             return Err(e);
         }
         Ok(p) => p,
@@ -162,10 +160,10 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     let mut sk = pp.h();
     sk.mul_assign(x_sec);
     // clear temporary data
-    {
-        let _clear1 = ClearOnDrop::new(&mut x_sec);
-    }
-    assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
+    // {
+    //     let _clear1 = ClearOnDrop::new(&mut x_sec);
+    // }
+    // assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
 
     Ok((pk, sk, pop, prng))
 }
@@ -189,8 +187,8 @@ fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1,
 /// This function is private, and test only, since by default no one shall have the master secret key.
 #[cfg(test)]
 fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
+    use ff::Field;
     use pairing::{bls12_381::*, CurveAffine, Engine};
-
     let mut g2 = pp.g2();
     g2.negate();
     let h = pp.h();

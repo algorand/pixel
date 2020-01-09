@@ -1,15 +1,13 @@
 use crate::{PixelG1, PublicKey, SerDes, SubSecretKey};
-use clear_on_drop::ClearOnDrop;
+
 use domain_sep;
-use ff::Field;
-use pairing::bls12_381::Fr;
 use param::{PubParam, VALID_CIPHERSUITE};
 use pixel_err::*;
 use prng::PRNG;
 use sha2::Digest;
 use std::fmt;
 use time::{TimeStamp, TimeVec};
-
+use zeroize::*;
 /// The secret key consists of ...
 /// * a list of SubSecretKeys;
 ///     the length of the list can be arbitrary;
@@ -17,7 +15,8 @@ use time::{TimeStamp, TimeVec};
 /// * the ciphersuite id,
 /// * time stamp,
 /// * and a prng.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretKey {
     /// ciphersuite id
     ciphersuite: u8,
@@ -59,22 +58,22 @@ impl SecretKey {
         ]
         .concat();
         // r is a local secret, and need to be cleared after use
-        let mut r_sec = prng.sample_then_update(info);
+        let r_sec = prng.sample_then_update(info);
 
         // ssk is passed to the caller
         let ssk = SubSecretKey::init(&pp, alpha, r_sec);
 
-        // zero out the temporary r_sec using ClearOnDrop
-        {
-            let _clear = ClearOnDrop::new(&mut r_sec);
-        }
-
-        // panic if the alpha is not cleared
-        assert_eq!(
-            r_sec,
-            Fr::zero(),
-            "alpha is not cleared during key initiation"
-        );
+        // // zero out the temporary r_sec using ClearOnDrop
+        // {
+        //     let _clear = ClearOnDrop::new(&mut r_sec);
+        // }
+        //
+        // // panic if the alpha is not cleared
+        // assert_eq!(
+        //     r_sec,
+        //     Fr::zero(),
+        //     "alpha is not cleared during key initiation"
+        // );
 
         Ok(SecretKey {
             ciphersuite: pp.ciphersuite(),
@@ -101,7 +100,7 @@ impl SecretKey {
 
     /// Returns the prng seed.
     pub fn prng(&self) -> PRNG {
-        self.prng
+        self.prng.clone()
     }
 
     /// Clone the first sub secret key on the list.
@@ -270,17 +269,17 @@ impl SecretKey {
         //
         // which is indeed sk_9
         while new_sk.ssk[0].time() != delegator_time {
-            // we use ClearOnDrop to safely remove the ssk[0]
-            {
-                let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);
-            }
-            // makes sure that the ssk[0] has been removed
-            // panic if this fails
-            assert_eq!(
-                new_sk.ssk[0],
-                SubSecretKey::default(),
-                "Subsecret key is not zeroed before removing"
-            );
+            // // we use ClearOnDrop to safely remove the ssk[0]
+            // {
+            //     let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);
+            // }
+            // // makes sure that the ssk[0] has been removed
+            // // panic if this fails
+            // assert_eq!(
+            //     new_sk.ssk[0],
+            //     SubSecretKey::default(),
+            //     "Subsecret key is not zeroed before removing"
+            // );
 
             // now we can safely remove the ssk
             new_sk.ssk.remove(0);
@@ -290,15 +289,15 @@ impl SecretKey {
         if new_sk.ssk.is_empty() {
             #[cfg(debug_assertions)]
             println!("Error in key unpdating: {:?}", ERR_SSK_EMPTY);
-            // clear the new_sk before exiting
-            {
-                let _clear = ClearOnDrop::new(&mut new_sk);
-            }
-            assert_eq!(
-                new_sk,
-                SecretKey::default(),
-                "failed to clear old secret key"
-            );
+            // // clear the new_sk before exiting
+            // {
+            //     let _clear = ClearOnDrop::new(&mut new_sk);
+            // }
+            // assert_eq!(
+            //     new_sk,
+            //     SecretKey::default(),
+            //     "failed to clear old secret key"
+            // );
             return Err(ERR_SSK_EMPTY.to_owned());
         }
 
@@ -311,15 +310,15 @@ impl SecretKey {
         //
         if delegator_time == tar_time {
             // assign new_sk to self, and return successful
-            // we use ClearOnDrop to safely remove the old sk
-            {
-                let _clear = ClearOnDrop::new(&mut (*self));
-            }
-            assert_eq!(
-                *self,
-                SecretKey::default(),
-                "failed to clear old secret key"
-            );
+            // // we use ClearOnDrop to safely remove the old sk
+            // {
+            //     let _clear = ClearOnDrop::new(&mut (*self));
+            // }
+            // assert_eq!(
+            //     *self,
+            //     SecretKey::default(),
+            //     "failed to clear old secret key"
+            // );
             *self = new_sk;
             return Ok(());
         }
@@ -354,20 +353,20 @@ impl SecretKey {
         // the ssk for [2] already exists in current sk; it remains unchanged
         let target_time_vec = match TimeVec::init(tar_time, depth) {
             Err(e) => {
-                {
-                    let _clear = ClearOnDrop::new(&mut new_sk);
-                }
-                assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                // {
+                //     let _clear = ClearOnDrop::new(&mut new_sk);
+                // }
+                // assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
                 return Err(e);
             }
             Ok(p) => p,
         };
         let gamma_list = match target_time_vec.gamma_list(depth) {
             Err(e) => {
-                {
-                    let _clear = ClearOnDrop::new(&mut new_sk);
-                }
-                assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                // {
+                //     let _clear = ClearOnDrop::new(&mut new_sk);
+                // }
+                // assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
                 return Err(e);
             }
             Ok(p) => p,
@@ -389,10 +388,10 @@ impl SecretKey {
             for j in i + 1..new_sk.ssk.len() {
                 let tmp_time_vec = match new_sk.ssk[j].time_vec(depth) {
                     Err(e) => {
-                        {
-                            let _clear = ClearOnDrop::new(&mut new_sk);
-                        }
-                        assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                        // {
+                        //     let _clear = ClearOnDrop::new(&mut new_sk);
+                        // }
+                        // assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
                         return Err(e);
                     }
                     Ok(p) => p,
@@ -414,12 +413,12 @@ impl SecretKey {
             let mut new_ssk = new_sk.ssk[0].clone();
             match new_ssk.delegate(tmptime.time(), depth) {
                 Err(e) => {
-                    {
-                        let _clear1 = ClearOnDrop::new(&mut new_sk);
-                        let _clear2 = ClearOnDrop::new(&mut new_ssk);
-                    }
-                    assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
-                    assert_eq!(new_ssk, SubSecretKey::default(), "new ssk is not cleared");
+                    // {
+                    //     let _clear1 = ClearOnDrop::new(&mut new_sk);
+                    //     let _clear2 = ClearOnDrop::new(&mut new_ssk);
+                    // }
+                    // assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                    // assert_eq!(new_ssk, SubSecretKey::default(), "new ssk is not cleared");
                     return Err(e);
                 }
                 Ok(p) => p,
@@ -437,29 +436,29 @@ impl SecretKey {
                 // random field element. So the following function
                 // shouldn't be called more than once.
                 let info = domain_sep::DOM_SEP_SK_UPDATE;
-                let mut r_sec = new_sk.prng.sample_then_update(info);
+                let r_sec = new_sk.prng.sample_then_update(info);
 
                 assert_ne!(new_sk.prng, self.prng, "prng not updated");
 
                 match new_ssk.randomization(&pp, r_sec) {
                     Err(e) => {
-                        {
-                            let _clear1 = ClearOnDrop::new(&mut r_sec);
-                            let _clear2 = ClearOnDrop::new(&mut new_sk);
-                            let _clear3 = ClearOnDrop::new(&mut new_ssk);
-                        }
-                        assert_eq!(r_sec, Fr::default(), "r is not cleared");
-                        assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
-                        assert_eq!(new_ssk, SubSecretKey::default(), "new ssk is not cleared");
+                        // {
+                        //     let _clear1 = ClearOnDrop::new(&mut r_sec);
+                        //     let _clear2 = ClearOnDrop::new(&mut new_sk);
+                        //     let _clear3 = ClearOnDrop::new(&mut new_ssk);
+                        // }
+                        // assert_eq!(r_sec, Fr::default(), "r is not cleared");
+                        // assert_eq!(new_sk, SecretKey::default(), "new sk is not cleared");
+                        // assert_eq!(new_ssk, SubSecretKey::default(), "new ssk is not cleared");
                         return Err(e);
                     }
                     Ok(p) => p,
                 };
-                // clear r after use
-                {
-                    let _clear = ClearOnDrop::new(&mut r_sec);
-                }
-                assert_eq!(r_sec, Fr::default(), "r is not cleared");
+                // // clear r after use
+                // {
+                //     let _clear = ClearOnDrop::new(&mut r_sec);
+                // }
+                // assert_eq!(r_sec, Fr::default(), "r is not cleared");
             }
 
             // insert the key to the right place so that
@@ -473,17 +472,17 @@ impl SecretKey {
         // step 5. remove the first ssk <- this was the ssk for delegator
         // and update the time stamp
 
-        // we use ClearOnDrop to safely remove the ssk[0]
-        {
-            let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);
-        }
-        // makes sure that the ssk[0] has been removed
-        // panic if this fails
-        assert_eq!(
-            new_sk.ssk[0],
-            SubSecretKey::default(),
-            "Subsecret key is not zeroed before removing"
-        );
+        // // we use ClearOnDrop to safely remove the ssk[0]
+        // {
+        //     let _clear = ClearOnDrop::new(&mut new_sk.ssk[0]);
+        // }
+        // // makes sure that the ssk[0] has been removed
+        // // panic if this fails
+        // assert_eq!(
+        //     new_sk.ssk[0],
+        //     SubSecretKey::default(),
+        //     "Subsecret key is not zeroed before removing"
+        // );
 
         // now we can safely remove the ssk
         new_sk.ssk.remove(0);
@@ -493,16 +492,16 @@ impl SecretKey {
         // ### new_sk = {12, [ssk_for_t_12, ssk_for_t_13]}                // [2,1,1], [2,1,2] ###
         //
 
-        // assign new_sk to self, and return successful
-        // we use ClearOnDrop to safely remove the old sk
-        {
-            let _clear = ClearOnDrop::new(&mut (*self));
-        }
-        assert_eq!(
-            *self,
-            SecretKey::default(),
-            "failed to clear old secret key"
-        );
+        // // assign new_sk to self, and return successful
+        // // we use ClearOnDrop to safely remove the old sk
+        // {
+        //     let _clear = ClearOnDrop::new(&mut (*self));
+        // }
+        // assert_eq!(
+        //     *self,
+        //     SecretKey::default(),
+        //     "failed to clear old secret key"
+        // );
         *self = new_sk;
         Ok(())
     }
@@ -598,26 +597,26 @@ impl SecretKey {
             Ok(p) => p,
         };
 
-        let mut ssk = self.ssk_vec();
+        let ssk = self.ssk_vec();
         for i in 0..ssk.len() {
             // checks that each ssk is valid
             if !ssk[i].validate(&pk, &pp) {
-                // clear ssk before exit
-                {
-                    let _clear = ClearOnDrop::new(&mut ssk);
-                }
-                assert_eq!(ssk, Vec::default(), "ssk not cleared");
+                // // clear ssk before exit
+                // {
+                //     let _clear = ClearOnDrop::new(&mut ssk);
+                // }
+                // assert_eq!(ssk, Vec::default(), "ssk not cleared");
                 #[cfg(debug_assertions)]
                 println!("Validation failed for {}th SubSecretKey", i);
                 return false;
             }
             // checks that the time for each ssk is valid w.r.t gamma list
             if ssk[i].time() != gamma_list[i].time() {
-                // clear ssk before exit
-                {
-                    let _clear = ClearOnDrop::new(&mut ssk);
-                }
-                assert_eq!(ssk, Vec::default(), "ssk not cleared");
+                // // clear ssk before exit
+                // {
+                //     let _clear = ClearOnDrop::new(&mut ssk);
+                // }
+                // assert_eq!(ssk, Vec::default(), "ssk not cleared");
                 #[cfg(debug_assertions)]
                 println!("Validation failed: time does not match the gamma_list");
                 #[cfg(debug_assertions)]
@@ -630,11 +629,11 @@ impl SecretKey {
                 return false;
             }
         }
-        // clear ssk before exit
-        {
-            let _clear = ClearOnDrop::new(&mut ssk);
-        }
-        assert_eq!(ssk, Vec::default(), "ssk not cleared");
+        // // clear ssk before exit
+        // {
+        //     let _clear = ClearOnDrop::new(&mut ssk);
+        // }
+        // assert_eq!(ssk, Vec::default(), "ssk not cleared");
         true
     }
 

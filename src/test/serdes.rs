@@ -2,7 +2,7 @@
 use ff::PrimeField;
 use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};
-use param::PubParam;
+use param::{PubParam, VALID_CIPHERSUITE};
 use sig::Signature;
 use std::io::Cursor;
 use subkeys::SubSecretKey;
@@ -12,7 +12,7 @@ use ProofOfPossession;
 use PublicKey;
 use SecretKey;
 use SerDes;
-use VALID_CIPHERSUITE;
+// use VALID_CIPHERSUITE;
 
 #[test]
 fn test_ssk_serialization_rand() {

@@ -14,3 +14,6 @@ mod serdes;
 
 /// This module tests prng fucntions
 mod prng;
+
+/// This module tests if zeroize works
+mod pixel_zeroize;

@@ -60,28 +60,28 @@ mod secret_key;
 //mod pixel_zeroize;
 
 /// This module defines interfaces to C.
-pub mod ffi;
+pub(crate) mod ffi;
 
 /// The size of pk is 49 when PK is in G1. 1 byte for ciphersuite ID
 /// and 48 byte for group element.
-pub const PK_LEN: usize = 49;
+pub(crate) const PK_LEN: usize = 49;
 
 /// The Signature size is 149.
 /// 1 byte for ciphersuite ID, 4 bytes for time stamp,
 /// 48+96 bytes for two group elements.
-pub const SIG_LEN: usize = 149;
+pub(crate) const SIG_LEN: usize = 149;
 
 /// The size of pop is 97: 1 byte for ciphersuite ID
 /// and 96 byte for bls signature in G2.
-pub const POP_LEN: usize = 97;
+pub(crate) const POP_LEN: usize = 97;
 
 // Expose this constant.
-pub use param::{PixelG1, PixelG2, PubParam, SerDes, CONST_D, VALID_CIPHERSUITE};
+pub(crate) use param::{PixelG1, PixelG2, PubParam, SerDes, CONST_D};
 pub use pop::ProofOfPossession;
 pub use public_key::PublicKey;
 pub use secret_key::SecretKey;
 pub use sig::Signature;
-pub use subkeys::SubSecretKey;
+pub(crate) use subkeys::SubSecretKey;
 pub use time::{TimeStamp, TimeVec};
 
 /// Pixel is a trait that implements the algorithms within the pixel signature scheme.

@@ -76,12 +76,12 @@ pub(crate) const SIG_LEN: usize = 149;
 pub(crate) const POP_LEN: usize = 97;
 
 // Expose this constant.
-pub(crate) use param::{PixelG1, PixelG2, PubParam, SerDes, CONST_D};
+pub use param::{PixelG1, PixelG2, PubParam, SerDes, CONST_D};
 pub use pop::ProofOfPossession;
 pub use public_key::PublicKey;
 pub use secret_key::SecretKey;
 pub use sig::Signature;
-pub(crate) use subkeys::SubSecretKey;
+pub use subkeys::SubSecretKey;
 pub use time::{TimeStamp, TimeVec};
 
 /// Pixel is a trait that implements the algorithms within the pixel signature scheme.

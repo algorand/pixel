@@ -59,35 +59,14 @@ impl KeyPair {
         let sk = match SecretKey::init(&pp, msk_sec, prng_sec) {
             Err(e) => {
                 // if failed, clear the buffer before exit
-                // {
-                //     let _clear2 = ClearOnDrop::new(&mut msk_sec);
-                //     let _clear2 = ClearOnDrop::new(&mut prng_sec);
-                // }
-                // assert_eq!(msk_sec, PixelG1::default(), "msk buffer not cleared");
-                // assert_eq!(prng_sec, PRNG::default(), "prng buffer not cleared");
+                // msk_sec and prng_sec will be zeroized automatically with destructor
                 return Err(e);
             }
             Ok(p) => p,
         };
 
         // clean up the memory
-        // makes sure the seed, msk are distroyed
-        // so if not, we should panic rather than return errors
-        // {
-        //     let _clear1 = ClearOnDrop::new(&mut prng_sec);
-        //     let _clear2 = ClearOnDrop::new(&mut msk_sec);
-        // }
-        //
-        // assert_eq!(
-        //     prng_sec,
-        //     PRNG::default(),
-        //     "seed not cleared after secret key initialization"
-        // );
-        // assert_eq!(
-        //     msk_sec,
-        //     PixelG1::default(),
-        //     "msk not cleared after secret key initialization"
-        // );
+        // msk_sec and prng_sec will be zeroized automatically with destructor
 
         // return the keys and the proof of possession
         Ok((pk, sk, ProofOfPossession::new(pp.ciphersuite(), pop)))
@@ -148,10 +127,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
     pk.mul_assign(x_sec);
     let pop = match proof_of_possession(x_sec, pk, pp.ciphersuite()) {
         Err(e) => {
-            // {
-            //     let _clear1 = ClearOnDrop::new(&mut x_sec);
-            // }
-            // assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
+            // clear x_sec automatically with destructor
             return Err(e);
         }
         Ok(p) => p,
@@ -159,11 +135,7 @@ fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, Pixel
 
     let mut sk = pp.h();
     sk.mul_assign(x_sec);
-    // clear temporary data
-    // {
-    //     let _clear1 = ClearOnDrop::new(&mut x_sec);
-    // }
-    // assert_eq!(x_sec, Fr::zero(), "Random x is not cleared!");
+    // clear x_sec automatically with destructor
 
     Ok((pk, sk, pop, prng))
 }

@@ -159,25 +159,15 @@ impl SubSecretKey {
         tmp3_sec.mul_assign(r);
         self.hpoly.add_assign(&tmp3_sec);
 
-        // // clean up the secret data that has been used
-        // {
-        //     // remove the  tmp, tmp3
-        //     let _clear1 = ClearOnDrop::new(&mut tmp_sec);
-        //     let _clear3 = ClearOnDrop::new(&mut tmp3_sec);
-        // }
-        // assert_eq!(tmp_sec, PixelG2::default(), "tmp data is not cleared");
-        // assert_eq!(tmp3_sec, PixelG1::default(), "tmp data is not cleared");
+        tmp_sec.zeroize();
+        tmp3_sec.zeroize();
 
         // randmoize hlist
         for i in 0..self.hvector.len() {
             let mut tmp_sec = hlist[tlen + i + 1];
             tmp_sec.mul_assign(r);
             self.hvector[i].add_assign(&tmp_sec);
-            // // safely remove tmp after use
-            // {
-            //     let _clear = ClearOnDrop::new(&mut tmp_sec);
-            // }
-            // assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
+            tmp_sec.zeroize();
         }
         Ok(())
     }
@@ -218,25 +208,14 @@ impl SubSecretKey {
                 tmp_sec.double();
             }
             self.hpoly.add_assign(&tmp_sec);
-            // // safely remove tmp after use
-            // {
-            //     let _clear = ClearOnDrop::new(&mut tmp_sec);
-            // }
-            // assert_eq!(tmp_sec, PixelG1::default(), "tmp data is not cleared");
+            tmp_sec.zeroize();
         }
 
         // remove the first `tar_vec_length - cur_vec_length` elements in h-vector
         for _ in 0..tar_vec_length - cur_vec_length {
             // h_i = 0
-            // // safely remove the first element of hvector
-            // {
-            //     let _clear = ClearOnDrop::new(&mut self.hvector[0]);
-            // }
-            // assert_eq!(
-            //     self.hvector[0],
-            //     PixelG1::default(),
-            //     "h vector is not cleared"
-            // );
+            // safely remove the first element of hvector
+            self.hvector[0].zeroize();
             self.hvector.remove(0);
         }
         // update the time to the new time stamp

@@ -3,6 +3,7 @@ use pixel_err::*;
 use prng::PRNG;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use subkeys::SubSecretKey;
+use zeroize::Zeroize;
 use PixelG1;
 use PixelG2;
 use ProofOfPossession;
@@ -229,11 +230,7 @@ impl SerDes for SecretKey {
         // finished
         writer.write_all(&buf)?;
 
-        // // clean the buf
-        // {
-        //     let _clear = ClearOnDrop::new(&mut buf);
-        // }
-        // assert_eq!(buf, Vec::default());
+        buf.zeroize();
 
         Ok(())
     }
@@ -325,10 +322,7 @@ impl SerDes for SubSecretKey {
         }
         writer.write_all(&buf)?;
 
-        // // clean the buf
-        // {
-        //     let _clear = ClearOnDrop::new(&mut buf);
-        // }
+        buf.zeroize();
         // assert_eq!(buf, Vec::default());
 
         Ok(())

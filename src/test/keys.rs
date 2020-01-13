@@ -1,9 +1,59 @@
+use crate::ProofOfPossession;
+use crate::{PixelG1, PixelG2};
 use crate::{PublicKey, SerDes, SubSecretKey};
-//use bls_sigs_ref_rs::SerDes;
 use ff::PrimeField;
 use key_pair::KeyPair;
 use pairing::{bls12_381::*, CurveProjective};
 use param::PubParam;
+
+/// must fails
+#[test]
+fn negative_test_key_gen() {
+    let pp = PubParam::default();
+    assert!(KeyPair::keygen("".as_ref(), &pp).is_err());
+}
+
+#[test]
+fn negative_test_pop() {
+    let pk = PublicKey::new(1, PixelG2::one());
+    let pop = ProofOfPossession::new(0, PixelG1::one());
+    assert!(!pk.validate(&pop));
+
+    let pk = PublicKey::new(0, PixelG2::one());
+    let pop = ProofOfPossession::new(1, PixelG1::one());
+    assert!(!pk.validate(&pop));
+
+    let pk = PublicKey::new(0, PixelG2::one());
+    let pop = ProofOfPossession::new(0, PixelG1::one());
+    assert!(!pk.validate(&pop));
+}
+
+#[test]
+fn negative_test_sk() {
+    let pp = PubParam::default();
+    let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+    assert!(
+        res.is_ok(),
+        "key gen failed\n\
+         error message {:?}",
+        res.err()
+    );
+    let (_pk, sk, _pop) = res.unwrap();
+    let pk = PublicKey::new(1, PixelG2::zero());
+    assert!(!sk.validate(&pk, &pp));
+}
+
+#[test]
+fn test_master_key() {
+    let pp = PubParam::init_without_seed();
+    let res = crate::key_pair::master_key_gen(b"this is a very very long seed for testing", &pp);
+    assert!(res.is_ok(), "master key gen failed");
+    let (pk, sk, _pop, _seed) = res.unwrap();
+    assert!(
+        crate::key_pair::validate_master_key(&pk, &sk, &pp),
+        "master key is invalid"
+    )
+}
 
 /// This test does the following:
 /// 1. generate a paring of public/secret keys, and the pop

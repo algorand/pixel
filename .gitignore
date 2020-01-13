@@ -5,3 +5,5 @@ Cargo.lock
 *.pyc
 __pycache__
 c_example
+html/
+ccov.zip

@@ -17,3 +17,9 @@ mod prng;
 
 /// This module tests if zeroize works
 mod pixel_zeroize;
+
+/// This module tests ffi functions.
+mod ffi;
+
+/// This module tests the getters
+mod getter;

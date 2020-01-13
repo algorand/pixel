@@ -138,7 +138,7 @@ fn test_quick_signature_tests() {
     assert!(res.is_ok(), "signing failed");
     let sig = res.unwrap();
     assert!(sig.verify_bytes(&pk, &pp, msg), "verification failed");
-
+    println!("{:?}", sig);
     let seed = "";
 
     for j in 2..16 {

@@ -10,7 +10,7 @@ use SerDes;
 
 /// A wrapper of sk
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct pixel_sk {
     data: *mut u8,
     len: libc::size_t,
@@ -18,6 +18,7 @@ pub struct pixel_sk {
 
 /// A wrapper of pk
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct pixel_pk {
     data: [u8; PK_LEN],
 }
@@ -34,6 +35,7 @@ impl std::fmt::Debug for pixel_pk {
 }
 /// A wrapper of pop
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct pixel_pop {
     data: [u8; POP_LEN],
 }
@@ -51,11 +53,11 @@ impl std::fmt::Debug for pixel_pop {
 
 /// A wrapper that holds the output of key generation function.
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct pixel_keys {
-    pk: pixel_pk,
-    sk: pixel_sk,
-    pop: pixel_pop,
+    pub(crate) pk: pixel_pk,
+    pub(crate) sk: pixel_sk,
+    pub(crate) pop: pixel_pop,
 }
 
 /// A wrapper of signature

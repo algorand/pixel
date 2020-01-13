@@ -84,9 +84,11 @@ impl KeyPair {
 /// Use the last 64 bytes as the rngseed.
 /// The public/secret key is then set to g2^x and h^x
 /// It also generate a proof of possesion which is a BLS signature on g2^x.
-/// TODO: change BLS signature to Pixel signature, to remove dependencies on BLS crate.
 /// This function is private -- it should be used only as a subroutine to key gen function
-fn master_key_gen(seed: &[u8], pp: &PubParam) -> Result<(PixelG2, PixelG1, PixelG1, PRNG), String> {
+pub(crate) fn master_key_gen(
+    seed: &[u8],
+    pp: &PubParam,
+) -> Result<(PixelG2, PixelG1, PixelG1, PRNG), String> {
     // make sure we have enough entropy
     if seed.len() < 32 {
         #[cfg(debug_assertions)]
@@ -158,7 +160,7 @@ fn proof_of_possession(msk: Fr, pk: PixelG2, ciphersuite: u8) -> Result<PixelG1,
 /// This function tests if a public key and a master secret key has a same exponent.
 /// This function is private, and test only, since by default no one shall have the master secret key.
 #[cfg(test)]
-fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
+pub(crate) fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
     use ff::Field;
     use pairing::{bls12_381::*, CurveAffine, Engine};
     let mut g2 = pp.g2();
@@ -179,13 +181,4 @@ fn validate_master_key(pk: &PixelG2, sk: &PixelG1, pp: &PubParam) -> bool {
         //   pairingproduct == 1
         Some(pairingproduct) => pairingproduct == Fq12::one(),
     }
-}
-
-#[test]
-fn test_master_key() {
-    let pp = PubParam::init_without_seed();
-    let res = master_key_gen(b"this is a very very long seed for testing", &pp);
-    assert!(res.is_ok(), "master key gen failed");
-    let (pk, sk, _pop, _seed) = res.unwrap();
-    assert!(validate_master_key(&pk, &sk, &pp), "master key is invalid")
 }

@@ -58,8 +58,12 @@ fn test_os2ip() {
 // the examples in this test are cross compared with python prng code
 #[test]
 fn test_prng() {
+    // prng default
+    assert_eq!(PRNG::default(), PRNG::new([0u8; 64]));
+
     // test sample then update function
     let mut prng = PRNG::init("seed", "salt");
+    println!("unit test: prng debug {:?}", prng);
     assert_eq!(
         prng.seed().as_ref(),
         [

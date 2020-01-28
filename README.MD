@@ -11,8 +11,6 @@ CREDIT: http://patorjk.com/software/taag
 
 # Pixel signature scheme
 
-__WORK IN PROGRESS__
-
 [![Build Status](https://travis-ci.com/algorand/pixel.svg?token=cs332z4omsgc9ykLW8pu&branch=master)](https://travis-ci.com/algorand/pixel)
 
 This is Algorand's implementation of Pixel signature, over the BLS12-381 curve.
@@ -35,6 +33,12 @@ other purpose.
   * We use the default parameters generated from this crate.
 * [BLS_SIG](https://github.com/algorand/bls_sigs_ref)
   * This library is only used for generating and verifying proof of possession.
+
+## Code status
+
+* Version Alpha.
+* This code has __NOT__ been deployed in production.
+* This code has been externally audited by two consulting firms.
 
 ## Build options
 

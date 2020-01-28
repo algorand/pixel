@@ -160,14 +160,6 @@ pub unsafe extern "C" fn c_sign_present(
     // load the secret key
     let mut sk_local = std::slice::from_raw_parts(sk.data, sk.len as usize);
 
-    // println!("sk in signature");
-    // for i in 0..128 {
-    //     print!("{:02x} ", sk_local[i]);
-    //     if i % 16 == 15 {
-    //         println!();
-    //     }
-    // }
-
     let mut k = match SecretKey::deserialize(&mut sk_local, true) {
         Ok(p) => p,
         Err(e) => panic!("C wrapper error: signing function: deserialize sk: {}", e),
@@ -264,12 +256,6 @@ pub unsafe extern "C" fn c_sk_update(
         k.serialize(&mut k_buf, true).is_ok(),
         "C wrapper error: key update function: serialize sk"
     );
-    // for i in 0..128 {
-    //     print!("{:02x?}, ", k_buf[i]);
-    //     if i % 16 == 15 {
-    //         println!();
-    //     }
-    // }
 
     // shrink the vector sk_buf so that it is encoded
     // as raw memory

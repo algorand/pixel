@@ -45,3 +45,21 @@ fn test_sig_getter() {
     assert_eq!(sig.sigma1(), PixelG2::one());
     assert_eq!(sig.sigma2(), PixelG1::one());
 }
+
+#[test]
+fn test_ssk_getter() {
+    let pp = PubParam::default();
+    let res = KeyPair::keygen(b"this is a very very long seed for testing", &pp);
+
+    let (_pk, sk, _pop) = res.unwrap();
+    let ssk = sk.first_ssk().unwrap();
+
+    assert_eq!(ssk.time(), 1);
+    ssk.g2r();
+    ssk.hpoly();
+}
+
+#[test]
+fn test_time_getter() {
+    //TBD
+}

@@ -151,7 +151,6 @@ impl SubSecretKey {
             if tv[i] == 2 {
                 tmp2.double();
             }
-            // tmp2.mul_assign(tv[i]);
             tmp3_sec.add_assign(&tmp2);
         }
 

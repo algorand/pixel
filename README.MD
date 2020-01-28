@@ -25,13 +25,13 @@ vectors and cross comparing with Rust's output. It should not be used for any
 other purpose.
 
 ## Dependencies
-* [Pairing-plus library](https://github.com/algorand/pairing-plus)
+* Pairing-plus library: [Github](https://github.com/algorand/pairing-plus), [Crate.io](https://crates.io/crates/pairing-plus)
   * A fork of zkcrypto's pairing library; with additional functions such as `hash to groups`
   and `membership testing`, etc.
   * We rely heavily on this library for underlying arithmetics.
-* [Pixel_param](https://github.com/algorand/pixel_param)
+* Pixel_param: [Github](https://github.com/algorand/pixel_param)
   * We use the default parameters generated from this crate.
-* [BLS_SIG](https://github.com/algorand/bls_sigs_ref)
+* BLS_SIG: [Github](https://github.com/algorand/bls_sigs_ref), [Crate.io](https://crates.io/crates/bls_sigs_ref)
   * This library is only used for generating and verifying proof of possession.
 
 ## Code status
@@ -67,15 +67,13 @@ Exceptions:
 suggests to have a test file along with the source code.
 Pixel has a separate test folder that contains all test codes.
 
-## Handling secret data
-* Variables that storing secret data are named with a suffix `_sec`; always ensure this data get cleaned with `ClearOnDrop` crate;
-or get passed to the caller.
+## Crypto Hygiene
+* Variables that storing secret data are named with a suffix `_sec`. Always ensure primitive types get cleaned with `Zeroize` crate;
+or get passed to the caller. Secret key related structures implements `zeroing` on drop.
 * Avoiding using `clone()` function on secret data as possible - this will create two copies of the data. If `clone()`
 is used, always clean it after use.
-* Some data type, i.e., `[u8;64]` cannot be cleared with `ClearOnDrop` since the `Default` trait is
-not implemented for it. We manually clear it by writing trivial data to it.
 
-## Interfaces
+## Interfaces documentation
 * Run `cargo doc --open`
 * See `target/doc/pixel/index.html`
 
